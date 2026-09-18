@@ -5,8 +5,8 @@ __pycache__/
 dist/
 
 # Data: 원본 문서 로컬 캐시는 커밋하지 않는다 (LICENSES/ 참조)
-data/
-!data/.gitkeep
+/data/*
+!/data/.gitkeep
 
 # Notebook checkpoints
 .ipynb_checkpoints/
@@ -16,4 +16,6 @@ data/
 
 # Env / secrets
 .env
+.env.*
+!.env.example
 *.key

@@ -3,6 +3,7 @@ name = "krsec-rag-lab"
 version = "0.1.0"
 description = "Korean security-document RAG evaluation harness: on-prem stack ablation lab (KISA/NVD corpus)"
 readme = "README.md"
+license = "MIT"
 authors = [
     { name = "Bkankim", email = "197662510+Bkankim@users.noreply.github.com" }
 ]
