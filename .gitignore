@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+
+# Data: 원본 문서 로컬 캐시는 커밋하지 않는다 (LICENSES/ 참조)
+data/
+!data/.gitkeep
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# fablize session state
+.fablize/
+
+# Env / secrets
+.env
+*.key

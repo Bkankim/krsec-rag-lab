@@ -1,0 +1,23 @@
+[project]
+name = "krsec-rag-lab"
+version = "0.1.0"
+description = "Korean security-document RAG evaluation harness: on-prem stack ablation lab (KISA/NVD corpus)"
+readme = "README.md"
+authors = [
+    { name = "Bkankim", email = "197662510+Bkankim@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.11.26,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.6",
+    "pytest>=8",
+]
+
+[tool.ruff]
+line-length = 100
