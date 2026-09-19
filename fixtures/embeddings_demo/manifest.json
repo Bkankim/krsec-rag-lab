@@ -1,0 +1,27 @@
+{
+  "created_at": "2026-09-19T05:33:15+00:00",
+  "source_notebook": "notebooks/00_embeddings_from_scratch.ipynb",
+  "issue": 5,
+  "model": {
+    "name": "BAAI/bge-m3",
+    "revision": "5617a9f61b028005a4858fdac845db406aefb181",
+    "pooling": "cls",
+    "normalized": true,
+    "dimension": 1024,
+    "dtype": "float32",
+    "max_seq_length": 8192,
+    "representation": "dense only (bge-m3의 sparse/colbert 헤드는 사용하지 않음)"
+  },
+  "runtime": {
+    "device": "cpu",
+    "seed": 20260919,
+    "torch": "2.14.0",
+    "numpy": "2.5.3",
+    "python": "3.13.14"
+  },
+  "corpus": {
+    "n_documents": 10,
+    "synthetic": true,
+    "documents_sha256": "244451c38d8502418af7faee11dfe5062a6ff76291e71d8a99b7592b38a4ff55"
+  }
+}

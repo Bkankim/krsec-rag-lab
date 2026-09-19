@@ -19,6 +19,22 @@ dev = [
     "ruff>=0.6",
     "pytest>=8",
 ]
+# 무거운 임베딩 스택은 CI(uv sync --locked --dev)에 들어가지 않도록 별도 그룹에 격리한다.
+# 로컬에서 노트북을 돌릴 때만 `uv sync --group embed`.
+embed = [
+    "sentence-transformers>=3.0",
+    "torch>=2.2",
+    "numpy>=1.26",
+    "jupyter-client>=8",
+    "ipykernel>=6",
+    "nbconvert>=7",
+    "nbformat>=5",
+]
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint.per-file-ignores]
+# 노트북 셀은 마지막 표현식이 곧 출력이고, 셀 단위로 다시 실행하므로
+# 최상위 실행 코드·셀 간 재할당이 정상이다.
+"notebooks/*.ipynb" = ["E402", "T201"]

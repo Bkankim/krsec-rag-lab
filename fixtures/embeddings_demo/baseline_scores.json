@@ -1,0 +1,33 @@
+{
+  "metric": "cosine (= dot product on L2-normalized vectors)",
+  "method": "numpy brute-force full scan",
+  "scores": {
+    "DOC-001": 0.78568411,
+    "DOC-002": 0.47313124,
+    "DOC-003": 0.54255545,
+    "DOC-004": 0.60262907,
+    "DOC-005": 0.49280003,
+    "DOC-006": 0.4577978,
+    "DOC-007": 0.49467126,
+    "DOC-008": 0.61337286,
+    "DOC-009": 0.46428049,
+    "DOC-010": 0.44897318
+  },
+  "top_k": [
+    {
+      "rank": 1,
+      "doc_id": "DOC-001",
+      "score": 0.78568411
+    },
+    {
+      "rank": 2,
+      "doc_id": "DOC-008",
+      "score": 0.61337286
+    },
+    {
+      "rank": 3,
+      "doc_id": "DOC-004",
+      "score": 0.60262907
+    }
+  ]
+}
