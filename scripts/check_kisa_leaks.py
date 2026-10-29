@@ -18,6 +18,8 @@ from pathlib import Path
 METADATA_FIELDS = {"url", "title", "date", "nttId", "cve_ids"}
 CACHE_PATH = "data/kisa"
 METADATA_PATH = "fixtures/kisa/metadata.jsonl"
+# 전체 코퍼스(#58)의 메타데이터. 기본 실행에서는 파일이 있으면 면제 목록에 더한다.
+FULL_METADATA_PATH = "fixtures/kisa_full/metadata.jsonl"
 MIN_PATTERN_LENGTH = 32
 
 
@@ -41,8 +43,16 @@ def git(repo: Path, *arguments: str, input_text: str | None = None) -> subproces
     return result
 
 
-def metadata_values(repo: Path) -> list[str]:
-    path = repo / METADATA_PATH
+def repo_relative(value: str) -> str:
+    """리포 기준 상대 경로만 받는다(절대 경로·상위 이동은 거부)."""
+    path = Path(value)
+    if not value or path.is_absolute() or ".." in path.parts:
+        raise AuditError("path_not_repo_relative")
+    return path.as_posix().rstrip("/")
+
+
+def metadata_values(repo: Path, metadata: str = METADATA_PATH) -> list[str]:
+    path = repo / metadata
     if not path.is_file():
         raise AuditError("metadata_missing")
     values: list[str] = []
@@ -121,13 +131,13 @@ def pattern_variants(pattern: str) -> set[str]:
     }
 
 
-def audit(repo: Path) -> dict:
-    tracked = git(repo, "ls-files", "-z", "--", CACHE_PATH)
+def audit(repo: Path, cache_path: str = CACHE_PATH, metadata_path: str = METADATA_PATH) -> dict:
+    tracked = git(repo, "ls-files", "-z", "--", cache_path)
     if tracked.returncode != 0:
         raise AuditError("cache_tracking_check_failed")
     if tracked.stdout:
         raise AuditError("cache_is_tracked")
-    cache = repo / CACHE_PATH
+    cache = repo / cache_path
     paths = sorted(path for path in cache.glob("*/body.txt") if path.parent.name.isdecimal())
     if not paths:
         raise AuditError("cache_missing_run_fetch_kisa_separately")
@@ -135,11 +145,13 @@ def audit(repo: Path) -> dict:
         ignored = git(repo, "check-ignore", "-q", "--", path.relative_to(repo).as_posix())
         if ignored.returncode != 0:
             raise AuditError("cache_not_ignored")
-    status = git(repo, "status", "--short", "--ignored", "--", CACHE_PATH)
-    expected_status = f"!! {CACHE_PATH}/"
+    status = git(repo, "status", "--short", "--ignored", "--", cache_path)
+    expected_status = f"!! {cache_path}/"
     if status.returncode != 0 or status.stdout.strip() != expected_status:
         raise AuditError("cache_ignore_status_unexpected")
-    allowed = metadata_values(repo)
+    allowed = metadata_values(repo, metadata_path)
+    if metadata_path == METADATA_PATH and (repo / FULL_METADATA_PATH).is_file():
+        allowed += metadata_values(repo, FULL_METADATA_PATH)
     bodies = [path.read_text(encoding="utf-8") for path in paths]
     patterns = select_patterns(bodies, allowed)
     checks = []
@@ -172,9 +184,13 @@ def audit(repo: Path) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument("--cache", default=CACHE_PATH, help="repo-relative cache directory")
+    parser.add_argument(
+        "--metadata", default=METADATA_PATH, help="repo-relative public metadata index (jsonl)"
+    )
     args = parser.parse_args()
     try:
-        report = audit(args.repo.resolve())
+        report = audit(args.repo.resolve(), repo_relative(args.cache), repo_relative(args.metadata))
     except AuditError as exc:
         report = {"audit": "fail", "error": str(exc)}
     except (OSError, ValueError, TypeError):
