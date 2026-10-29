@@ -1,0 +1,213 @@
+{
+  "comparisons": {
+    "kisa/chunk_max": {
+      "baseline": "dense",
+      "baseline_macro": 0.8131313131313131,
+      "bootstrap": {
+        "n_per_type": {
+          "cve_explicit": 11,
+          "explanation_comparison": 5,
+          "product_symptom": 7
+        },
+        "resamples": 10000,
+        "seed": 20261029,
+        "stratified_by": "query_type"
+      },
+      "by_type": {
+        "cve_explicit": {
+          "metrics": {
+            "hit@10": {
+              "baseline": 0.5454545454545454,
+              "delta": 0.2727272727272728,
+              "experiment": 0.8181818181818182
+            },
+            "mrr@10": {
+              "baseline": 0.4069264069264069,
+              "delta": 0.1771645021645022,
+              "experiment": 0.5840909090909091
+            },
+            "ndcg@10": {
+              "baseline": 0.4393939393939394,
+              "delta": 0.1961862888186205,
+              "experiment": 0.6355802282125599
+            }
+          },
+          "n_scored": 11,
+          "observation_only": false
+        },
+        "explanation_comparison": {
+          "metrics": {
+            "hit@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            },
+            "mrr@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            },
+            "ndcg@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            }
+          },
+          "n_scored": 5,
+          "observation_only": true
+        },
+        "product_symptom": {
+          "metrics": {
+            "hit@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            },
+            "mrr@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            },
+            "ndcg@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            }
+          },
+          "n_scored": 7,
+          "observation_only": true
+        }
+      },
+      "ci95": {
+        "high": 0.15097368313492107,
+        "low": -0.008198875531707943
+      },
+      "cve_explicit": {
+        "delta_ndcg@10": 0.1961862888186205,
+        "regression": false
+      },
+      "degraded": [
+        {
+          "delta": -0.3333333333333333,
+          "ndcg_after": 0.0,
+          "ndcg_before": 0.3333333333333333,
+          "query_type": "cve_explicit",
+          "question_id": "g1-cve-2026-53873",
+          "rank_after": 11,
+          "rank_before": 7
+        },
+        {
+          "delta": -0.11314719276545837,
+          "ndcg_after": 0.38685280723454163,
+          "ndcg_before": 0.5,
+          "query_type": "cve_explicit",
+          "question_id": "g1-cve-2026-14669",
+          "rank_after": 5,
+          "rank_before": 3
+        }
+      ],
+      "delta": 0.06539542960620681,
+      "experiment_macro": 0.87852674273752,
+      "improved_top10": [
+        {
+          "delta": 1.0,
+          "ndcg_after": 1.0,
+          "ndcg_before": 0.0,
+          "query_type": "cve_explicit",
+          "question_id": "g1-cve-2026-10816",
+          "rank_after": 1,
+          "rank_before": 22
+        },
+        {
+          "delta": 1.0,
+          "ndcg_after": 1.0,
+          "ndcg_before": 0.0,
+          "query_type": "cve_explicit",
+          "question_id": "g1-cve-2026-48448",
+          "rank_after": 1,
+          "rank_before": 14
+        },
+        {
+          "delta": 0.31546487678572877,
+          "ndcg_after": 0.31546487678572877,
+          "ndcg_before": 0.0,
+          "query_type": "cve_explicit",
+          "question_id": "g1-cve-2026-6637",
+          "rank_after": 8,
+          "rank_before": 25
+        },
+        {
+          "delta": 0.2890648263178879,
+          "ndcg_after": 0.2890648263178879,
+          "ndcg_before": 0.0,
+          "query_type": "cve_explicit",
+          "question_id": "g1-cve-2026-62817",
+          "rank_after": 10,
+          "rank_before": 40
+        }
+      ],
+      "metric": "test macro nDCG@10 (condensed, 정답이 있는 유형의 단순 평균)",
+      "n_degraded": 2,
+      "n_improved": 4,
+      "n_test_questions": 23,
+      "n_unchanged": 17,
+      "no_answer": {
+        "baseline": {
+          "abstain_rate": 0.5,
+          "false_abstain_rate": 0.21739130434782608,
+          "n_answerable": 23,
+          "n_no_answer": 6,
+          "tau": 0.6149108409881592
+        },
+        "experiment": {
+          "abstain_rate": 0.3333333333333333,
+          "false_abstain_rate": 0.21739130434782608,
+          "n_answerable": 23,
+          "n_no_answer": 6,
+          "tau": 0.6178503036499023
+        }
+      },
+      "rank_note": "rank_*는 저장된 condensed 상위 100건 안의 첫 정답 순위이고 null은 저장 범위 밖이다",
+      "secondary_metrics": {
+        "hit@10": {
+          "baseline": 0.8484848484848485,
+          "delta": 0.09090909090909094,
+          "experiment": 0.9393939393939394
+        },
+        "mrr@10": {
+          "baseline": 0.8023088023088022,
+          "delta": 0.05905483405483414,
+          "experiment": 0.8613636363636363
+        }
+      },
+      "timing": {
+        "baseline": {
+          "index_seconds": 56.58103983299952,
+          "query_latency_median_seconds": 0.04520214600051986
+        },
+        "experiment": {
+          "index_seconds": 3.9379061660001753,
+          "query_latency_median_seconds": 0.0961720624982263
+        },
+        "note": "참고값: 2단계 실험은 같은 맥에서 병렬로 돌아 시간이 서로 간섭할 수 있다"
+      },
+      "track": "kisa",
+      "variant": "chunk_max",
+      "verdict": "hypothesis-rejected"
+    }
+  },
+  "experiment": "chunking",
+  "hypothesis": "KISA 공지를 청크로 나눠 bge-m3로 인코딩하고 문서 점수를 청크 점수의 최댓값으로 두면, 문서 하나를 한 벡터로 만드는 dense 베이스라인보다 test macro nDCG@10이 높다.",
+  "primary": {
+    "baseline": "dense",
+    "track": "kisa",
+    "variant": "chunk_max",
+    "verdict": "hypothesis-rejected"
+  },
+  "protocol_version": "eval-protocol-v2",
+  "rule": {
+    "bootstrap": "test 질문을 유형별 층화 복원추출 10000회, random.Random(20261029) 하나를 공유, 매 회 macro nDCG@10 차이 재계산, 2.5/97.5 백분위",
+    "verdict": "delta > 0 이고 ci95.low > 0 이면 hypothesis-confirmed, 그 밖은 hypothesis-rejected"
+  },
+  "secondary": []
+}
