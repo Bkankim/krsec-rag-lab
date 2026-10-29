@@ -57,6 +57,9 @@ def compare_topk(
         if abs(want - got) > tol:
             problems.append(f"rank {rank}: score {got:.8f} vs NumPy {want:.8f} (> tol)")
 
+    for item, score in result:
+        if abs(score - score_of[item]) > tol:
+            problems.append(f"id {item!r}: returned score {score:.8f} != its NumPy score (> tol)")
     for item in ids:
         if score_of[item] < kth - tol:
             problems.append(f"id {item!r} scores below the cutoff {kth:.8f} - tol")
@@ -65,12 +68,14 @@ def compare_topk(
         if score > kth + tol and item not in present:
             problems.append(f"id {item!r} is clearly inside top-{k} but missing")
 
-    previous = None
+    # Compare with the lowest score seen so far, not only the neighbour: sub-tolerance steps
+    # in one direction would otherwise add up to an order violation that passes.
+    lowest = None
     for item in ids:
         current = score_of[item]
-        if previous is not None and current > previous + tol:
+        if lowest is not None and current > lowest + tol:
             problems.append(f"id {item!r} is ranked below a lower NumPy score (order)")
-        previous = current
+        lowest = current if lowest is None else min(lowest, current)
     return problems
 
 

@@ -87,6 +87,26 @@ def exact_hits(client, query_vector, k: int) -> list[rules.Hit]:
     return [(point.payload["doc_id"], float(point.score)) for point in response.points]
 
 
+def build_case(
+    label: str, k: int, scores: dict[str, float], expected: list[rules.Hit], result: list[rules.Hit]
+) -> dict:
+    """One NumPy-vs-Qdrant comparison. An empty or short result is a length violation, not a crash."""
+    problems = rules.compare_topk(scores, expected, result)
+    by_score = sorted(result, key=lambda h: -h[1])
+    return {
+        "query": label,
+        "k": k,
+        "ok": not problems,
+        "strict_id_order_equal": [h[0] for h in expected] == [h[0] for h in result],
+        "max_abs_score_diff": max(
+            (abs(want[1] - got[1]) for want, got in zip(expected, by_score)), default=0.0
+        ),
+        "problems": problems,
+        "numpy_top": expected,
+        "qdrant_top": result,
+    }
+
+
 def run(url: str) -> dict:
     fixture = load_fixture()
     doc_ids = [doc["doc_id"] for doc in fixture["documents"]["documents"]]
@@ -105,27 +125,13 @@ def run(url: str) -> dict:
         for k in KS:
             expected = ranking[:k]
             result = exact_hits(client, vector, k)
-            problems = rules.compare_topk(scores, expected, result)
-            cases.append(
-                {
-                    "query": label,
-                    "k": k,
-                    "ok": not problems,
-                    "strict_id_order_equal": [h[0] for h in expected] == [h[0] for h in result],
-                    "max_abs_score_diff": max(
-                        abs(want[1] - got[1])
-                        for want, got in zip(expected, sorted(result, key=lambda h: -h[1]))
-                    ),
-                    "problems": problems,
-                    "numpy_top": expected,
-                    "qdrant_top": result,
-                }
-            )
+            cases.append(build_case(label, k, scores, expected, result))
 
     main_scores = numpy_scores(fixture["doc_vectors"], fixture["query_vector"], doc_ids)
     baseline = fixture["baseline"]["scores"]
     baseline_drift = max(abs(main_scores[d] - baseline[d]) for d in doc_ids)
     ordered = [score for _, score in rules.numpy_order(main_scores)]
+    top1 = next(c for c in cases if c["query"] == "fixture-query" and c["k"] == 1)["qdrant_top"]
     return {
         "server": common.server_info(url),
         "collection": COLLECTION,
@@ -137,9 +143,7 @@ def run(url: str) -> dict:
         "baseline_top3_ids_match": [h["doc_id"] for h in fixture["baseline"]["top_k"]]
         == [h[0] for h in rules.numpy_order(main_scores)[:3]],
         "expected_doc_id": fixture["documents"]["expected_doc_id"],
-        "exact_top1_id": next(c for c in cases if c["query"] == "fixture-query" and c["k"] == 1)[
-            "qdrant_top"
-        ][0][0],
+        "exact_top1_id": top1[0][0] if top1 else None,
         "cases_total": len(cases),
         "cases_ok": sum(c["ok"] for c in cases),
         "cases": cases,

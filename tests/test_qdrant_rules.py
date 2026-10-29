@@ -9,6 +9,8 @@ import pytest
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
+import qdrant_common as common
+import qdrant_exact
 import qdrant_rules as rules
 
 TOL = rules.SCORE_TOLERANCE
@@ -28,6 +30,7 @@ EXPECTED_3 = [("a", 0.9), ("b", 0.8), ("c", 0.7)]
         ("order violation", [("a", 0.9), ("c", 0.8), ("b", 0.7)], "order"),
         ("too short", [("a", 0.9), ("b", 0.8)], "length"),
         ("too long", [("a", 0.9), ("b", 0.8), ("c", 0.7), ("d", 0.7)], "length"),
+        ("scores swapped between ids", [("a", 0.8), ("b", 0.9), ("c", 0.7)], "returned score"),
         ("duplicate id", [("a", 0.9), ("b", 0.8), ("b", 0.8)], "duplicate"),
     ],
 )
@@ -37,6 +40,14 @@ def test_compare_topk_matrix(name, result, problem_fragment):
         assert problems == [], name
     else:
         assert any(problem_fragment in problem for problem in problems), (name, problems)
+
+
+def test_order_check_catches_sub_tolerance_steps_that_add_up():
+    scores = {"x": 0.7, "y": 0.7 + 0.8 * TOL, "z": 0.7 + 1.6 * TOL}
+    expected = rules.numpy_order(scores)
+    ascending = [(item, scores[item]) for item in ("x", "y", "z")]  # each step <= tol, total > tol
+    assert any("order" in problem for problem in rules.compare_topk(scores, expected, ascending))
+    assert rules.compare_topk(scores, expected, expected) == []
 
 
 def test_numpy_order_breaks_ties_by_id():
@@ -87,3 +98,29 @@ def test_script_imports_without_numpy_or_qdrant_client(script):
     )
     done = subprocess.run([sys.executable, "-c", code], check=False, capture_output=True, text=True)
     assert done.returncode == 0, done.stderr
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        ("http://127.0.0.1:16333", ("127.0.0.1", 16333, False, None)),
+        ("http://[::1]:16333", ("[::1]", 16333, False, None)),
+        ("http://[::1]", ("[::1]", 80, False, None)),
+        ("https://qdrant.example", ("qdrant.example", 443, True, None)),
+        ("http://host/qdrant/", ("host", 80, False, "qdrant")),
+    ],
+)
+def test_client_endpoint_matches_the_http_endpoint(url, expected):
+    endpoint = common.client_endpoint(url)
+    assert (endpoint["host"], endpoint["port"], endpoint["https"], endpoint["prefix"]) == expected
+
+
+@pytest.mark.parametrize("k", [1, 3])
+def test_empty_result_is_a_length_violation_not_a_crash(k):
+    scores = {"a": 0.9, "b": 0.8, "c": 0.7}
+    expected = rules.numpy_order(scores)[:k]
+    case = qdrant_exact.build_case("q", k, scores, expected, [])
+    assert case["ok"] is False
+    assert any("length" in problem for problem in case["problems"])
+    assert case["max_abs_score_diff"] == 0.0
+    assert case["qdrant_top"] == []

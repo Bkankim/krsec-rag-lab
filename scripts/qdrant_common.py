@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import urllib.parse
 import urllib.request
 
 DEFAULT_URL = "http://127.0.0.1:16333"
@@ -34,10 +35,30 @@ def collection_info_raw(url: str, name: str) -> dict:
     return get_json(url, f"/collections/{name}")
 
 
+def client_endpoint(url: str) -> dict:
+    """Host, port, scheme and prefix of ``url`` the way get_json() reaches it.
+
+    QdrantClient(url=...) substitutes port 6333 when the URL has no port, while urllib uses
+    the scheme default (80/443). Passing these explicitly keeps both on one endpoint. An IPv6
+    literal keeps its brackets because QdrantClient joins ``host:port`` without adding them.
+    """
+    parts = urllib.parse.urlsplit(url)
+    https = parts.scheme == "https"
+    host = parts.hostname or ""
+    if ":" in host:
+        host = f"[{host}]"
+    return {
+        "host": host,
+        "port": parts.port or (443 if https else 80),
+        "https": https,
+        "prefix": parts.path.strip("/") or None,
+    }
+
+
 def make_client(url: str):
     from qdrant_client import QdrantClient
 
-    return QdrantClient(url=url, prefer_grpc=False, timeout=120)
+    return QdrantClient(**client_endpoint(url), prefer_grpc=False, timeout=120)
 
 
 def recreate_collection(client, name: str, **kwargs) -> None:

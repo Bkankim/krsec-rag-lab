@@ -1,7 +1,7 @@
 """HNSW vs exact on seeded synthetic vectors: recall@k and latency per ef (issue #6).
 
 The collection holds N_VECTORS vectors (above Qdrant's default indexing threshold of
-20000 KB), so the optimizer really builds an HNSW graph. The evidence is the raw
+10000 KB in v1.19), so the optimizer really builds an HNSW graph. The evidence is the raw
 ``GET /collections/{name}`` response, including ``indexed_vectors_count``.
 
     uv sync --group qdrant
