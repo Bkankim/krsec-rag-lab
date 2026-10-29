@@ -1,6 +1,6 @@
 # krsec-rag-lab
 
-한국어 보안 문서 RAG 평가 하네스 - 온프렘 스택 ablation 리포트.
+한국어 보안 문서 RAG 평가 하네스 - 온프렘 스택 ablation 리포트. Bkankim의 단독 프로젝트다.
 
 KISA 보안공지(한국어)와 NVD CVE(영어)를 코퍼스로, 두 LLM이 교차 판정한 골든 평가셋 위에서
 RAG 파이프라인의 각 구성요소(청킹·하이브리드 검색·리랭킹·임베딩)를 하나씩 바꿔가며
@@ -9,7 +9,8 @@ RAG 파이프라인의 각 구성요소(청킹·하이브리드 검색·리랭�
 핵심 원칙:
 
 - **측정이 먼저다.** 모든 실험은 가설 → 측정 → 판정(기각 포함)으로 종료한다. 데모는 부록이다.
-- **재현 가능해야 한다.** README의 모든 수치는 릴리스에 첨부된 질문별 원시 결과에서 재생성된다.
+- **재현 가능해야 한다.** README의 모든 수치는 릴리스에 첨부된 질문별 원시 결과에서 재생성된다
+  (`uv run python scripts/make_readme_tables.py --check`가 일치를 검증한다).
 - **온프렘으로 돌아간다.** 로컬 임베딩(bge-m3) + Qdrant + 로컬 LLM. 검색·생성 실행에는 외부 API 의존이 없다.
   예외: 골든셋 정답 판정에는 외부 모델 API 2종을 쓴다(KISA 본문 전송 고지는 [LICENSES/](LICENSES/)).
 - **정답의 한계를 밝힌다.** 평가 정답은 두 LLM(Anthropic Opus 계열, OpenAI GPT 계열)의 교차 판정이며 사람 검수가
@@ -18,25 +19,173 @@ RAG 파이프라인의 각 구성요소(청킹·하이브리드 검색·리랭�
 
 ## 상태
 
-스캐폴딩 단계. 로드맵은 [PLAN.md](PLAN.md)와 [Milestones](../../milestones) 참조.
+**M2 완료, v0.1** - 베이스라인 3종(exact CVE lookup / BM25 / dense bge-m3)을 두 트랙에서 측정했고, 질문별 원시 결과와
+재현 명령을 첫 릴리스로 묶었다. 릴리스 노트(asset 목록·sha256·한계): [docs/release-v0.1.md](docs/release-v0.1.md).
+M3(하이브리드·리랭커·청킹·한영 교차·임베딩 교체) 이후의 로드맵은 [PLAN.md](PLAN.md)와
+[Milestones](../../milestones)에 있다.
+
+## 평가 트랙과 재현
+
+평가는 두 트랙으로 나눈다. 문서 단위와 정답 출처가 달라 두 트랙의 수치를 합치거나 한 열로 비교하지 않는다
+(정의: [docs/eval-protocol.md](docs/eval-protocol.md) 11절).
+
+| | 공개 트랙 | KISA 트랙 |
+|---|---|---|
+| 코퍼스 | `fixtures/nvd/cves.jsonl`의 NVD CVE 레코드 1560건 | `fixtures/kisa/manifest.json`의 고정 KISA 공지 50건 |
+| 질문·정답 | `eval/public/queries.jsonl` 144문항, 정답은 NVD 메타데이터로 기계적 결정(LLM 판정 없음) | `eval/golden/golden_v1.jsonl` 54문항, 정답은 두 모델의 교차 판정 |
+| 재현 조건 | 새 클론에서 `uv sync --locked --dev`만으로 exact·BM25 재현 (dense는 `embed` 그룹) | 로컬 KISA 캐시(`data/kisa`)가 있어야 한다(본문은 재배포하지 않는다) |
+
+**공개 트랙** (새 클론, 네트워크·KISA 캐시 불필요). `--out-dir`을 주면 커밋된 `results/baselines`를 건드리지 않는다:
+
+```bash
+git clone https://github.com/Bkankim/krsec-rag-lab.git && cd krsec-rag-lab
+uv sync --locked --dev
+OUT=$(mktemp -d)
+uv run python scripts/run_baselines.py --track public --retriever exact --out-dir "$OUT"
+uv run python scripts/run_baselines.py --track public --retriever bm25 --out-dir "$OUT"
+uv run python scripts/check_release.py --compare-results "$OUT"   # 커밋된 결과와 문서 ID·순위·점수(abs 1e-9) 비교
+```
+
+dense(bge-m3, 모델 약 2.1GB를 내려받는다)는 별도 단계다. 점수의 소수 자리는 환경에 따라 달라질 수 있다:
+
+```bash
+uv sync --locked --group embed
+uv run --no-sync python scripts/run_baselines.py --track public --retriever dense --out-dir "$OUT"
+```
+
+**KISA 트랙** (KISA 캐시가 있는 체크아웃 루트를 `--kisa-root`로 넘긴다. 캐시 수집은 아래 "KISA 소표본"):
+
+```bash
+uv run --no-sync python scripts/run_baselines.py --track kisa --retriever bm25 --kisa-root <KISA 캐시가 있는 체크아웃> --out-dir "$OUT"
+```
+
+README 표와 원시 결과의 일치 검증(네트워크·캐시 불필요):
+
+```bash
+uv run python scripts/make_readme_tables.py --check
+uv run python scripts/check_release.py
+```
+
+## 결과
+
+기준선 3종의 질문별 원시 결과(`results/baselines/`)에서 다시 계산한 표다. 설정(BM25 k1·b, 기권 τ)은 dev에서만 골랐고
+test는 확정한 설정으로 한 번 쟀다. 해석과 질문별 실패 사례는 [docs/baselines.md](docs/baselines.md)에 있다.
+
+<!-- BEGIN GENERATED TABLES (scripts/make_readme_tables.py) -->
+
+이 구간은 `scripts/make_readme_tables.py`가 질문별 원시 결과(`results/baselines/`)에서 다시 계산해 쓴다. 손으로 고치지 않는다. 검증: `uv run python scripts/make_readme_tables.py --check`. macro는 정답이 있는 유형의 단순 평균이다. † 표시는 n_scored < 10이라 우열 판정 없이 관찰로만 읽는다.
+
+### 공개 트랙 (NVD fixture, 문서 = CVE 레코드)
+
+| 검색기 | split | 채점 질문 | 제외 | macro nDCG@10 | macro hit@10 | macro MRR@10 |
+|---|---|---|---|---|---|---|
+| exact | dev | 58 | 0 | 0.5000 | 0.5000 | 0.5000 |
+| exact | test | 86 | 0 | 0.5000 | 0.5000 | 0.5000 |
+| bm25 | dev | 58 | 0 | 0.8533 | 0.8571 | 0.8571 |
+| bm25 | test | 86 | 0 | 0.8551 | 0.8974 | 0.8539 |
+| dense | dev | 58 | 0 | 0.3977 | 0.5095 | 0.3905 |
+| dense | test | 86 | 0 | 0.4353 | 0.5531 | 0.4517 |
+
+유형별 (no_answer는 아래 기권 표):
+
+| 검색기 | split | 유형 | n_scored | nDCG@10 | hit@1 | hit@10 | recall@10 | MRR@10 |
+|---|---|---|---|---|---|---|---|---|
+| exact | dev | cve_explicit | 25 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| exact | dev | product_symptom | 21 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| exact | test | cve_explicit | 35 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| exact | test | product_symptom | 39 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| bm25 | dev | cve_explicit | 25 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| bm25 | dev | product_symptom | 21 | 0.7066 | 0.7143 | 0.7143 | 0.7143 | 0.7143 |
+| bm25 | test | cve_explicit | 35 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| bm25 | test | product_symptom | 39 | 0.7103 | 0.6667 | 0.7949 | 0.6285 | 0.7077 |
+| dense | dev | cve_explicit | 25 | 0.3121 | 0.2400 | 0.4000 | 0.4000 | 0.2850 |
+| dense | dev | product_symptom | 21 | 0.4833 | 0.4286 | 0.6190 | 0.5667 | 0.4960 |
+| dense | test | cve_explicit | 35 | 0.2271 | 0.1714 | 0.2857 | 0.2857 | 0.2081 |
+| dense | test | product_symptom | 39 | 0.6436 | 0.6154 | 0.8205 | 0.5969 | 0.6953 |
+
+no_answer (기권):
+
+| 검색기 | split | n_no_answer | τ | abstain_rate | n_answerable | false_abstain_rate |
+|---|---|---|---|---|---|---|
+| exact | dev | 12 | 1.0000 | 1.0000 | 46 | 0.4565 |
+| exact | test | 12 | 1.0000 | 1.0000 | 74 | 0.5270 |
+| bm25 | dev | 12 | 5.1918 | 1.0000 | 46 | 0.0217 |
+| bm25 | test | 12 | 5.1918 | 1.0000 | 74 | 0.1351 |
+| dense | dev | 12 | 0.6073 | 0.8333 | 46 | 0.4130 |
+| dense | test | 12 | 0.6073 | 0.6667 | 74 | 0.5270 |
+
+### KISA 트랙 (문서 = nttId, 로컬 캐시로 만든 결과)
+
+| 검색기 | split | 채점 질문 | 제외 | macro nDCG@10 | macro hit@10 | macro MRR@10 |
+|---|---|---|---|---|---|---|
+| exact | dev | 23 | 1 | 0.3333 | 0.3333 | 0.3333 |
+| exact | test | 29 | 1 | 0.3333 | 0.3333 | 0.3333 |
+| bm25 | dev | 23 | 1 | 0.7970 | 1.0000 | 0.7191 |
+| bm25 | test | 29 | 1 | 0.9451 | 0.9697 | 0.9364 |
+| dense | dev | 23 | 1 | 0.8802 | 0.9259 | 0.8648 |
+| dense | test | 29 | 1 | 0.8131 | 0.8485 | 0.8023 |
+
+유형별 (no_answer는 아래 기권 표):
+
+| 검색기 | split | 유형 | n_scored | nDCG@10 | hit@1 | hit@10 | recall@10 | MRR@10 |
+|---|---|---|---|---|---|---|---|---|
+| exact | dev | cve_explicit | 9† | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| exact | dev | product_symptom | 5† | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| exact | dev | explanation_comparison | 5† | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| exact | test | cve_explicit | 11 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| exact | test | product_symptom | 7† | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| exact | test | explanation_comparison | 5† | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| bm25 | dev | cve_explicit | 9† | 0.9285 | 0.8889 | 1.0000 | 1.0000 | 0.9074 |
+| bm25 | dev | product_symptom | 5† | 0.6623 | 0.2000 | 1.0000 | 1.0000 | 0.5333 |
+| bm25 | dev | explanation_comparison | 5† | 0.8003 | 0.6000 | 1.0000 | 1.0000 | 0.7167 |
+| bm25 | test | cve_explicit | 11 | 0.9091 | 0.9091 | 0.9091 | 0.9091 | 0.9091 |
+| bm25 | test | product_symptom | 7† | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| bm25 | test | explanation_comparison | 5† | 0.9262 | 0.8000 | 1.0000 | 1.0000 | 0.9000 |
+| dense | dev | cve_explicit | 9† | 0.7145 | 0.6667 | 0.7778 | 0.7778 | 0.6944 |
+| dense | dev | product_symptom | 5† | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| dense | dev | explanation_comparison | 5† | 0.9262 | 0.8000 | 1.0000 | 1.0000 | 0.9000 |
+| dense | test | cve_explicit | 11 | 0.4394 | 0.3636 | 0.5455 | 0.5455 | 0.4069 |
+| dense | test | product_symptom | 7† | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| dense | test | explanation_comparison | 5† | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+
+no_answer (기권):
+
+| 검색기 | split | n_no_answer | τ | abstain_rate | n_answerable | false_abstain_rate |
+|---|---|---|---|---|---|---|
+| exact | dev | 4 | 1.0000 | 1.0000 | 19 | 0.5263 |
+| exact | test | 6 | 1.0000 | 1.0000 | 23 | 0.5217 |
+| bm25 | dev | 4 | 11.4362 | 1.0000 | 19 | 0.1579 |
+| bm25 | test | 6 | 11.4362 | 1.0000 | 23 | 0.3043 |
+| dense | dev | 4 | 0.6149 | 0.7500 | 19 | 0.1579 |
+| dense | test | 6 | 0.6149 | 0.5000 | 23 | 0.2174 |
+
+<!-- END GENERATED TABLES (scripts/make_readme_tables.py) -->
+
+## 한계
+
+- 정답은 두 LLM의 교차 판정이고 사람 검수가 아니다. kappa·`unjudged`·`excluded` 건수와 미검증 항목:
+  [docs/release-v0.1.md 한계 절](docs/release-v0.1.md#한계), 판정 설정과 한계: [eval/golden/judge_manifest.json](eval/golden/judge_manifest.json).
+- 표본이 작다(KISA 트랙은 채점 대상 52문항이고 split·유형별 n은 더 작다). 지표 해석의 주의점은 [docs/baselines.md 6절](docs/baselines.md#6-해석할-때의-한계)에 있다.
+- KISA 트랙은 로컬 캐시가 있어야 재현된다. 공개 트랙은 질문이 한국어, 문서가 영어인 교차 언어 설정이다.
 
 ## 데이터와 라이선스
 
 원본 데이터의 소스별 라이선스와 재배포 범위는 [LICENSES/](LICENSES/) 참조.
 KISA 보안공지 본문은 재배포하지 않는다(수집 스크립트와 메타데이터 인덱스만 제공).
+릴리스 asset에는 질문 ID·문서 ID·순위·점수와 manifest·정답 파일만 있고 본문은 없다.
 
 ## 실행
 
 ```bash
-uv sync
+uv sync --locked --dev
 uv run pytest
 ```
 
 ## KISA 소표본 (별도 로컬 실행)
 
-공개 기본 테스트는 자작 합성 데이터만 사용하며 네트워크나 KISA 캐시가 필요 없다.
-KISA 원문을 사용하는 후속 평가는 아래 수집과 캐시 검사를 별도로 실행한 환경에서만
-진행한다. 원문·요약·발췌는 출력하거나 평가 결과에 포함하지 않는다.
+공개 기본 테스트는 리포에 포함된 fixture와 자작 합성 데이터만 사용하며 네트워크나 KISA 캐시가 필요 없다.
+KISA 트랙 평가(`scripts/run_baselines.py --track kisa`)는 아래 수집과 캐시 검사를 별도로 실행한
+환경에서만 진행한다. 원문·요약·발췌는 출력하거나 평가 결과에 포함하지 않는다.
 
 ```bash
 uv run python scripts/fetch_kisa.py --limit 50 --delay 1.5
@@ -71,7 +220,7 @@ ID·해시만 보고하고, 기존 manifest·메타·정상 캐시는 보존한�
 무시 디렉터리의 `observed.html`·`observed.txt`에만 남긴다. 같은 본문이면 최초 수집 시각도
 보존한다. 파서 버전이 다른 manifest나 손상된 캐시는 자동으로 승인하지 않는다.
 `--check-cache`는 오프라인으로 원 응답의 재파싱 결과까지 대조하고, 캐시 부재 시
-수집 명령을 안내하며 실패한다. 평가 코드에서는 `load_cached_body`를 이 경계로 사용할 수 있다.
+수집 명령을 안내하며 실패한다. 평가 코드(`run_baselines.py`의 KISA 트랙)는 `load_cached_body`를 이 경계로 사용한다.
 
 모든 HTTP 요청은 명시적 UA와 기본 1.5초 간격을 사용한다(`--delay`는 1~2초).
 robots.txt를 먼저 확인하고 더 긴 crawl-delay/request-rate가 있으면 이를 따른다.
