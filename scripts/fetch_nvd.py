@@ -15,9 +15,11 @@ import json
 import os
 import re
 import time
+import zlib
 from collections import Counter
 from datetime import UTC
 from email.utils import parsedate_to_datetime
+from http.client import HTTPException
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlsplit
@@ -116,7 +118,7 @@ class Client:
             if error.code in {401, 403, 429}:
                 raise AccessDenied(f"http_{error.code}") from None
             raise FetchError(f"http_{error.code}") from None
-        except (URLError, TimeoutError, OSError):
+        except (URLError, TimeoutError, OSError, HTTPException):
             raise FetchError("network_error") from None
         try:
             fetched_at = parsedate_to_datetime(date).astimezone(UTC).isoformat(timespec="seconds")
@@ -341,11 +343,14 @@ def collect(targets, cache, client, refresh):
             client, f"feeds/nvdcve-2.0-{year}.json.gz", FEED_URL.format(year=year), refresh
         )
         wanted = set(ids)
-        stream = iter_feed(path)
-        header = next(stream)
-        for cve in stream:
-            if cve["id"] in wanted:
-                found[cve["id"]] = (cve, name)
+        try:
+            stream = iter_feed(path)
+            header = next(stream)
+            for cve in stream:
+                if cve["id"] in wanted:
+                    found[cve["id"]] = (cve, name)
+        except (EOFError, OSError, ValueError, KeyError, TypeError, zlib.error):
+            raise NvdError("invalid_cached_feed_rerun_with_refresh") from None
         for cve_id in ids:
             if cve_id not in found:
                 not_found[cve_id] = f"absent_from_{name}"
@@ -436,8 +441,14 @@ def report_from_fixture(root):
     """Recompute the three coverage numbers from committed files only (no network)."""
     fixture = root / "fixtures/nvd"
     targets = load_targets(root)
-    ids = [json.loads(line)["id"] for line in (fixture / "cves.jsonl").read_text().splitlines()]
-    kev = {e["cve_id"] for e in json.loads((fixture / "kev.json").read_text())["entries"]}
+    ids = [
+        json.loads(line)["id"]
+        for line in (fixture / "cves.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    kev = {
+        e["cve_id"]
+        for e in json.loads((fixture / "kev.json").read_text(encoding="utf-8"))["entries"]
+    }
     return {
         "kisa_unique_cves": len(targets),
         "found_in_nvd": len(set(ids) & set(targets)),

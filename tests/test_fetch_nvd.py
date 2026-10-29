@@ -1,11 +1,17 @@
 """Offline tests: invented CVE records and a fake HTTP opener, no network."""
 
+import email.message
 import gzip
 import importlib.util
+import io
 import itertools
 import json
 import sys
+import urllib.request
+import urllib.response
+import zlib
 from argparse import Namespace
+from http.client import BadStatusLine, IncompleteRead
 from pathlib import Path
 from types import SimpleNamespace
 from urllib.error import HTTPError
@@ -265,13 +271,44 @@ def test_blocked_response_stops_at_once_and_writes_nothing(setup, capsys, stage,
     )
 
 
-def test_redirect_is_treated_as_a_block(setup):
-    class Redirecting:
-        def open(self, request, timeout=None):
-            raise nvd.AccessDenied("redirect_requires_inspection")
+@pytest.mark.parametrize("code", [301, 302, 303, 307, 308])
+def test_redirect_is_treated_as_a_block(monkeypatch, code):
+    """Go through the real NoRedirect handler: a 30x answer must stop, not be followed."""
 
-    client = nvd.Client(opener=Redirecting())
-    with pytest.raises(nvd.AccessDenied):
+    class Redirecting(urllib.request.HTTPSHandler):
+        def __init__(self):
+            super().__init__()
+            self.calls = 0
+
+        def https_open(self, req):
+            self.calls += 1
+            headers = email.message.Message()
+            headers["Location"] = "https://mirror.invalid/elsewhere"
+            response = urllib.response.addinfourl(io.BytesIO(b""), headers, req.full_url, code)
+            response.msg = "Redirect"
+            return response
+
+    fake = Redirecting()
+    monkeypatch.setattr(nvd, "build_opener", lambda *h: urllib.request.build_opener(*h, fake))
+
+    client = nvd.Client()
+    with pytest.raises(nvd.AccessDenied, match="redirect_requires_inspection"):
+        client.get(nvd.KEV_URL)
+    assert fake.calls == 1  # the Location target was never requested
+
+
+@pytest.mark.parametrize(
+    "error",
+    [IncompleteRead(b"partial"), BadStatusLine("x"), TimeoutError(), OSError("reset")],
+    ids=["incomplete-read", "bad-status-line", "timeout", "os-error"],
+)
+def test_dropped_connection_is_a_fetch_error_not_a_traceback(setup, error):
+    class Dropping:
+        def open(self, request, timeout=None):
+            raise error
+
+    client = nvd.Client(opener=Dropping())
+    with pytest.raises(nvd.FetchError, match="network_error"):
         client.get(nvd.KEV_URL)
 
 
@@ -463,6 +500,41 @@ def test_truncated_feed_is_an_error(tmp_path):
     next(stream)
     with pytest.raises((nvd.NvdError, EOFError)):
         list(stream)
+
+
+@pytest.mark.parametrize(
+    "bad_body",
+    [b"<html>challenge page</html>", gzip.compress(b'{"vulnerabilities": [{"cve": {"id"')[:-6]],
+    ids=["not-gzip", "truncated-gzip"],
+)
+def test_unreadable_feed_is_a_reported_failure_not_a_traceback(setup, capsys, bad_body):
+    opener = setup.start()
+    good = opener.world
+    opener.world = lambda url: bad_body if "nvd.nist.gov/feeds" in url else good(url)
+
+    status = nvd.run(args(), root=setup.root, env={})
+
+    assert status == 1
+    assert "failed reason=invalid_cached_feed" in capsys.readouterr().out
+    assert not (setup.root / "fixtures" / "nvd").exists()
+
+
+def test_gzip_corrupted_mid_stream_is_a_reported_failure(setup, capsys):
+    opener = setup.start()
+    good = opener.world
+    feed_url = nvd.FEED_URL.format(year="2098")
+    payload = bytearray(good(feed_url))
+    middle = len(payload) // 2
+    payload[middle : middle + 8] = bytes(b ^ 0xFF for b in payload[middle : middle + 8])
+    with pytest.raises(zlib.error):  # guard: this corruption really is a zlib error
+        gzip.decompress(bytes(payload))
+    opener.world = lambda url: bytes(payload) if url == feed_url else good(url)
+
+    status = nvd.run(args(), root=setup.root, env={})
+
+    assert status == 1
+    assert "failed reason=invalid_cached_feed" in capsys.readouterr().out
+    assert not (setup.root / "fixtures" / "nvd").exists()
 
 
 def test_metadata_with_malformed_cve_id_is_rejected(tmp_path):
