@@ -13,7 +13,8 @@ RAG 파이프라인의 각 구성요소(청킹·하이브리드 검색·리랭�
 - **온프렘으로 돌아간다.** 로컬 임베딩(bge-m3) + Qdrant + 로컬 LLM. 검색·생성 실행에는 외부 API 의존이 없다.
   예외: 골든셋 정답 판정에는 외부 모델 API 2종을 쓴다(KISA 본문 전송 고지는 [LICENSES/](LICENSES/)).
 - **정답의 한계를 밝힌다.** 평가 정답은 두 LLM(Anthropic Opus 계열, OpenAI GPT 계열)의 교차 판정이며 사람 검수가
-  아니다. 두 판정자가 일치한 문서만 정답으로 확정하고 불일치·kappa를 기록한다(정의: [docs/eval-protocol.md](docs/eval-protocol.md)).
+  아니다. 두 판정자가 모두 relevant로 일치하고 근거 구간이 있는 문서만 정답으로 확정하고 불일치·kappa를 기록한다. 공개 트랙(NVD fixture)의
+  정답만 LLM 판정 없이 메타데이터로 정한다(정의: [docs/eval-protocol.md](docs/eval-protocol.md)).
 
 ## 상태
 
