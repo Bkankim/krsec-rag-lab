@@ -1,0 +1,81 @@
+{
+  "excluded_content": [
+    "kisa_body",
+    "kisa_summary",
+    "kisa_excerpt",
+    "nvd_text"
+  ],
+  "generator": "scripts/build_label_candidates.py",
+  "inputs": [
+    {
+      "path": "fixtures/kisa/metadata.jsonl",
+      "sha256": "c1512e8d234e0dbe4d32430877e61775612dd2248046122f74e227d446737eaf"
+    },
+    {
+      "path": "fixtures/kisa/manifest.json",
+      "sha256": "bf670ecd666e77139ae0c53a7be0badb5bdd82e8ff54d4876d59290b68c8b0c4"
+    },
+    {
+      "path": "fixtures/nvd/cves.jsonl",
+      "sha256": "0413970c3dee50cb239656c899fb9feb79150317c89172d12f41ad1f78e40e69"
+    }
+  ],
+  "join": {
+    "method": "KISA metadata cve_ids와 NVD fixture id를 CVE ID 문자열로 조인. 질문 1개 = CVE 1개.",
+    "n_candidate_pairs": 1564,
+    "n_cves_with_nvd_record": 1560,
+    "n_cves_without_nvd_record": 0,
+    "n_notices": 50,
+    "n_notices_with_cve_ids": 41,
+    "n_notices_with_cve_in_title": 0,
+    "n_notices_with_product_title": 40,
+    "n_questions": 1560,
+    "n_unique_cves": 1560
+  },
+  "kisa_parser_version": "kisa-html-v1",
+  "protocol_version": "eval-protocol-v1",
+  "query_templates": [
+    "{cve}는 어떤 KISA 보안공지에서 다루나요?",
+    "{cve}를 인용한 보안 업데이트 권고 공지를 알려주세요.",
+    "{cve} 관련 KISA 보안공지가 있나요?"
+  ],
+  "sampling": {
+    "method": "층별 풀에서 공지(nttId)별 균형 추출. 선택 순서는 a, b, 조인 후보이며 앞 층에서 뽑은 쌍은 뒤 층 풀에서 뺀다. (b)는 후보 문서와 같은 제품명을 제목에 가졌지만 그 CVE를 cve_ids에 인용하지 않은 공지로, 조인이 놓친 문서를 점검하는 층이다.",
+    "min_pairs": 30,
+    "n_pairs": 36,
+    "per_document_policy": "한 바퀴에 공지당 1쌍을 가져가므로, 공지 하나가 둘째 쌍을 얻으려면 풀의 모든 공지가 첫 쌍을 얻어야 한다.",
+    "ranking": "sha256(f'{seed}:{key}') 사전순. 공지는 key=doc:<nttId>, 쌍은 key=<pair id>",
+    "strata": [
+      {
+        "layer": "base",
+        "pool_docs": 41,
+        "pool_pairs": 1564,
+        "quota": 24,
+        "selected": 24,
+        "stratum": "join_candidate",
+        "zero_reason": null
+      },
+      {
+        "layer": "a",
+        "pool_docs": 0,
+        "pool_pairs": 0,
+        "quota": 6,
+        "selected": 0,
+        "stratum": "a_title_cve_not_in_cve_ids",
+        "zero_reason": "공지 50건 중 제목에 CVE ID가 든 공지가 0건이다. 제목은 '<제품명> 제품 보안 업데이트 권고' 같은 형식이라, 제목에는 있는데 cve_ids(본문 추출)에는 없는 공지가 생기지 않는다."
+      },
+      {
+        "layer": "b",
+        "pool_docs": 22,
+        "pool_pairs": 230,
+        "quota": 12,
+        "selected": 12,
+        "stratum": "b_outside_join_same_product",
+        "zero_reason": null
+      }
+    ],
+    "unit": "question-document pair"
+  },
+  "seed": 27,
+  "status": "weak_candidate_not_human_verified"
+}
