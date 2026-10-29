@@ -66,18 +66,31 @@ class Discovery:
 
 
 class Fetcher:
-    """Client 요청을 종류별로 센다."""
+    """Client가 실제로 보낸 요청을 종류별로 센다.
+
+    robots.txt는 Client가 첫 `get` 안에서 받는다. 그 요청이 실패하면 호출한 URL은 나가지 않았고,
+    robots 거부(`robots_disallow`)도 URL 요청 없이 끝난다. 이 두 경우는 URL 종류에 세지 않는다.
+    """
 
     def __init__(self, client):
         self.client = client
         self.counts = Counter()
 
     def __call__(self, kind, url):
+        robots_loaded = getattr(self.client, "robots", True) is not None
+        try:
+            raw = self.client.get(url)
+        except kisa.KisaError as error:
+            if not robots_loaded and getattr(self.client, "robots", None) is None:
+                self.counts["robots"] += 1  # robots.txt 요청이 실패해 URL 요청은 나가지 않았다
+            elif str(error) != "robots_disallow":
+                self.counts[kind] += 1
+            raise
         self.counts[kind] += 1
-        return self.client.get(url)
+        return raw
 
     def requests(self):
-        robots = 1 if getattr(self.client, "robots", None) is not None else 0
+        robots = 1 if getattr(self.client, "robots", None) is not None else self.counts["robots"]
         counts = {kind: self.counts[kind] for kind in ("rss", "list", "detail")}
         counts["robots"] = robots
         counts["total"] = sum(counts.values())
@@ -255,11 +268,18 @@ def load_manifest(fixtures_dir):
             or not isinstance(manifest["target_ids"], list)
             or not isinstance(manifest["documents"], list)
             or not isinstance(manifest["discovery"], dict)
+            or not isinstance(manifest["discovery_complete"], bool)
+            or not isinstance(manifest["started_at"], str)
         ):
             raise ValueError
         for doc in manifest["documents"]:
             kisa.canonical_url(doc["nttId"])
-            if doc["result"] != "ok" and not doc["result"].startswith(TERMINAL_PREFIXES):
+            if not isinstance(doc["collected_at"], str):
+                raise TypeError
+            if doc["result"] == "ok":
+                if not isinstance(doc["sha256"], str):
+                    raise TypeError
+            elif not doc["result"].startswith(TERMINAL_PREFIXES):
                 raise ValueError
         return manifest
     except (OSError, ValueError, KeyError, TypeError, AttributeError, kisa.KisaError):
@@ -293,21 +313,21 @@ def failure_entry(ntt_id, result):
 
 def collect_details(fetch, cache, manifest, docs, rows, save, retry_failed, log):
     consecutive = since_save = handled = 0
-    if retry_failed:
-        for ntt_id in [i for i, doc in docs.items() if doc["result"] != "ok"]:
-            del docs[ntt_id]
     total = len(manifest["target_ids"])
     for index, ntt_id in enumerate(manifest["target_ids"], 1):
         old = docs.get(ntt_id)
         if old is not None:
             if old["result"] != "ok":
-                continue  # 종결 결과: --retry-failed 없이는 다시 받지 않는다
-            row = read_cache(cache, ntt_id, old["sha256"])
-            if row is not None:
-                rows[ntt_id] = row
-                continue
-            docs.pop(ntt_id)  # 캐시 없음·해시 불일치: 다시 받아 복구한다
-            rows.pop(ntt_id, None)
+                if not retry_failed:
+                    continue  # 종결 결과: --retry-failed 없이는 다시 받지 않는다
+                # 재시도 대상은 새 결과가 나올 때까지 기존 종결 결과를 지우지 않는다(중단돼도 보존)
+            else:
+                row = read_cache(cache, ntt_id, old["sha256"])
+                if row is not None:
+                    rows[ntt_id] = row
+                    continue
+                docs.pop(ntt_id)  # 캐시 없음·해시 불일치: 다시 받아 복구한다
+                rows.pop(ntt_id, None)
         try:
             raw = fetch("detail", kisa.canonical_url(ntt_id))
         except kisa.AccessDenied:

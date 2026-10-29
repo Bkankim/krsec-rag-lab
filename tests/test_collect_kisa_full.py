@@ -721,3 +721,88 @@ def test_committed_outputs_have_no_paths_and_bounded_strings():
         assert not value.startswith("/") and len(value) <= 500
         assert "/Users" not in value
     assert not any("body" in row for row in rows)
+
+
+# --- final-review 수정 회귀 -------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "damage",
+    ["no_discovery_complete", "no_started_at", "doc_without_sha256", "doc_without_collected_at"],
+)
+def test_manifest_missing_keys_is_rejected_as_invalid_manifest(tmp_path, damage):
+    assert go(tmp_path, FakeClient(IDS)) == 0
+    path = tmp_path / "fx" / "manifest.json"
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    if damage == "no_discovery_complete":
+        del manifest["discovery_complete"]
+    elif damage == "no_started_at":
+        del manifest["started_at"]
+    elif damage == "doc_without_sha256":
+        del manifest["documents"][0]["sha256"]
+    else:
+        del manifest["documents"][0]["collected_at"]
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    client = FakeClient(IDS)
+
+    with pytest.raises(kisa.KisaError, match="invalid_manifest"):
+        go(tmp_path, client)
+
+    assert client.calls == []
+
+
+def test_retry_failed_keeps_recorded_results_when_the_run_is_stopped(tmp_path):
+    broken = b"<html><body>layout changed</body></html>"
+    assert go(tmp_path, FakeClient(IDS, details={"9002": broken, "9004": broken})) == 0
+    blocked = FakeClient(IDS, details={"9002": kisa.AccessDenied("http_429")})
+
+    assert go(tmp_path, blocked, retry_failed=True) == 1
+
+    results = {d["nttId"]: d["result"] for d in manifest_of(tmp_path)["documents"]}
+    assert results["9002"] == results["9004"] == "parse_failed:article_structure_changed"
+    assert report_of(tmp_path)["parse_failed"] == {"parse_failed:article_structure_changed": 2}
+    assert manifest_of(tmp_path)["complete"] is True
+    assert blocked.detail_ids() == ["9002"]  # 차단 뒤에는 요청하지 않는다
+
+
+class NoRobotsClient(FakeClient):
+    """robots.txt를 아직 못 받은 실제 Client처럼 `robots`가 None이다."""
+
+    def __init__(self, *args, fail_with=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.robots = None
+        self.fail_with = fail_with
+
+    def get(self, url):
+        if self.robots is None:
+            if self.fail_with is not None:
+                raise self.fail_with  # robots.txt 요청 자체가 실패
+            self.robots = object()
+        return super().get(url)
+
+
+def test_request_counts_when_robots_request_fails(tmp_path):
+    client = NoRobotsClient(IDS, fail_with=kisa.AccessDenied("http_403"))
+
+    assert go(tmp_path, client) == 1
+
+    requests = report_of(tmp_path)["requests"]
+    assert requests == {"rss": 0, "list": 0, "detail": 0, "robots": 1, "total": 1}
+
+
+def test_request_counts_skip_urls_rejected_by_robots(tmp_path):
+    client = FakeClient(IDS, details={"9001": kisa.AccessDenied("robots_disallow")})
+
+    assert go(tmp_path, client) == 1
+
+    requests = report_of(tmp_path)["requests"]
+    assert requests["detail"] == 0
+    assert requests["total"] == requests["rss"] + requests["list"] + 1  # robots 1건
+
+
+def test_request_counts_include_failed_requests_that_were_sent(tmp_path):
+    client = FakeClient(IDS, details={"9002": kisa.FetchError("http_404")})
+
+    assert go(tmp_path, client) == 0
+
+    assert report_of(tmp_path)["requests"]["detail"] == 5
