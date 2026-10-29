@@ -1,0 +1,487 @@
+{
+  "experiment": "crossling",
+  "protocol_version": "eval-protocol-v2",
+  "runs": {
+    "public/bm25_ko2en": {
+      "baseline": {
+        "retriever": "bm25",
+        "stored_results": "results/baselines/public/bm25.jsonl"
+      },
+      "created_at": "2026-10-29T15:46:41+00:00",
+      "description": {
+        "bm25": {
+          "b": 0.75,
+          "candidates": "번역문 토큰이 하나라도 든 문서만 순위에 든다(일치가 없으면 빈 순위)",
+          "k1": 1.2,
+          "tokenizer": "bm25-tok-v1"
+        },
+        "cve_id_preservation": {
+          "all": {
+            "changed_question_ids": [
+              "pub-cve-0001",
+              "pub-cve-0002",
+              "pub-cve-0006",
+              "pub-cve-0008",
+              "pub-cve-0010",
+              "pub-cve-0012",
+              "pub-cve-0015",
+              "pub-cve-0016",
+              "pub-cve-0019",
+              "pub-cve-0023",
+              "pub-cve-0026",
+              "pub-cve-0031",
+              "pub-cve-0033",
+              "pub-cve-0037",
+              "pub-cve-0044",
+              "pub-cve-0046",
+              "pub-cve-0048",
+              "pub-cve-0050",
+              "pub-cve-0053",
+              "pub-cve-0055",
+              "pub-cve-0057",
+              "pub-cve-0060",
+              "pub-noans-0004",
+              "pub-noans-0007",
+              "pub-noans-0011",
+              "pub-noans-0014",
+              "pub-noans-0015",
+              "pub-noans-0017",
+              "pub-noans-0019",
+              "pub-noans-0023",
+              "pub-noans-0024"
+            ],
+            "n_added": 3,
+            "n_changed": 31,
+            "n_lost": 31,
+            "n_questions": 144,
+            "n_with_cve_id": 84
+          },
+          "dev": {
+            "changed_question_ids": [
+              "pub-cve-0008",
+              "pub-cve-0019",
+              "pub-cve-0031",
+              "pub-cve-0053",
+              "pub-cve-0055",
+              "pub-cve-0057",
+              "pub-noans-0007",
+              "pub-noans-0011",
+              "pub-noans-0015",
+              "pub-noans-0017",
+              "pub-noans-0019",
+              "pub-noans-0023"
+            ],
+            "n_added": 0,
+            "n_changed": 12,
+            "n_lost": 12,
+            "n_questions": 58,
+            "n_with_cve_id": 37
+          },
+          "test": {
+            "changed_question_ids": [
+              "pub-cve-0001",
+              "pub-cve-0002",
+              "pub-cve-0006",
+              "pub-cve-0010",
+              "pub-cve-0012",
+              "pub-cve-0015",
+              "pub-cve-0016",
+              "pub-cve-0023",
+              "pub-cve-0026",
+              "pub-cve-0033",
+              "pub-cve-0037",
+              "pub-cve-0044",
+              "pub-cve-0046",
+              "pub-cve-0048",
+              "pub-cve-0050",
+              "pub-cve-0060",
+              "pub-noans-0004",
+              "pub-noans-0014",
+              "pub-noans-0024"
+            ],
+            "n_added": 3,
+            "n_changed": 19,
+            "n_lost": 19,
+            "n_questions": 86,
+            "n_with_cve_id": 47
+          }
+        },
+        "translation": {
+          "decoding": {
+            "batch_size": 1,
+            "device": "cpu",
+            "do_sample": false,
+            "dtype": "float32",
+            "length_penalty": 1.0,
+            "max_new_tokens": 256,
+            "num_beams": 4,
+            "seed": 0
+          },
+          "direction": "KO->EN, 질의 쪽만(문서·색인 텍스트는 바꾸지 않는다)",
+          "file": "results/experiments/crossling/translations.jsonl",
+          "input": "질문의 query 문자열 그대로(전처리·CVE ID 보정 없음)",
+          "model": "Helsinki-NLP/opus-mt-ko-en",
+          "revision": "e42d1f41b66194e6d10512f8a27bebc1f4f5097e"
+        }
+      },
+      "environment": {
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "machine": "arm64",
+        "omp_num_threads": "4",
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.14"
+      },
+      "experiment": "crossling",
+      "fixed": {
+        "bm25": {
+          "b": 0.75,
+          "k1": 1.2,
+          "tokenizer": "bm25-tok-v1"
+        },
+        "translation": {
+          "decoding": {
+            "batch_size": 1,
+            "device": "cpu",
+            "do_sample": false,
+            "dtype": "float32",
+            "length_penalty": 1.0,
+            "max_new_tokens": 256,
+            "num_beams": 4,
+            "seed": 0
+          },
+          "direction": "KO->EN, 질의 쪽만(문서·색인 텍스트는 바꾸지 않는다)",
+          "file": "results/experiments/crossling/translations.jsonl",
+          "input": "질문의 query 문자열 그대로(전처리·CVE ID 보정 없음)",
+          "model": "Helsinki-NLP/opus-mt-ko-en",
+          "revision": "e42d1f41b66194e6d10512f8a27bebc1f4f5097e"
+        }
+      },
+      "grid": {
+        "rows": [
+          {
+            "config": {},
+            "dev_macro_ndcg@10": 0.3922594037412015
+          }
+        ],
+        "selection_rule": "dev macro nDCG@10 최대, 같으면 격자 순서에서 앞선 설정"
+      },
+      "index_text": "'{id} {description_en}' (레코드 id + 공백 + 영문 설명, CPE·CWE·CVSS 미색인)",
+      "inputs": {
+        "corpus": {
+          "path": "fixtures/nvd/cves.jsonl",
+          "sha256": "96ce6757d724ab85593357a1806698bfe9026854b2f9823b6da4cbf01ce83ffa"
+        },
+        "queries": {
+          "path": "eval/public/queries.jsonl",
+          "sha256": "1d8ab42360e3cee23e8d67bc933e5af7ec6a8365eb32d315105233016d294a99"
+        }
+      },
+      "n_documents": 1560,
+      "protocol_version": "eval-protocol-v2",
+      "reproduction_inputs": {
+        "translations": {
+          "path": "results/experiments/crossling/translations.jsonl",
+          "sha256": "46a0156b2875813d026c34e59a0e1faf7938f5622f86230e2b6a0bc1a94a0907"
+        }
+      },
+      "selected": {
+        "config": {},
+        "dev_macro_ndcg@10": 0.3922594037412015,
+        "selected_on": "dev",
+        "tau": 8.492415500456154,
+        "tau_selection": {
+          "dev_abstain_rate": 0.6666666666666666,
+          "dev_false_abstain_rate": 0.17391304347826086,
+          "dev_j": 0.49275362318840576,
+          "n_candidates": 31,
+          "rule": "dev에서 abstain_rate - false_abstain_rate 최대, 같으면 가장 낮은 tau",
+          "tau": 8.492415500456154
+        }
+      },
+      "splits_stored": [
+        "dev",
+        "test"
+      ],
+      "stored_results": {
+        "fields": [
+          "n_unjudged_removed",
+          "question_id",
+          "results",
+          "top1_score_raw"
+        ],
+        "path": "results/experiments/crossling/public/bm25_ko2en.jsonl",
+        "ranking": "(점수 내림차순, 문서 ID 오름차순) 정렬 뒤 질문의 unjudged를 지운 condensed list",
+        "result_fields": [
+          "doc_id",
+          "rank",
+          "score"
+        ],
+        "top_n": 100
+      },
+      "test": {
+        "config": {},
+        "config_hash": "cec83c624755147a712c71c3a21444c609519d750fdfa000bd22fe5fdff789ed",
+        "executed_at": "2026-10-29T15:46:41+00:00",
+        "tau": 8.492415500456154
+      },
+      "timing": {
+        "index_seconds": 0.011742582995793782,
+        "n_queries_timed": 144,
+        "query_latency_median_seconds": 0.00017662499885773286
+      },
+      "track": "public",
+      "variant": "bm25_ko2en"
+    },
+    "public/dense_ko2en": {
+      "baseline": {
+        "retriever": "dense",
+        "stored_results": "results/baselines/public/dense.jsonl"
+      },
+      "created_at": "2026-10-29T15:48:56+00:00",
+      "description": {
+        "cve_id_preservation": {
+          "all": {
+            "changed_question_ids": [
+              "pub-cve-0001",
+              "pub-cve-0002",
+              "pub-cve-0006",
+              "pub-cve-0008",
+              "pub-cve-0010",
+              "pub-cve-0012",
+              "pub-cve-0015",
+              "pub-cve-0016",
+              "pub-cve-0019",
+              "pub-cve-0023",
+              "pub-cve-0026",
+              "pub-cve-0031",
+              "pub-cve-0033",
+              "pub-cve-0037",
+              "pub-cve-0044",
+              "pub-cve-0046",
+              "pub-cve-0048",
+              "pub-cve-0050",
+              "pub-cve-0053",
+              "pub-cve-0055",
+              "pub-cve-0057",
+              "pub-cve-0060",
+              "pub-noans-0004",
+              "pub-noans-0007",
+              "pub-noans-0011",
+              "pub-noans-0014",
+              "pub-noans-0015",
+              "pub-noans-0017",
+              "pub-noans-0019",
+              "pub-noans-0023",
+              "pub-noans-0024"
+            ],
+            "n_added": 3,
+            "n_changed": 31,
+            "n_lost": 31,
+            "n_questions": 144,
+            "n_with_cve_id": 84
+          },
+          "dev": {
+            "changed_question_ids": [
+              "pub-cve-0008",
+              "pub-cve-0019",
+              "pub-cve-0031",
+              "pub-cve-0053",
+              "pub-cve-0055",
+              "pub-cve-0057",
+              "pub-noans-0007",
+              "pub-noans-0011",
+              "pub-noans-0015",
+              "pub-noans-0017",
+              "pub-noans-0019",
+              "pub-noans-0023"
+            ],
+            "n_added": 0,
+            "n_changed": 12,
+            "n_lost": 12,
+            "n_questions": 58,
+            "n_with_cve_id": 37
+          },
+          "test": {
+            "changed_question_ids": [
+              "pub-cve-0001",
+              "pub-cve-0002",
+              "pub-cve-0006",
+              "pub-cve-0010",
+              "pub-cve-0012",
+              "pub-cve-0015",
+              "pub-cve-0016",
+              "pub-cve-0023",
+              "pub-cve-0026",
+              "pub-cve-0033",
+              "pub-cve-0037",
+              "pub-cve-0044",
+              "pub-cve-0046",
+              "pub-cve-0048",
+              "pub-cve-0050",
+              "pub-cve-0060",
+              "pub-noans-0004",
+              "pub-noans-0014",
+              "pub-noans-0024"
+            ],
+            "n_added": 3,
+            "n_changed": 19,
+            "n_lost": 19,
+            "n_questions": 86,
+            "n_with_cve_id": 47
+          }
+        },
+        "dense": {
+          "candidates": "코퍼스 전체",
+          "doc_encode_seconds": 118.60528141699615,
+          "model": {
+            "batch_size": 2,
+            "device": "cpu",
+            "dimension": 1024,
+            "document_format": "색인 텍스트 그대로, 8192 토큰 초과분은 절단(청킹 없음)",
+            "dtype": "float32",
+            "max_doc_tokens": 517,
+            "max_seq_length": 8192,
+            "n_truncated_docs": 0,
+            "name": "BAAI/bge-m3",
+            "normalized": true,
+            "pooling": "cls",
+            "query_format": "질의 문자열 그대로(지시문 접두사 없음)",
+            "representation": "dense only (bge-m3의 sparse/colbert 헤드는 사용하지 않음)",
+            "revision": "5617a9f61b028005a4858fdac845db406aefb181"
+          },
+          "runtime": {
+            "numpy": "2.5.3",
+            "python": "3.13.14",
+            "sentence_transformers": "6.1.0",
+            "torch": "2.14.1"
+          }
+        },
+        "translation": {
+          "decoding": {
+            "batch_size": 1,
+            "device": "cpu",
+            "do_sample": false,
+            "dtype": "float32",
+            "length_penalty": 1.0,
+            "max_new_tokens": 256,
+            "num_beams": 4,
+            "seed": 0
+          },
+          "direction": "KO->EN, 질의 쪽만(문서·색인 텍스트는 바꾸지 않는다)",
+          "file": "results/experiments/crossling/translations.jsonl",
+          "input": "질문의 query 문자열 그대로(전처리·CVE ID 보정 없음)",
+          "model": "Helsinki-NLP/opus-mt-ko-en",
+          "revision": "e42d1f41b66194e6d10512f8a27bebc1f4f5097e"
+        }
+      },
+      "environment": {
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "machine": "arm64",
+        "omp_num_threads": "4",
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.14"
+      },
+      "experiment": "crossling",
+      "fixed": {
+        "dense": {
+          "name": "BAAI/bge-m3",
+          "revision": "5617a9f61b028005a4858fdac845db406aefb181"
+        },
+        "translation": {
+          "decoding": {
+            "batch_size": 1,
+            "device": "cpu",
+            "do_sample": false,
+            "dtype": "float32",
+            "length_penalty": 1.0,
+            "max_new_tokens": 256,
+            "num_beams": 4,
+            "seed": 0
+          },
+          "direction": "KO->EN, 질의 쪽만(문서·색인 텍스트는 바꾸지 않는다)",
+          "file": "results/experiments/crossling/translations.jsonl",
+          "input": "질문의 query 문자열 그대로(전처리·CVE ID 보정 없음)",
+          "model": "Helsinki-NLP/opus-mt-ko-en",
+          "revision": "e42d1f41b66194e6d10512f8a27bebc1f4f5097e"
+        }
+      },
+      "grid": {
+        "rows": [
+          {
+            "config": {},
+            "dev_macro_ndcg@10": 0.2858219417179739
+          }
+        ],
+        "selection_rule": "dev macro nDCG@10 최대, 같으면 격자 순서에서 앞선 설정"
+      },
+      "index_text": "'{id} {description_en}' (레코드 id + 공백 + 영문 설명, CPE·CWE·CVSS 미색인)",
+      "inputs": {
+        "corpus": {
+          "path": "fixtures/nvd/cves.jsonl",
+          "sha256": "96ce6757d724ab85593357a1806698bfe9026854b2f9823b6da4cbf01ce83ffa"
+        },
+        "queries": {
+          "path": "eval/public/queries.jsonl",
+          "sha256": "1d8ab42360e3cee23e8d67bc933e5af7ec6a8365eb32d315105233016d294a99"
+        }
+      },
+      "n_documents": 1560,
+      "protocol_version": "eval-protocol-v2",
+      "reproduction_inputs": {
+        "translations": {
+          "path": "results/experiments/crossling/translations.jsonl",
+          "sha256": "46a0156b2875813d026c34e59a0e1faf7938f5622f86230e2b6a0bc1a94a0907"
+        }
+      },
+      "selected": {
+        "config": {},
+        "dev_macro_ndcg@10": 0.2858219417179739,
+        "selected_on": "dev",
+        "tau": 0.5584375858306885,
+        "tau_selection": {
+          "dev_abstain_rate": 0.5833333333333334,
+          "dev_false_abstain_rate": 0.2391304347826087,
+          "dev_j": 0.34420289855072467,
+          "n_candidates": 58,
+          "rule": "dev에서 abstain_rate - false_abstain_rate 최대, 같으면 가장 낮은 tau",
+          "tau": 0.5584375858306885
+        }
+      },
+      "splits_stored": [
+        "dev",
+        "test"
+      ],
+      "stored_results": {
+        "fields": [
+          "n_unjudged_removed",
+          "question_id",
+          "results",
+          "top1_score_raw"
+        ],
+        "path": "results/experiments/crossling/public/dense_ko2en.jsonl",
+        "ranking": "(점수 내림차순, 문서 ID 오름차순) 정렬 뒤 질문의 unjudged를 지운 condensed list",
+        "result_fields": [
+          "doc_id",
+          "rank",
+          "score"
+        ],
+        "top_n": 100
+      },
+      "test": {
+        "config": {},
+        "config_hash": "5d6ae4068ba576b68f544f947274e552a1dd8e774ddef33ccd3fa7041a0acc28",
+        "executed_at": "2026-10-29T15:48:56+00:00",
+        "tau": 0.5584375858306885
+      },
+      "timing": {
+        "index_seconds": 125.14873795900348,
+        "n_queries_timed": 144,
+        "query_latency_median_seconds": 0.07213935400068294
+      },
+      "track": "public",
+      "variant": "dense_ko2en"
+    }
+  }
+}

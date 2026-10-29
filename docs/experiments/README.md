@@ -25,7 +25,7 @@ CLI는 `importlib.import_module(f"krsec_rag_lab.experiments.{name}")`로 `--exp 
 | `NAME` | str | 모듈 이름과 같아야 한다 |
 | `HYPOTHESIS` | str | 사전 등록한 가설 한 문장 (`comparison.json`에 그대로 들어간다) |
 | `VARIANTS` | `dict[track, tuple[str, ...]]` | 트랙별 변형 이름. 트랙은 `public`, `kisa` |
-| `BASELINES` | `dict[track, str]` | 트랙별 기준선 검색기 이름. 기준 = `results/baselines/<track>/<이름>.jsonl` |
+| `BASELINES` | `dict[track, str \| dict[variant, str]]` | 트랙별 기준선 검색기 이름. 기준 = `results/baselines/<track>/<이름>.jsonl`. 값이 문자열이면 그 트랙의 모든 변형이 같은 기준선과 비교되고, `{변형: 이름}` 매핑이면 변형마다 기준선이 다르다(매핑은 그 트랙의 모든 변형을 덮어야 한다). 기준선 검사·비교·`--compare`가 변형의 기준선을 쓴다 |
 | `PRIMARY` | `(track, variant)` | 주 판정 대상. 이슈 라벨은 이 판정을 따른다 |
 | `grid(track, variant)` | `-> list[dict]` | dev 설정 격자. 설정은 JSON으로 저장되는 dict. 고를 설정이 없으면 `[{}]` |
 | `setup(ctx)` | `-> state` | 인덱스·모델을 한 번 만든다 (격자 전체가 공유). 걸린 시간이 `timing.index_seconds` |
@@ -171,7 +171,7 @@ manifest, 저장된 원시 결과, 질의셋 라벨, 기준선 저장본에서 `
 
 ## 5. 테스트가 확인하는 것
 
-`tests/test_experiments_harness.py` (합성 코퍼스·합성 실험 모듈, 모델 없음): 합성 실험의 CLI 실행·비교, `--variant`,
+`tests/test_experiments_harness.py` (합성 코퍼스·합성 실험 모듈, 모델 없음): 합성 실험의 CLI 실행·비교, `--variant`, 변형별 기준선(`BASELINES`의 `{변형: 이름}` 형태),
 bootstrap 재현성·기대 구간·층화, 판정 경계, test 잠금 (`--split test`, `--split all`, dev 재실행 뒤), 비교 전 필수
 검사, `--compare` 불일치 exit 1, `primary`·`secondary`, 허용 필드와 절대 경로·본문 비유출.
 `tests/test_exp_hybrid.py`: RRF 계산과 동점, k 선택 규칙, 기준선 BM25 설정, 커밋된 결과의 `--compare`와 보고서 표 일치.
