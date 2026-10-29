@@ -1,0 +1,67 @@
+{
+  "counts": {
+    "agree_pairs": 36,
+    "attempted_pairs": 36,
+    "disagree_pairs": 0,
+    "gold_pairs": 24,
+    "not_relevant_pairs": 12,
+    "unjudged_pairs": 0,
+    "unjudged_reasons": [],
+    "valid_pairs": 36
+  },
+  "definition": {
+    "denominator": "unjudged(갈림, 근거 없음, 잘린 본문의 not_relevant, 무효 응답)를 뺀 일치 쌍",
+    "mislabel": "후보 집합 안 쌍 중 두 판정자가 모두 not_relevant로 일치한 비율(오라벨률)",
+    "omission": "후보 집합 밖 점검 표본 쌍 중 두 판정자가 모두 relevant로 일치한 비율(누락률)"
+  },
+  "kappa": {
+    "expected_agreement": 0.555556,
+    "n": 36,
+    "null_reason": null,
+    "observed_agreement": 1.0,
+    "value": 1.0
+  },
+  "limitations": [
+    "정답 판정이 사람이 아니라 두 모델(Opus, GPT)의 교차 판정이다. 두 모델이 같은 방향으로 틀린 쌍은 일치로 센다",
+    "누락률은 후보 밖 점검 표본(같은 제품명 제목 공지)에서 잰 값이라 코퍼스 전체의 누락률이 아니다",
+    "층 (a)는 표본이 0건이다(사유는 sample.strata의 zero_reason)"
+  ],
+  "meets_min_valid_pairs": true,
+  "min_valid_pairs": 30,
+  "mislabel": {
+    "denominator": 24,
+    "n_error": 0,
+    "rate": 0.0,
+    "scope": "in_candidate_set"
+  },
+  "omission": {
+    "denominator": 12,
+    "n_error": 0,
+    "rate": 0.0,
+    "scope": "outside_candidate_set"
+  },
+  "protocol": "cross-judge-v1",
+  "sample": {
+    "pairs_file": "eval/golden/candidates/weak_label_sample_pairs.jsonl",
+    "seed": 27,
+    "strata": [
+      {
+        "selected": 24,
+        "stratum": "join_candidate",
+        "zero_reason": null
+      },
+      {
+        "selected": 0,
+        "stratum": "a_title_cve_not_in_cve_ids",
+        "zero_reason": "공지 50건 중 제목에 CVE ID가 든 공지가 0건이다. 제목은 '<제품명> 제품 보안 업데이트 권고' 같은 형식이라, 제목에는 있는데 cve_ids(본문 추출)에는 없는 공지가 생기지 않는다."
+      },
+      {
+        "selected": 12,
+        "stratum": "b_outside_join_same_product",
+        "zero_reason": null
+      }
+    ]
+  },
+  "status": "cross_judged_not_human_verified",
+  "unit": "question-document pair"
+}

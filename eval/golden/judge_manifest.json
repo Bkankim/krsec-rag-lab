@@ -1,0 +1,411 @@
+{
+  "bundle": {
+    "cve_window_chars": 4000,
+    "max_chars_per_notice": 20000,
+    "max_notices": 8,
+    "max_retries": 1,
+    "retry_rule": "relevant인데 인용을 정규화 본문에서 못 찾았거나 응답이 무효인 공지가 있으면 그 묶음을 판정자별 최대 1회 다시 묻는다. 그래도 못 찾으면 그 판정자의 그 공지 판정은 no_evidence"
+  },
+  "calls": {
+    "by_kind": [
+      {
+        "judge": "A",
+        "kind": "judge",
+        "n": 68
+      },
+      {
+        "judge": "B",
+        "kind": "judge",
+        "n": 68
+      },
+      {
+        "judge": "A",
+        "kind": "question_generation",
+        "n": 36
+      }
+    ],
+    "by_task": [
+      {
+        "judge": "A",
+        "n": 2,
+        "task": "cve_explicit"
+      },
+      {
+        "judge": "B",
+        "n": 2,
+        "task": "cve_explicit"
+      },
+      {
+        "judge": "A",
+        "n": 32,
+        "task": "error_rate_sample"
+      },
+      {
+        "judge": "B",
+        "n": 32,
+        "task": "error_rate_sample"
+      },
+      {
+        "judge": "A",
+        "n": 12,
+        "task": "explanation_comparison"
+      },
+      {
+        "judge": "B",
+        "n": 12,
+        "task": "explanation_comparison"
+      },
+      {
+        "judge": "A",
+        "n": 18,
+        "task": "generate:explanation_comparison"
+      },
+      {
+        "judge": "A",
+        "n": 18,
+        "task": "generate:product_symptom"
+      },
+      {
+        "judge": "A",
+        "n": 10,
+        "task": "no_answer"
+      },
+      {
+        "judge": "B",
+        "n": 10,
+        "task": "no_answer"
+      },
+      {
+        "judge": "A",
+        "n": 12,
+        "task": "product_symptom"
+      },
+      {
+        "judge": "B",
+        "n": 12,
+        "task": "product_symptom"
+      }
+    ],
+    "caps": {
+      "no_answer_attempts": 20,
+      "question_generation": 48
+    },
+    "no_answer_attempts": 10,
+    "question_generation": 36,
+    "total": 172
+  },
+  "corpus": {
+    "documents_sha256": "1badaeb1a4f3d44be5c3905747545a78d8804def84df20f031525e6788b4a5a7",
+    "n_cve_ids_in_corpus": 1560,
+    "n_notices": 50,
+    "scan": "정규화 본문 전체와 제목에서 splits.extract_cve_ids로 뽑은 집합"
+  },
+  "counts": {
+    "by_type": [
+      {
+        "n": 20,
+        "query_type": "cve_explicit"
+      },
+      {
+        "n": 12,
+        "query_type": "product_symptom"
+      },
+      {
+        "n": 10,
+        "query_type": "explanation_comparison"
+      },
+      {
+        "n": 10,
+        "query_type": "no_answer"
+      }
+    ],
+    "excluded": 2,
+    "records": 54,
+    "scored": 52
+  },
+  "inputs": [
+    {
+      "path": "fixtures/kisa/metadata.jsonl",
+      "sha256": "c1512e8d234e0dbe4d32430877e61775612dd2248046122f74e227d446737eaf"
+    },
+    {
+      "path": "fixtures/kisa/manifest.json",
+      "sha256": "bf670ecd666e77139ae0c53a7be0badb5bdd82e8ff54d4876d59290b68c8b0c4"
+    },
+    {
+      "path": "fixtures/nvd/cves.jsonl",
+      "sha256": "0413970c3dee50cb239656c899fb9feb79150317c89172d12f41ad1f78e40e69"
+    },
+    {
+      "path": "eval/golden/candidates/weak_label_candidates.jsonl",
+      "sha256": "4826818b48f23c5c234108aa9c5ab8b909d528fff145b12adb0f2373e2de1519"
+    },
+    {
+      "path": "eval/golden/candidates/weak_label_sample_pairs.jsonl",
+      "sha256": "a9dd9b73608466ec0734f95e74594d158c51e5f0d71c6bc3585aa9905be626c9"
+    },
+    {
+      "path": "eval/golden/candidates/candidate_manifest.json",
+      "sha256": "a69da5fea3c1fbb89ae3726a3b1b1b940fa77fee9f6d9a95911b1d917e2c795a"
+    }
+  ],
+  "isolation": {
+    "cwd": "호출마다 빈 임시 디렉터리",
+    "flags_checked_with": "claude --help, codex exec --help (2026-10-29 실행 시점)",
+    "input": "stdin으로만 질문·공지 묶음을 전달. 지시문은 인자",
+    "other_judge_output": "판정자 입력에 다른 판정자의 출력을 넣지 않는다"
+  },
+  "judged_at": {
+    "first": "2026-10-29T10:55:30Z",
+    "last": "2026-10-29T11:42:21Z"
+  },
+  "judges": [
+    {
+      "cli": "claude",
+      "cli_version": "2.1.312 (Claude Code)",
+      "flags": [
+        "-p <prompt>",
+        "--model claude-opus-5-5",
+        "--effort medium",
+        "--output-format json",
+        "--safe-mode",
+        "--tools=",
+        "--no-session-persistence",
+        "--strict-mcp-config",
+        "--disable-slash-commands",
+        "--permission-mode dontAsk",
+        "--system-prompt <fixed one-line judge prompt>"
+      ],
+      "judge": "A",
+      "model": "claude-opus-5-5",
+      "vendor": "Anthropic"
+    },
+    {
+      "cli": "codex",
+      "cli_version": "codex-cli 0.163.0",
+      "flags": [
+        "exec",
+        "--json",
+        "-s read-only",
+        "--skip-git-repo-check",
+        "--ephemeral",
+        "-m gpt-6.1-sol",
+        "-c model_reasoning_effort=\"medium\"",
+        "--ignore-user-config",
+        "--ignore-rules",
+        "--disable shell_tool",
+        "--disable unified_exec",
+        "--disable plugins",
+        "--disable apps",
+        "--disable hooks",
+        "--disable multi_agent",
+        "--disable browser_use",
+        "--disable computer_use",
+        "--output-schema <fixed answer schema>",
+        "<prompt>"
+      ],
+      "judge": "B",
+      "model": "gpt-6.1-sol",
+      "vendor": "OpenAI"
+    }
+  ],
+  "limitations": [
+    "정답은 사람 검수가 아니라 두 모델의 독립 교차 판정이다. 두 모델이 같은 방향으로 틀린 판정은 걸러지지 않는다",
+    "product_symptom과 explanation_comparison 질문은 판정자 A와 같은 모델이 별도 호출로 쓴다. 같은 모델이 질문을 쓰고 판정하므로 A의 판정이 질문 의도와 맞아떨어지기 쉽다",
+    "판정 묶음 밖의 공지는 비관련으로 간주한다(풀링 평가). 묶음에 없던 관련 공지는 골든셋에서 누락된다",
+    "공지당 20,000자 상한 때문에 일부만 보낸 공지의 not_relevant는 unjudged로 처리한다",
+    "no_answer는 형식상 유효한 CVE ID가 고정 코퍼스 본문과 제목에 기계적으로 없음을 확인한 질문으로 한정한다",
+    "판정자, 지시문, 입력이 모두 같은 호출은 다시 부르지 않고 저장된 결과를 쓴다. 그래서 sample 표본 쌍과 입력이 같은 cve_explicit 묶음은 sample의 호출 결과를 그대로 쓰고, by_task 호출 수에는 처음 부른 과제로 잡힌다",
+    "모델 응답은 결정적이지 않다. 같은 명령을 다시 실행해도 같은 결과가 나온다고 주장하지 않는다"
+  ],
+  "nondeterminism": "판정 시각과 호출 수는 judged_at, calls에 기록. 재실행 결과의 동일성은 보장하지 않는다",
+  "prompts": {
+    "answer_schema_sha256": "38d2d52b59e8aaaecefd13d8a23ef7b118aba4e09eef752b4df76e9dde5a0c97",
+    "judge_sha256": "d9d6ece1fbcf67b34a70043ccab45fb206910439c4177900df658e642608c746",
+    "question_generation_sha256": "de41b8169e8fb52df0e5debe62578e914fd520bc3bdb12e4d4db3610a04a5c6e",
+    "question_schema_sha256": "9e9526a0ad4c423fe5685b9086b05b527a981467f4363b554fa4d9b236a85d6b"
+  },
+  "protocol": "cross-judge-v1",
+  "questions": [
+    {
+      "query_type": "product_symptom",
+      "question_id": "g1-ps-01",
+      "source_doc_id": "72159"
+    },
+    {
+      "query_type": "product_symptom",
+      "question_id": "g1-ps-02",
+      "source_doc_id": "72175"
+    },
+    {
+      "query_type": "product_symptom",
+      "question_id": "g1-ps-03",
+      "source_doc_id": "72143"
+    },
+    {
+      "query_type": "product_symptom",
+      "question_id": "g1-ps-04",
+      "source_doc_id": "72135"
+    },
+    {
+      "query_type": "product_symptom",
+      "question_id": "g1-ps-05",
+      "source_doc_id": "72187"
+    },
+    {
+      "query_type": "product_symptom",
+      "question_id": "g1-ps-06",
+      "source_doc_id": "72152"
+    },
+    {
+      "query_type": "product_symptom",
+      "question_id": "g1-ps-07",
+      "source_doc_id": "72185"
+    },
+    {
+      "query_type": "product_symptom",
+      "question_id": "g1-ps-08",
+      "source_doc_id": "72170"
+    },
+    {
+      "query_type": "product_symptom",
+      "question_id": "g1-ps-09",
+      "source_doc_id": "72171"
+    },
+    {
+      "query_type": "product_symptom",
+      "question_id": "g1-ps-10",
+      "source_doc_id": "72192"
+    },
+    {
+      "query_type": "product_symptom",
+      "question_id": "g1-ps-11",
+      "source_doc_id": "72186"
+    },
+    {
+      "query_type": "product_symptom",
+      "question_id": "g1-ps-12",
+      "source_doc_id": "72166"
+    },
+    {
+      "query_type": "explanation_comparison",
+      "question_id": "g1-ec-01",
+      "source_doc_id": "72178"
+    },
+    {
+      "query_type": "explanation_comparison",
+      "question_id": "g1-ec-02",
+      "source_doc_id": "72134"
+    },
+    {
+      "query_type": "explanation_comparison",
+      "question_id": "g1-ec-03",
+      "source_doc_id": "72139"
+    },
+    {
+      "query_type": "explanation_comparison",
+      "question_id": "g1-ec-04",
+      "source_doc_id": "72137"
+    },
+    {
+      "query_type": "explanation_comparison",
+      "question_id": "g1-ec-05",
+      "source_doc_id": "72141"
+    },
+    {
+      "query_type": "explanation_comparison",
+      "question_id": "g1-ec-06",
+      "source_doc_id": "72180"
+    },
+    {
+      "query_type": "explanation_comparison",
+      "question_id": "g1-ec-07",
+      "source_doc_id": "72172"
+    },
+    {
+      "query_type": "explanation_comparison",
+      "question_id": "g1-ec-08",
+      "source_doc_id": "72147"
+    },
+    {
+      "query_type": "explanation_comparison",
+      "question_id": "g1-ec-09",
+      "source_doc_id": "72188"
+    },
+    {
+      "query_type": "explanation_comparison",
+      "question_id": "g1-ec-10",
+      "source_doc_id": "72140"
+    },
+    {
+      "query_type": "explanation_comparison",
+      "question_id": "g1-ec-11",
+      "source_doc_id": "72189"
+    },
+    {
+      "query_type": "explanation_comparison",
+      "question_id": "g1-ec-12",
+      "source_doc_id": "72158"
+    }
+  ],
+  "reason_codes": [
+    {
+      "code": "cve_discussed",
+      "meaning": "the notice itself discusses the exact CVE named in the question",
+      "relevance": "relevant"
+    },
+    {
+      "code": "product_matches",
+      "meaning": "the notice covers the product, version or symptom the question describes",
+      "relevance": "relevant"
+    },
+    {
+      "code": "topic_answered",
+      "meaning": "the notice explains the concept, remedy or difference the question asks about",
+      "relevance": "relevant"
+    },
+    {
+      "code": "cve_absent",
+      "meaning": "the question names a CVE and the notice does not discuss it",
+      "relevance": "not_relevant"
+    },
+    {
+      "code": "product_mismatch",
+      "meaning": "the notice is about a different product or vendor than the question",
+      "relevance": "not_relevant"
+    },
+    {
+      "code": "topic_unanswered",
+      "meaning": "the notice does not contain what the question asks for",
+      "relevance": "not_relevant"
+    },
+    {
+      "code": "mention_only",
+      "meaning": "the notice touches the subject only in passing without answering",
+      "relevance": "not_relevant"
+    }
+  ],
+  "reproduce": [
+    "uv run python scripts/judge_golden.py sample --kisa-root <KISA 캐시가 있는 체크아웃>",
+    "uv run python scripts/judge_golden.py build --kisa-root <KISA 캐시가 있는 체크아웃>"
+  ],
+  "seed": 27,
+  "split": {
+    "dev_share": 0.4423,
+    "dev_share_target": 0.4,
+    "method": "docs/eval-protocol.md 6절: 그룹 블록 단위, 유형별 dev 비율을 목표에 맞추는 그리디 배정, seed 고정, splits.assert_disjoint",
+    "n_dev": 23,
+    "n_test": 29
+  },
+  "status": "cross_judged_not_human_verified",
+  "usage_limit": {
+    "events": [
+      {
+        "resumed_at": "2026-10-29T11:42:06Z",
+        "retry_hint": "8:38 PM",
+        "stopped_at": "2026-10-29T10:59:40Z"
+      }
+    ],
+    "stops": 1
+  }
+}

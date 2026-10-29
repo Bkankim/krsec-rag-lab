@@ -165,6 +165,177 @@ OUTPUT_FIELDS = {
     REVIEW_SHEET_FILE: frozenset(REVIEW_COLUMNS),
 }
 
+# 교차 판정(#10) 산출물. 후보 빌더 출력(OUTPUT_FIELDS)과 별도 허용 목록이고 파일이 서로 겹치지 않는다.
+JUDGE_DIR = "eval/golden"
+GOLDEN_V1_FILE = f"{JUDGE_DIR}/golden_v1.jsonl"
+JUDGMENTS_A_FILE = f"{JUDGE_DIR}/judgments/A.jsonl"
+JUDGMENTS_B_FILE = f"{JUDGE_DIR}/judgments/B.jsonl"
+AGREEMENT_FILE = f"{JUDGE_DIR}/agreement.json"
+ERROR_RATES_FILE = f"{JUDGE_DIR}/error_rates.json"
+JUDGE_MANIFEST_FILE = f"{JUDGE_DIR}/judge_manifest.json"
+
+JUDGMENT_FIELDS = frozenset(
+    {
+        "question_id",
+        "doc_id",
+        "relevance",
+        "reason_code",
+        "evidence",
+        "start",
+        "end",
+        "truncated",
+        "status",
+    }
+)
+KAPPA_FIELDS = frozenset(
+    {"kappa", "n", "value", "observed_agreement", "expected_agreement", "null_reason"}
+)
+AGREEMENT_FIELDS = (
+    frozenset(
+        {
+            "protocol",
+            "rule",
+            "kappa_basis",
+            "tasks",
+            "task",
+            "n_pairs",
+            "n_valid_pairs",
+            "n_agree",
+            "n_disagree",
+            "n_gold",
+            "n_not_relevant",
+            "n_unjudged",
+            "unjudged_reasons",
+            "reason",
+        }
+    )
+    | KAPPA_FIELDS
+)
+ERROR_RATES_FIELDS = (
+    frozenset(
+        {
+            "protocol",
+            "status",
+            "unit",
+            "definition",
+            "mislabel",
+            "omission",
+            "denominator",
+            "sample",
+            "seed",
+            "pairs_file",
+            "strata",
+            "stratum",
+            "selected",
+            "zero_reason",
+            "counts",
+            "attempted_pairs",
+            "valid_pairs",
+            "agree_pairs",
+            "disagree_pairs",
+            "gold_pairs",
+            "not_relevant_pairs",
+            "unjudged_pairs",
+            "unjudged_reasons",
+            "reason",
+            "scope",
+            "n_error",
+            "rate",
+            "min_valid_pairs",
+            "meets_min_valid_pairs",
+            "limitations",
+        }
+    )
+    | KAPPA_FIELDS
+)
+JUDGE_MANIFEST_FIELDS = frozenset(
+    {
+        "protocol",
+        "status",
+        "seed",
+        "judges",
+        "judge",
+        "vendor",
+        "model",
+        "cli",
+        "cli_version",
+        "flags",
+        "isolation",
+        "cwd",
+        "input",
+        "other_judge_output",
+        "flags_checked_with",
+        "prompts",
+        "judge_sha256",
+        "question_generation_sha256",
+        "answer_schema_sha256",
+        "question_schema_sha256",
+        "reason_codes",
+        "code",
+        "relevance",
+        "meaning",
+        "bundle",
+        "max_notices",
+        "max_chars_per_notice",
+        "cve_window_chars",
+        "max_retries",
+        "retry_rule",
+        "judged_at",
+        "first",
+        "last",
+        "usage_limit",
+        "stops",
+        "events",
+        "stopped_at",
+        "retry_hint",
+        "resumed_at",
+        "inputs",
+        "path",
+        "sha256",
+        "corpus",
+        "n_notices",
+        "documents_sha256",
+        "n_cve_ids_in_corpus",
+        "scan",
+        "calls",
+        "total",
+        "by_kind",
+        "by_task",
+        "kind",
+        "task",
+        "n",
+        "question_generation",
+        "no_answer_attempts",
+        "caps",
+        "questions",
+        "source_doc_id",
+        "question_id",
+        "query_type",
+        "counts",
+        "records",
+        "scored",
+        "excluded",
+        "by_type",
+        "split",
+        "dev_share_target",
+        "dev_share",
+        "n_dev",
+        "n_test",
+        "method",
+        "limitations",
+        "reproduce",
+        "nondeterminism",
+    }
+)
+JUDGE_OUTPUT_FIELDS = {
+    JUDGMENTS_A_FILE: JUDGMENT_FIELDS,
+    JUDGMENTS_B_FILE: JUDGMENT_FIELDS,
+    AGREEMENT_FILE: AGREEMENT_FIELDS,
+    ERROR_RATES_FILE: ERROR_RATES_FIELDS,
+    JUDGE_MANIFEST_FILE: JUDGE_MANIFEST_FIELDS,
+    # GOLDEN_V1_FILE의 허용 목록은 레코드 스키마(GOLDEN_*_FIELDS)에서 만든다. 아래 정의 뒤에 채운다.
+}
+
 # 골든셋 레코드(#10 산출물) 스키마. 본문 텍스트 필드는 이름으로도 거부한다.
 GOLDEN_RECORD_FIELDS = frozenset(
     {
@@ -176,11 +347,14 @@ GOLDEN_RECORD_FIELDS = frozenset(
         "surface_cve",
         "answers",
         "no_answer_reason",
+        "unjudged",
+        "excluded",
     }
 )
 GOLDEN_ANSWER_FIELDS = frozenset({"doc_id", "doc_sha256", "evidence", "reason"})
 # eval-protocol 8절 2단계: evidence = {nttId, parser_version, start, end}. nttId는 answers[].doc_id와 같으므로 생략할 수 있다
-GOLDEN_EVIDENCE_FIELDS = frozenset({"nttId", "parser_version", "start", "end"})
+# judge: 교차 판정에서 이 구간을 낸 판정자(A/B). 두 판정자의 구간을 모두 보존한다
+GOLDEN_EVIDENCE_FIELDS = frozenset({"nttId", "parser_version", "start", "end", "judge"})
 FORBIDDEN_TEXT_FIELDS = frozenset(
     {
         "abstract",
@@ -201,6 +375,20 @@ FORBIDDEN_TEXT_FIELDS = frozenset(
 )
 MAX_TEXT_LEN = 500  # 질의·판정 이유가 이보다 길면 본문을 붙여 넣은 것으로 본다
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
+
+JUDGE_OUTPUT_FIELDS[GOLDEN_V1_FILE] = (
+    GOLDEN_RECORD_FIELDS | GOLDEN_ANSWER_FIELDS | GOLDEN_EVIDENCE_FIELDS
+)
+
+# 골든셋 v1 요구(이슈 #10): 채점 대상(excluded 아님) 50문항 이상, 유형별 최소, dev 비율 30~50%
+V1_MIN_SCORED = 50
+V1_MIN_PER_TYPE = {
+    "cve_explicit": 15,
+    "product_symptom": 10,
+    "explanation_comparison": 10,
+    "no_answer": 10,
+}
+V1_DEV_SHARE_RANGE = (0.30, 0.50)
 
 
 class GoldenSchemaError(ValueError):
@@ -780,11 +968,32 @@ def _check_answer(
         start, end = span.get("start"), span.get("end")
         if not (_is_int(start) and _is_int(end) and 0 <= start < end):
             errors.append(f"{span_where}: start/end must be ints with 0 <= start < end")
+        if "judge" in span and span["judge"] not in ("A", "B"):
+            errors.append(f"{span_where}: judge must be A or B")
         version = span.get("parser_version")
         if not isinstance(version, str) or not version:
             errors.append(f"{span_where}: parser_version is required")
         elif parser_version is not None and version != parser_version:
             errors.append(f"{span_where}: parser_version {version!r} != {parser_version!r}")
+    return errors
+
+
+def _check_unjudged(
+    unjudged: object, answer_ids: Sequence[str], catalog: Mapping[str, Mapping] | None, where: str
+) -> list[str]:
+    """unjudged = 판정이 갈리거나 근거가 없어 정답으로도 비관련으로도 정하지 못한 문서 ID 목록."""
+    if not isinstance(unjudged, list):
+        return [f"{where}: unjudged must be a list of document IDs"]
+    errors = []
+    for doc_id in unjudged:
+        if not isinstance(doc_id, str) or not doc_id:
+            errors.append(f"{where}: unjudged entries must be non-empty strings")
+        elif catalog is not None and doc_id not in catalog:
+            errors.append(f"{where}: unjudged doc_id {doc_id} not in notice catalog")
+        elif doc_id in answer_ids:
+            errors.append(f"{where}: doc_id {doc_id} is both in answers and unjudged")
+    if len({d for d in unjudged if isinstance(d, str)}) != len(unjudged):
+        errors.append(f"{where}: duplicate doc_id in unjudged")
     return errors
 
 
@@ -827,6 +1036,13 @@ def _check_record(
     ]
     if len(set(doc_ids)) != len(doc_ids):
         errors.append(f"{where}: duplicate doc_id in answers")
+    excluded = record.get("excluded", False)
+    if not isinstance(excluded, bool):
+        errors.append(f"{where}: excluded must be a bool")
+        excluded = False
+    errors.extend(_check_unjudged(record.get("unjudged", []), doc_ids, catalog, where))
+    if excluded and answers:
+        errors.append(f"{where}: excluded record must have empty answers")
 
     # 질의 유형 규칙(eval-protocol 5절): G가 비면 no_answer, 문장에 CVE가 있으면 cve_explicit
     surface_cve = isinstance(query, str) and bool(extract_cve_ids(query))
@@ -840,9 +1056,11 @@ def _check_record(
     if query_type == "no_answer":
         if answers:
             errors.append(f"{where}: no_answer must have empty answers")
+        if excluded:
+            errors.append(f"{where}: no_answer is never excluded")
         errors.extend(_check_text(record.get("no_answer_reason"), "no_answer_reason", where))
     elif query_type in QUERY_TYPES:
-        if not answers:
+        if not answers and not excluded:
             errors.append(f"{where}: {query_type} needs at least one answer (empty G is no_answer)")
         if "no_answer_reason" in record:
             errors.append(f"{where}: no_answer_reason only belongs to no_answer")
@@ -908,6 +1126,32 @@ def assert_valid_golden(records: Sequence[object], **kwargs) -> None:
     errors = validate_golden(records, **kwargs)
     if errors:
         raise GoldenSchemaError(errors)
+
+
+def check_golden_v1(records: Sequence[Mapping]) -> list[str]:
+    """골든셋 v1 요구 위반 목록(비어 있으면 통과). 스키마 검증(validate_golden)과는 따로 부른다.
+
+    모든 레코드에 split, 채점 대상(excluded 아님) 50문항 이상, 유형별 최소 건수,
+    채점 대상 기준 dev 비율 30~50%.
+    """
+    errors = [
+        f"record {r.get('question_id')!r}: split is missing"
+        for r in records
+        if r.get("split") not in ("dev", "test")
+    ]
+    scored = [r for r in records if not r.get("excluded")]
+    if len(scored) < V1_MIN_SCORED:
+        errors.append(f"scored records {len(scored)} < {V1_MIN_SCORED}")
+    for query_type, minimum in V1_MIN_PER_TYPE.items():
+        count = sum(1 for r in scored if r.get("query_type") == query_type)
+        if count < minimum:
+            errors.append(f"scored {query_type} records {count} < {minimum}")
+    if scored:
+        share = sum(1 for r in scored if r.get("split") == "dev") / len(scored)
+        low, high = V1_DEV_SHARE_RANGE
+        if not low <= share <= high:
+            errors.append(f"dev share {share:.3f} outside {low:.2f}..{high:.2f}")
+    return errors
 
 
 # ---------------------------------------------------------------- CLI

@@ -9,6 +9,7 @@ import pytest
 
 from krsec_rag_lab import golden
 from krsec_rag_lab.golden import (
+    JUDGE_OUTPUT_FIELDS,
     MANIFEST_FILE,
     MIN_SAMPLE_PAIRS,
     OUTPUT_FIELDS,
@@ -335,7 +336,7 @@ def committed_files():
 
 def test_every_committed_data_file_has_an_allowlist():
     data_files = {p.relative_to(ROOT).as_posix() for p in committed_files() if p.suffix != ".md"}
-    assert data_files == set(OUTPUT_FIELDS)
+    assert data_files == set(OUTPUT_FIELDS) | set(JUDGE_OUTPUT_FIELDS)
 
 
 @pytest.mark.parametrize("rel", sorted(OUTPUT_FIELDS))
