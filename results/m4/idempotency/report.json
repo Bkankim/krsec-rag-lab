@@ -1,0 +1,302 @@
+{
+  "schema_version": 1,
+  "passed": true,
+  "failed_step": null,
+  "error": null,
+  "started_at": "2026-10-29T20:10:38+00:00",
+  "finished_at": "2026-10-29T20:53:57+00:00",
+  "elapsed_seconds": 2598.7,
+  "k": 5,
+  "seed": 59,
+  "tolerances": {
+    "unchanged_points": 0.0,
+    "vector_abs": 1e-05
+  },
+  "corpus": {
+    "parser_version": "kisa-html-v1",
+    "target_ids": 2592,
+    "ok_docs": 2590,
+    "unresolved_ids": 2,
+    "baseline_docs": 2585,
+    "update_ids": [
+      "495",
+      "22426",
+      "67075",
+      "71956",
+      "72135"
+    ],
+    "delete_ids": [
+      "20109",
+      "35224",
+      "36169",
+      "72128",
+      "72248"
+    ],
+    "added_ids": [
+      "25970",
+      "27186",
+      "36091",
+      "36305",
+      "71807"
+    ],
+    "max_tokens": 31753,
+    "truncated_docs": 4,
+    "total_tokens": 1817888
+  },
+  "model": {
+    "name": "BAAI/bge-m3",
+    "revision": "5617a9f61b028005a4858fdac845db406aefb181",
+    "modules": [
+      "Transformer",
+      "Pooling",
+      "Normalize"
+    ],
+    "pooling": "cls",
+    "normalized": true,
+    "dtype": "float32",
+    "stored_dtype": "float32",
+    "dimension": 1024,
+    "max_seq_length": 8192,
+    "batch_size": 1,
+    "device": "cpu",
+    "min_vector_norm": 0.9999997978816146,
+    "max_vector_norm": 1.0000002382866167
+  },
+  "qdrant": {
+    "image": "qdrant/qdrant:v1.19.2",
+    "version": "1.19.2"
+  },
+  "runtime": {
+    "python": "3.13.14",
+    "sentence_transformers": "6.1.0",
+    "torch": "2.14.1",
+    "numpy": "2.5.3",
+    "qdrant_client": "1.19.1",
+    "torch_threads": 8
+  },
+  "environment": {
+    "system": "Darwin",
+    "machine": "arm64",
+    "cpu_count": 18,
+    "omp_num_threads": "8"
+  },
+  "steps": [
+    {
+      "step": 1,
+      "name": "full_sync_baseline",
+      "collection": "krsec_m4_idem_main",
+      "plan": {
+        "add": 2585,
+        "update": 0,
+        "payload_update": 0,
+        "delete": 0,
+        "keep": 0,
+        "kept_unresolved": 0
+      },
+      "points": 2585,
+      "encoded_texts": 2585,
+      "writes": {
+        "upsert": 2585,
+        "payload_update": 0,
+        "delete": 0,
+        "create": 1
+      },
+      "payload_keys_allowed": true,
+      "plan_ids": {
+        "update": [],
+        "payload_update": [],
+        "delete": []
+      },
+      "comparison": {
+        "points_equal_snapshot_docs": true
+      },
+      "passed": true,
+      "elapsed_seconds": 1298.6
+    },
+    {
+      "step": 2,
+      "name": "resync_same_snapshot",
+      "collection": "krsec_m4_idem_main",
+      "plan": {
+        "add": 0,
+        "update": 0,
+        "payload_update": 0,
+        "delete": 0,
+        "keep": 2585,
+        "kept_unresolved": 0
+      },
+      "points": 2585,
+      "encoded_texts": 0,
+      "writes": {
+        "upsert": 0,
+        "payload_update": 0,
+        "delete": 0,
+        "create": 0
+      },
+      "payload_keys_allowed": true,
+      "plan_ids": {
+        "add": [],
+        "update": [],
+        "payload_update": [],
+        "delete": []
+      },
+      "comparison": {
+        "points_a": 2585,
+        "points_b": 2585,
+        "ids_equal": true,
+        "payload_equal": true,
+        "vectors_max_abs_diff": 0.0
+      },
+      "passed": true,
+      "elapsed_seconds": 0.8
+    },
+    {
+      "step": 3,
+      "name": "incremental_variant",
+      "collection": "krsec_m4_idem_main",
+      "plan": {
+        "add": 5,
+        "update": 5,
+        "payload_update": 0,
+        "delete": 5,
+        "keep": 2575,
+        "kept_unresolved": 0
+      },
+      "points": 2585,
+      "encoded_texts": 10,
+      "writes": {
+        "upsert": 10,
+        "payload_update": 0,
+        "delete": 5,
+        "create": 0
+      },
+      "payload_keys_allowed": true,
+      "plan_ids": {
+        "add": [
+          "25970",
+          "27186",
+          "36091",
+          "36305",
+          "71807"
+        ],
+        "update": [
+          "495",
+          "22426",
+          "67075",
+          "71956",
+          "72135"
+        ],
+        "payload_update": [],
+        "delete": [
+          "20109",
+          "35224",
+          "36169",
+          "72128",
+          "72248"
+        ]
+      },
+      "comparison": {
+        "unchanged_points": 2575,
+        "unchanged_points_identical": 2575,
+        "updated_vectors_changed": 5,
+        "deleted_absent": true,
+        "added_present": true,
+        "points_equal_snapshot_docs": true
+      },
+      "passed": true,
+      "elapsed_seconds": 9.1
+    },
+    {
+      "step": 4,
+      "name": "from_scratch_variant",
+      "collection": "krsec_m4_idem_scratch",
+      "plan": {
+        "add": 2585,
+        "update": 0,
+        "payload_update": 0,
+        "delete": 0,
+        "keep": 0,
+        "kept_unresolved": 0
+      },
+      "points": 2585,
+      "encoded_texts": 2585,
+      "writes": {
+        "upsert": 2585,
+        "payload_update": 0,
+        "delete": 0,
+        "create": 1
+      },
+      "payload_keys_allowed": true,
+      "plan_ids": {
+        "update": [],
+        "payload_update": [],
+        "delete": []
+      },
+      "comparison": {
+        "points_a": 2585,
+        "points_b": 2585,
+        "ids_equal": true,
+        "payload_equal": true,
+        "vectors_max_abs_diff": 0.0,
+        "from_scratch_add": 2585
+      },
+      "passed": true,
+      "elapsed_seconds": 1283.6
+    },
+    {
+      "step": 5,
+      "name": "revert_to_baseline",
+      "collection": "krsec_m4_idem_main",
+      "plan": {
+        "add": 5,
+        "update": 5,
+        "payload_update": 0,
+        "delete": 5,
+        "keep": 2575,
+        "kept_unresolved": 0
+      },
+      "points": 2585,
+      "encoded_texts": 10,
+      "writes": {
+        "upsert": 10,
+        "payload_update": 0,
+        "delete": 5,
+        "create": 0
+      },
+      "payload_keys_allowed": true,
+      "plan_ids": {
+        "add": [
+          "20109",
+          "35224",
+          "36169",
+          "72128",
+          "72248"
+        ],
+        "update": [
+          "495",
+          "22426",
+          "67075",
+          "71956",
+          "72135"
+        ],
+        "payload_update": [],
+        "delete": [
+          "25970",
+          "27186",
+          "36091",
+          "36305",
+          "71807"
+        ]
+      },
+      "comparison": {
+        "points_a": 2585,
+        "points_b": 2585,
+        "ids_equal": true,
+        "payload_equal": true,
+        "vectors_max_abs_diff": 0.0
+      },
+      "passed": true,
+      "elapsed_seconds": 4.4
+    }
+  ]
+}
