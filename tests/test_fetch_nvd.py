@@ -762,3 +762,114 @@ def test_incomplete_committed_fixture_is_a_reported_failure(setup, capsys):
 
     assert nvd.run(args(), root=setup.root, env={}) == 1
     assert "failed reason=unreadable_committed_fixture" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("criteria", "expected"),
+    [
+        (
+            "cpe:2.3:a:foo\\\\:bar:1.0:*:*:*:*:*:*:*",
+            "foo\\\\:bar",
+        ),  # vendor 'foo\\', then separator
+        (
+            "cpe:2.3:a:foo\\\\\\:bar:baz:*:*:*:*:*:*:*",
+            "foo\\\\\\:bar:baz",
+        ),  # escaped backslash + colon
+        ("cpe:2.3:a:a\\:b:c:1.0:*:*:*:*:*:*:*", "a\\:b:c"),
+    ],
+    ids=["escaped-backslash-then-separator", "escaped-backslash-and-colon", "escaped-colon"],
+)
+def test_vendor_product_handles_escaped_backslashes(criteria, expected):
+    assert nvd.vendor_product(criteria) == expected
+
+
+def test_malformed_cpe_in_the_source_is_a_reported_failure(setup, capsys):
+    setup.start(changes={FEED_IDS[1]: {"configurations": vulnerable("cpe:2.3")}})
+
+    assert nvd.run(args(), root=setup.root, env={}) == 1
+
+    assert "failed reason=malformed_cpe_criteria" in capsys.readouterr().out
+    assert not (setup.root / "fixtures" / "nvd").exists()
+
+
+def test_committed_row_without_a_manifest_record_is_a_reported_failure(setup, capsys):
+    setup.start()
+    assert nvd.run(args(), root=setup.root, env={}) == 0
+    fixture, manifest, _ = fixture_state(setup.root)
+    del manifest["records"][FEED_IDS[1]]
+    (fixture / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    before = tree_hashes(fixture)
+    capsys.readouterr()
+
+    assert nvd.run(args(), root=setup.root, env={}) == 1
+
+    assert "failed reason=unreadable_committed_fixture" in capsys.readouterr().out
+    assert tree_hashes(fixture) == before
+
+
+def test_run_summary_matches_the_written_manifest_when_a_base_exists(setup, capsys):
+    setup.start()
+    assert nvd.run(args(), root=setup.root, env={}) == 0
+    _, before, _ = fixture_state(setup.root)
+    capsys.readouterr()
+
+    # The refreshed source loses the KEV entry and one record: the committed numbers stay.
+    setup.start(changes={FEED_IDS[1]: None}, kev_ids=())
+    assert nvd.run(Namespace(refresh=True, report=False), root=setup.root, env={}) == 0
+
+    summary = capsys.readouterr().out
+    assert before["coverage"]["kev_intersection"] == 1
+    assert f"not_found={len(before['not_found'])} " in summary
+    assert f"kev_intersection={before['coverage']['kev_intersection']} " in summary
+
+
+CHECK_SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "check_nvd_fields.py"
+CHECK_SPEC = importlib.util.spec_from_file_location("check_nvd_fields", CHECK_SCRIPT)
+assert CHECK_SPEC is not None and CHECK_SPEC.loader is not None
+check = importlib.util.module_from_spec(CHECK_SPEC)
+CHECK_SPEC.loader.exec_module(check)
+
+
+def lines_of(rows):
+    return "".join(nvd.canonical(r) + "\n" for r in rows)
+
+
+@pytest.mark.parametrize(
+    ("mutate", "failure"),
+    [
+        (lambda rows: rows, None),
+        (lambda rows: rows + [rows[0]], "duplicate id in cves.jsonl"),
+        (lambda rows: [rows[0] | {"stray": 1}, *rows[1:]], "unexpected keys stray"),
+        (lambda rows: [rows[0] | {"cpe_total": 99}, *rows[1:]], "changed cpe_total"),
+        (
+            lambda rows: [{k: v for k, v in rows[0].items() if k != "vendor_products"}, *rows[1:]],
+            "added fields missing",
+        ),
+    ],
+    ids=["clean", "duplicate-id", "extra-key", "changed-field", "missing-added-key"],
+)
+def test_check_nvd_fields_flags_what_it_promises(tmp_path, monkeypatch, capsys, mutate, failure):
+    base_rows = [nvd.select_record(cve_object(f"CVE-2098-{n:04d}"), set()) for n in range(1, 4)]
+    now_rows = [
+        r | {"vendor_products": ["invented:widget"], "vendor_products_status": "ok"}
+        for r in base_rows
+    ]
+    fixture = tmp_path / "fixtures/nvd"
+    fixture.mkdir(parents=True)
+    (fixture / "cves.jsonl").write_text(lines_of(mutate(now_rows)))
+    (fixture / "kev.json").write_bytes(b"{}\n")
+    manifest = {"coverage": {"a": 1}, "not_found": {}}
+    (fixture / "manifest.json").write_text(json.dumps(manifest))
+    committed = {
+        "fixtures/nvd/cves.jsonl": lines_of(base_rows).encode(),
+        "fixtures/nvd/kev.json": b"{}\n",
+        "fixtures/nvd/manifest.json": json.dumps(manifest).encode(),
+    }
+    monkeypatch.setattr(check, "ROOT", tmp_path)
+    monkeypatch.setattr(check, "git_show", lambda base, path: committed[path])
+
+    status = check.main(["check_nvd_fields.py", "base"])
+
+    out = capsys.readouterr().out
+    assert (status == 0) is (failure is None)
+    assert failure is None or failure in out

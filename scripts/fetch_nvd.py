@@ -256,9 +256,28 @@ def vulnerable_matches(cve):
     return [matches[key] for key in sorted(matches)]
 
 
+def split_cpe(criteria):
+    """Split a CPE 2.3 string on ':' separators; a backslash escapes the next character."""
+    parts, current, escaped = [], [], False
+    for char in criteria:
+        if escaped:
+            current.append(char)
+            escaped = False
+        elif char == "\\":
+            current.append(char)
+            escaped = True
+        elif char == ":":
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(char)
+    parts.append("".join(current))
+    return parts
+
+
 def vendor_product(criteria):
     """`vendor:product` of a CPE 2.3 formatted string (escaped colons stay inside a field)."""
-    parts = re.split(r"(?<!\\):", criteria)
+    parts = split_cpe(criteria)
     if len(parts) < 5 or parts[0] != "cpe" or parts[1] != "2.3":
         raise NvdError("malformed_cpe_criteria")
     return f"{parts[3]}:{parts[4]}"
@@ -455,11 +474,15 @@ def load_base(root):
         ]
         kev_bytes = (fixture / "kev.json").read_bytes()
         manifest = json.loads((fixture / "manifest.json").read_text(encoding="utf-8"))
+        by_id = {row["id"]: row for row in rows}
+        record_sources = {i: r["source"] for i, r in manifest["records"].items()}
+        if not by_id.keys() <= record_sources.keys():
+            raise KeyError("row_without_manifest_record")
         return {
-            "rows": {row["id"]: row for row in rows},
+            "rows": by_id,
             "kev_bytes": kev_bytes,
             "manifest": manifest,
-            "record_sources": {i: r["source"] for i, r in manifest["records"].items()},
+            "record_sources": record_sources,
             "coverage": manifest["coverage"],
             "not_found": manifest["not_found"],
             "base_sources": manifest.get("base_sources") or manifest["sources"],
@@ -575,21 +598,22 @@ def run(args, root=ROOT, client=None, env=None):
     try:
         base = load_base(root)
         found, kev, sources, not_found = collect(targets, cache, client, args.refresh)
+        files = build(targets, found, kev, sources, not_found, base)
     except AccessDenied as error:
         print(f"stopped reason={error} requests={client.requests}")
         return 2
     except NvdError as error:
         print(f"failed reason={error} requests={client.requests}")
         return 1
-    files = build(targets, found, kev, sources, not_found, base)
     for name, data in files.items():
         write_file(root / "fixtures/nvd" / name, data)
     counts = Counter(name for _, name in found.values())
+    manifest = json.loads(files["manifest.json"])  # the numbers the written fixture reports
     print(
-        f"requests={client.requests} found={len(found)} not_found={len(not_found)} "
-        f"kev_intersection={len(kev['entries'].keys() & set(targets))} sources={dict(counts)}"
+        f"requests={client.requests} found={len(found)} not_found={len(manifest['not_found'])} "
+        f"kev_intersection={manifest['coverage']['kev_intersection']} sources={dict(counts)}"
     )
-    status = json.loads(files["manifest.json"])["vendor_products_status_counts"]
+    status = manifest["vendor_products_status_counts"]
     print(f"vendor_products_status={status} base={'committed' if base else 'none'}")
     return 0
 

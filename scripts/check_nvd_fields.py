@@ -3,7 +3,8 @@
 Usage: uv run python scripts/check_nvd_fields.py <base-commit>
 
 Compares fixtures/nvd/cves.jsonl in the working tree with `git show <base>:fixtures/nvd/cves.jsonl`
-record by record (every key the base record had must have the same value), then checks that
+record by record (every key the base record had must have the same value, no id repeats, and no
+key other than vendor_products / vendor_products_status was added), then checks that
 kev.json is byte-identical and manifest coverage / not_found are unchanged. Needs full git
 history of <base>, so it is not part of pytest (CI clones shallow). Exit 0 only when all match.
 """
@@ -29,16 +30,23 @@ def git_show(base, path):
 
 
 def rows_of(data):
-    return {row["id"]: row for row in map(json.loads, data.decode("utf-8").splitlines())}
+    """(rows by id, ids that appear on more than one line)."""
+    rows, duplicates = {}, []
+    for row in map(json.loads, data.decode("utf-8").splitlines()):
+        if row["id"] in rows:
+            duplicates.append(row["id"])
+        rows[row["id"]] = row
+    return rows, duplicates
 
 
 def main(argv):
     if len(argv) != 2:
         raise SystemExit("usage: check_nvd_fields.py <base-commit>")
     base = argv[1]
-    old = rows_of(git_show(base, "fixtures/nvd/cves.jsonl"))
-    new = rows_of((ROOT / "fixtures/nvd/cves.jsonl").read_bytes())
-    problems = []
+    old, old_duplicates = rows_of(git_show(base, "fixtures/nvd/cves.jsonl"))
+    new, new_duplicates = rows_of((ROOT / "fixtures/nvd/cves.jsonl").read_bytes())
+    problems = [f"duplicate id in base: {i}" for i in old_duplicates]
+    problems += [f"duplicate id in cves.jsonl: {i}" for i in new_duplicates]
     if set(old) != set(new):
         problems.append(
             f"ids: only_base={len(set(old) - set(new))} only_now={len(set(new) - set(old))}"
@@ -49,6 +57,9 @@ def main(argv):
         if diff:
             changed += 1
             problems.append(f"{cve_id}: changed {','.join(diff)}")
+        extra = sorted(set(new[cve_id]) - set(old[cve_id]) - set(ADDED_KEYS))
+        if extra:
+            problems.append(f"{cve_id}: unexpected keys {','.join(extra)}")
     added = sum(all(k in row for k in ADDED_KEYS) for row in new.values())
     if added != len(new):
         problems.append(f"added fields missing on {len(new) - added} records")
