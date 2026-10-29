@@ -244,7 +244,7 @@ manifest)와 로컬 캐시에 따로 둔다. 본문은 커밋하지 않는다. �
 
 | 항목 | 값 |
 |---|---|
-| 스냅샷 | 대상 ID 2592, `ok` 2590, 파싱 실패 2, 기준 스냅샷 2585 |
+| 스냅샷 | 대상 ID 2592, `ok` 2590, `ok` 아님 2, 기준 스냅샷 2585 |
 | 모델 | `BAAI/bge-m3` revision `5617a9f61b028005a4858fdac845db406aefb181` |
 | pooling / dtype / 차원 | cls / float32 / 1024 |
 | `max_seq_length` / batch_size / 장치 | 8192 / 1 / cpu |

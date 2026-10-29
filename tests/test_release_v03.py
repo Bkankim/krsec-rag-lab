@@ -325,7 +325,7 @@ def test_m4_idempotency_table_matches_the_report(document):
     corpus = report["corpus"]
     assert rows["스냅샷"] == (
         f"대상 ID {corpus['target_ids']}, `ok` {corpus['ok_docs']}, "
-        f"파싱 실패 {corpus['unresolved_ids']}, 기준 스냅샷 {corpus['baseline_docs']}"
+        f"`ok` 아님 {corpus['unresolved_ids']}, 기준 스냅샷 {corpus['baseline_docs']}"
     )
     assert rows["pooling / dtype / 차원"] == (
         f"{report['model']['pooling']} / {report['model']['dtype']} / {report['model']['dimension']}"
@@ -1241,3 +1241,92 @@ def test_downloaded_asset_is_checked_even_when_the_repo_file_is_fine(
     append_byte(path)(downloaded)
     assert run_release(capsys, repo)[0] == 0
     assert run_assets(capsys, repo, downloaded)[0] == 1
+
+
+# ------------------------------------------------------------ 실패한 검증 보고서, 형식이 틀린 중첩 키
+
+
+def truncate_steps(count, failed_step):
+    def change(payload):
+        del payload["steps"][count:]
+        if count:
+            payload["steps"][count - 1]["passed"] = True
+        payload["passed"] = False
+        payload["failed_step"] = failed_step
+
+    return change
+
+
+def fail_at(number):
+    """number단계가 실패하고 검증이 거기서 멈춘 보고서."""
+
+    def change(payload):
+        truncate_steps(number, number)(payload)
+        payload["steps"][number - 1]["passed"] = False
+
+    return change
+
+
+FAILED_REPORTS = {
+    "step 3 fails and the run stops there": (fail_at(3), "실패 단계 3"),
+    "step 1 fails": (fail_at(1), "실패 단계 1"),
+    "an exception in step 3 leaves steps 1-2 only": (truncate_steps(2, 3), "실패 단계 3"),
+    "an exception in step 1 leaves no steps": (truncate_steps(0, 1), "실패 단계 1"),
+}
+
+
+@pytest.mark.parametrize(("change", "shown"), FAILED_REPORTS.values(), ids=FAILED_REPORTS.keys())
+def test_a_genuinely_failed_idempotency_report_is_tabulated(repo, capsys, change, shown):
+    """실패한 검증(단계가 5개 미만)도 대조를 통과하고 표로 만들어진다. 막으면 실패 결과를 공개할 수 없다."""
+    edit_json(repo / IDEMPOTENCY, change)
+    assert run_tables(capsys, repo)[0] == 0
+    assert "검증 실패" in (repo / README).read_text("utf-8")
+    assert shown in (repo / README).read_text("utf-8")
+    assert run_tables(capsys, repo, "--check")[0] == 0
+
+
+def test_an_incomplete_idempotency_report_that_claims_success_is_exit_1(repo, capsys):
+    edit_json(repo / IDEMPOTENCY, lambda p: p["steps"].pop() and None)
+    code, _, err = run_tables(capsys, repo, "--check")
+    assert code == 1 and "results/m4: idempotency report passed" in err
+
+
+def drop_nested(*path):
+    def change(payload):
+        node = payload
+        for key in path[:-1]:
+            node = node[key]
+        del node[path[-1]]
+
+    return change
+
+
+MALFORMED = {
+    "model.revision missing": drop_nested("model", "revision"),
+    "step writes missing": drop_nested("steps", 0, "writes"),
+    "step comparison missing": drop_nested("steps", 1, "comparison"),
+    "qdrant.image missing": drop_nested("qdrant", "image"),
+    "environment missing": drop_nested("environment"),
+    "elapsed_seconds null": set_value(["elapsed_seconds"], None),
+    "step elapsed_seconds string": set_value(["steps", 0, "elapsed_seconds"], "x"),
+    "steps is not a list of objects": set_value(["steps"], [1, 2, 3, 4, 5]),
+}
+
+
+@pytest.mark.parametrize("change", MALFORMED.values(), ids=MALFORMED.keys())
+def test_a_malformed_nested_report_key_is_exit_1_not_a_traceback(repo, capsys, change):
+    edit_json(repo / IDEMPOTENCY, change)
+    code, _, err = run_tables(capsys, repo, "--check")
+    assert code == 1 and err.startswith(("error: ", "MISMATCH"))
+    assert "Traceback" not in err
+
+
+@pytest.mark.parametrize("change", MALFORMED.values(), ids=MALFORMED.keys())
+def test_a_malformed_nested_report_key_fails_the_release_check_without_a_traceback(
+    repo, capsys, change
+):
+    edit_json(repo / IDEMPOTENCY, change)
+    rewrite_assets(repo)
+    code, out, _ = run_release(capsys, repo)
+    assert code == 1 and CHECK_M4 in failed_checks(out)
+    assert out.rstrip().endswith("check_release: FAILED")

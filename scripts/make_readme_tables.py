@@ -907,17 +907,21 @@ def _m4_facts(
         manifest["parser_version"],
     )
     steps = idempotency["steps"]
-    expect("idempotency report step numbers", [s["step"] for s in steps], list(range(1, 6)))
+    # 실패한 검증은 실패한 단계에서 멈추거나(그 단계까지 기록) 단계 안 예외로 그 앞 단계까지만 남는다
+    expect(
+        "idempotency report step numbers",
+        [s["step"] for s in steps],
+        list(range(1, len(steps) + 1)),
+    )
     expect(
         "idempotency report passed vs step results",
         idempotency["passed"],
-        all(s["passed"] for s in steps),
+        len(steps) == 5 and all(s["passed"] for s in steps),
     )
-    expect(
-        "idempotency report failed_step",
-        idempotency["failed_step"],
-        next((s["step"] for s in steps if not s["passed"]), None),
-    )
+    failed_here = next((s["step"] for s in steps if not s["passed"]), None)
+    if failed_here is None and not idempotency["passed"]:
+        failed_here = len(steps) + 1  # 단계 안 예외: 그 단계는 기록되지 않았다
+    expect("idempotency report failed_step", idempotency["failed_step"], failed_here)
     return facts, problems
 
 
@@ -939,12 +943,17 @@ def load_m4(root: Path) -> dict:
         facts, problems = _m4_facts(collection, idempotency, manifest, rows)
     except (KeyError, TypeError, ValueError, AttributeError) as error:
         raise CheckError(f"M4 inputs are malformed ({type(error).__name__})") from None
-    return {
+    m4 = {
         "collection": collection,
         "idempotency": idempotency,
         "facts": facts,
         "problems": problems,
     }
+    try:
+        render_m4(m4, "")  # 표가 읽는 중첩 키가 없거나 형식이 틀리면 여기서 CheckError로 멈춘다
+    except (KeyError, TypeError, ValueError, AttributeError) as error:
+        raise CheckError(f"M4 reports are malformed ({type(error).__name__})") from None
+    return m4
 
 
 def _comparison_cell(comparison: Mapping) -> str:
@@ -1013,7 +1022,7 @@ def render_m4(m4: Mapping, link_prefix: str) -> str:
         "",
         "| 항목 | 값 |",
         "|---|---|",
-        f"| 스냅샷 | 대상 ID {corpus['target_ids']}, `ok` {corpus['ok_docs']}, 파싱 실패 {corpus['unresolved_ids']}, 기준 스냅샷 {corpus['baseline_docs']} |",
+        f"| 스냅샷 | 대상 ID {corpus['target_ids']}, `ok` {corpus['ok_docs']}, `ok` 아님 {corpus['unresolved_ids']}, 기준 스냅샷 {corpus['baseline_docs']} |",
         f"| 모델 | `{model['name']}` revision `{model['revision']}` |",
         f"| pooling / dtype / 차원 | {model['pooling']} / {model['dtype']} / {model['dimension']} |",
         f"| `max_seq_length` / batch_size / 장치 | {model['max_seq_length']} / {model['batch_size']} / {model['device']} |",
