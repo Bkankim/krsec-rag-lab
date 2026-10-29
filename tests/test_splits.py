@@ -163,6 +163,22 @@ FAILING = [
         {"cve"},
         id="partial-overlap-multi-gold",
     ),
+    pytest.param(
+        [
+            item("q1", "dev", query="CVE-2026-0099 패치는?"),
+            item("q2", "test", query="CVE-2026-0099를 설명해줘"),
+        ],
+        {"cve"},
+        id="cve-only-in-query-text",
+    ),
+    pytest.param(
+        [
+            item("q1", "dev", query="CVE-2026-0099² 패치는?"),
+            item("q2", "test", query="CVE-2026-0099 영향은?"),
+        ],
+        {"cve"},
+        id="cve-superscript-after-id-does-not-glue",
+    ),
 ]
 
 
@@ -203,6 +219,36 @@ def test_notice_plus_cve_leak_reports_each_kind():
             [item("q1", "dev", cve_ids=["CVE-26-1"])], CATALOG, "malformed CVE", id="bad-cve"
         ),
         pytest.param(
+            [item("q1", "dev", cve_ids=["CVE-２０２６-０００５"])],
+            CATALOG,
+            "malformed CVE",
+            id="fullwidth-digit-cve",
+        ),
+        pytest.param(
+            [{"id": "q1", "split": "dev", "ntt_ids": None}],
+            CATALOG,
+            "ntt_ids must be a list",
+            id="null-ntt-ids",
+        ),
+        pytest.param(
+            [{"id": "q1", "split": "dev", "cve_ids": None}],
+            CATALOG,
+            "cve_ids must be a list",
+            id="null-cve-ids",
+        ),
+        pytest.param(
+            [{"id": "q1", "split": "dev", "ntt_ids": "72193"}],
+            CATALOG,
+            "ntt_ids must be a list",
+            id="bare-string-ntt-ids",
+        ),
+        pytest.param(
+            [{"id": "q1", "split": "dev", "query": None}],
+            CATALOG,
+            "query must be a string",
+            id="null-query",
+        ),
+        pytest.param(
             [item("q1", "dev", ["1"])],
             [notice("1", "T", "2026-01-01"), notice("1", "T", "2026-01-02")],
             "duplicate nttId",
@@ -225,6 +271,9 @@ def test_malformed_input_fails_closed(items, catalog, message):
             "(CVE-2026-0001, CVE-2025-99999)", ["CVE-2026-0001", "CVE-2025-99999"], id="list"
         ),
         pytest.param("CVE-2026-123 은 자리수 부족", [], id="three-digit-sequence"),
+        pytest.param("CVE-２０２６-１２３４를", [], id="fullwidth-digits-not-recognized"),
+        pytest.param("CVE-2026-1234²", ["CVE-2026-1234"], id="superscript-does-not-glue"),
+        pytest.param("CVE-٢٠٢٦-١٢٣٤", [], id="non-ascii-unicode-digits-not-recognized"),
         pytest.param("XCVE-2026-1234", [], id="ascii-prefix-glued"),
         pytest.param("제품 보안 업데이트", [], id="none"),
     ],

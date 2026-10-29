@@ -13,7 +13,7 @@
 import re
 import unicodedata
 from collections import defaultdict
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 
@@ -21,10 +21,11 @@ NEAR_DUP_WINDOW_DAYS = 14
 SPLITS = ("dev", "test")
 KINDS = ("notice", "cve", "near_dup")
 
-CVE_ID_RE = re.compile(r"CVE-\d{4}-\d{4,}")
+CVE_ID_RE = re.compile(r"CVE-[0-9]{4}-[0-9]{4,}")
 # \b는 한글 조사가 붙은 "CVE-2026-12345를"에서 끝 경계를 못 찾는다(\w가 한글을 포함).
-# ASCII 영숫자 기준 look-around를 쓴다.
-_CVE_IN_TEXT_RE = re.compile(r"(?<![A-Za-z0-9])CVE-\d{4}-\d{4,}(?![0-9])", re.IGNORECASE)
+# ASCII 영숫자 기준 look-around를 쓴다. 숫자도 ASCII [0-9]만 받는다(\d는 전각 등 유니코드 숫자를
+# 받고, 정규화(NFKC)는 CVE-2026-1234² 같은 위첨자를 ID에 붙인다).
+_CVE_IN_TEXT_RE = re.compile(r"(?<![A-Za-z0-9])CVE-[0-9]{4}-[0-9]{4,}(?![0-9])", re.IGNORECASE)
 
 
 class SplitLeakError(AssertionError):
@@ -55,6 +56,15 @@ def extract_cve_ids(text: str) -> list[str]:
     for match in _CVE_IN_TEXT_RE.finditer(text):
         found.setdefault(match.group(0).upper(), None)
     return list(found)
+
+
+def _optional_list(item: Mapping, key: str) -> Sequence:
+    """생략 가능한 목록 필드. JSON null이나 문자열 하나는 목록이 아니므로 거부한다."""
+    value = item.get(key, ())
+    if not isinstance(value, (list, tuple)):
+        # 다른 잘못된 입력과 같은 ValueError로 실패한다(문서 6절)
+        raise ValueError(f"item {item.get('id')!r}: {key} must be a list, got {value!r}")  # noqa: TRY004
+    return value
 
 
 def normalize_cve_id(cve_id: str) -> str:
@@ -109,15 +119,21 @@ def group_keys(
     item: Mapping, notices_by_id: Mapping[str, Mapping], groups: Mapping[str, str]
 ) -> dict[str, set[str]]:
     """질의 하나의 그룹 키. 키 이름은 KINDS와 같고 near_dup에는 질의 문장 키도 들어간다."""
-    ntt_ids = {str(value) for value in item.get("ntt_ids", ())}
-    cve_ids = {normalize_cve_id(value) for value in item.get("cve_ids", ())}
+    ntt_ids = {str(value) for value in _optional_list(item, "ntt_ids")}
+    cve_ids = {normalize_cve_id(value) for value in _optional_list(item, "cve_ids")}
+    query = item.get("query", "")
+    if not isinstance(query, str):
+        raise ValueError(  # noqa: TRY004
+            f"item {item.get('id')!r}: query must be a string, got {query!r}"
+        )
+    cve_ids.update(extract_cve_ids(query))
     for ntt_id in ntt_ids:
         if ntt_id not in notices_by_id:
             raise ValueError(f"item {item['id']!r}: nttId {ntt_id} not in notice catalog")
         cve_ids.update(normalize_cve_id(value) for value in notices_by_id[ntt_id]["cve_ids"])
     near_dup = {f"notice:{groups[ntt_id]}" for ntt_id in ntt_ids}
-    if item.get("query"):
-        near_dup.add(f"query:{normalize_text(item['query'])}")
+    if query:
+        near_dup.add(f"query:{normalize_text(query)}")
     return {"notice": ntt_ids, "cve": cve_ids, "near_dup": near_dup}
 
 
