@@ -1,0 +1,398 @@
+{
+  "experiment": "hybrid",
+  "protocol_version": "eval-protocol-v2",
+  "runs": {
+    "kisa/rrf": {
+      "dev": {
+        "by_type": {
+          "cve_explicit": {
+            "metrics": {
+              "hit@1": 0.8888888888888888,
+              "hit@10": 0.8888888888888888,
+              "hit@5": 0.8888888888888888,
+              "mrr@10": 0.8888888888888888,
+              "ndcg@10": 0.8888888888888888,
+              "recall@1": 0.8333333333333334,
+              "recall@10": 0.8888888888888888,
+              "recall@5": 0.8888888888888888
+            },
+            "n_excluded": 0,
+            "n_questions": 9,
+            "n_scored": 9,
+            "n_skipped": 0,
+            "observation_only": true,
+            "tie_at_cutoff": {
+              "@1": 1,
+              "@10": 0,
+              "@5": 0
+            }
+          },
+          "explanation_comparison": {
+            "metrics": {
+              "hit@1": 0.8,
+              "hit@10": 1.0,
+              "hit@5": 1.0,
+              "mrr@10": 0.9,
+              "ndcg@10": 0.9261859507142916,
+              "recall@1": 0.7,
+              "recall@10": 1.0,
+              "recall@5": 1.0
+            },
+            "n_excluded": 1,
+            "n_questions": 5,
+            "n_scored": 5,
+            "n_skipped": 0,
+            "observation_only": true,
+            "tie_at_cutoff": {
+              "@1": 1,
+              "@10": 0,
+              "@5": 0
+            }
+          },
+          "no_answer": {
+            "metrics": {
+              "hit@1": null,
+              "hit@10": null,
+              "hit@5": null,
+              "mrr@10": null,
+              "ndcg@10": null,
+              "recall@1": null,
+              "recall@10": null,
+              "recall@5": null
+            },
+            "n_excluded": 0,
+            "n_questions": 4,
+            "n_scored": 0,
+            "n_skipped": 4,
+            "observation_only": false,
+            "tie_at_cutoff": null
+          },
+          "product_symptom": {
+            "metrics": {
+              "hit@1": 1.0,
+              "hit@10": 1.0,
+              "hit@5": 1.0,
+              "mrr@10": 1.0,
+              "ndcg@10": 1.0,
+              "recall@1": 0.9,
+              "recall@10": 1.0,
+              "recall@5": 1.0
+            },
+            "n_excluded": 0,
+            "n_questions": 5,
+            "n_scored": 5,
+            "n_skipped": 0,
+            "observation_only": true,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          }
+        },
+        "macro": {
+          "hit@1": 0.8962962962962964,
+          "hit@10": 0.9629629629629629,
+          "hit@5": 0.9629629629629629,
+          "mrr@10": 0.9296296296296296,
+          "ndcg@10": 0.9383582798677268,
+          "recall@1": 0.8111111111111112,
+          "recall@10": 0.9629629629629629,
+          "recall@5": 0.9629629629629629
+        },
+        "macro_n_types": 3,
+        "n_excluded": 1,
+        "n_questions": 23,
+        "no_answer": {
+          "abstain_rate": 1.0,
+          "false_abstain_rate": 0.0,
+          "n_answerable": 19,
+          "n_no_answer": 4,
+          "tau": 0.13596491228070173
+        }
+      },
+      "test": {
+        "by_type": {
+          "cve_explicit": {
+            "metrics": {
+              "hit@1": 0.7272727272727273,
+              "hit@10": 0.9090909090909091,
+              "hit@5": 0.9090909090909091,
+              "mrr@10": 0.7878787878787878,
+              "ndcg@10": 0.8181818181818182,
+              "recall@1": 0.7272727272727273,
+              "recall@10": 0.9090909090909091,
+              "recall@5": 0.9090909090909091
+            },
+            "n_excluded": 0,
+            "n_questions": 11,
+            "n_scored": 11,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          },
+          "explanation_comparison": {
+            "metrics": {
+              "hit@1": 1.0,
+              "hit@10": 1.0,
+              "hit@5": 1.0,
+              "mrr@10": 1.0,
+              "ndcg@10": 1.0,
+              "recall@1": 1.0,
+              "recall@10": 1.0,
+              "recall@5": 1.0
+            },
+            "n_excluded": 1,
+            "n_questions": 5,
+            "n_scored": 5,
+            "n_skipped": 0,
+            "observation_only": true,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          },
+          "no_answer": {
+            "metrics": {
+              "hit@1": null,
+              "hit@10": null,
+              "hit@5": null,
+              "mrr@10": null,
+              "ndcg@10": null,
+              "recall@1": null,
+              "recall@10": null,
+              "recall@5": null
+            },
+            "n_excluded": 0,
+            "n_questions": 6,
+            "n_scored": 0,
+            "n_skipped": 6,
+            "observation_only": false,
+            "tie_at_cutoff": null
+          },
+          "product_symptom": {
+            "metrics": {
+              "hit@1": 1.0,
+              "hit@10": 1.0,
+              "hit@5": 1.0,
+              "mrr@10": 1.0,
+              "ndcg@10": 1.0,
+              "recall@1": 1.0,
+              "recall@10": 1.0,
+              "recall@5": 1.0
+            },
+            "n_excluded": 0,
+            "n_questions": 7,
+            "n_scored": 7,
+            "n_skipped": 0,
+            "observation_only": true,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          }
+        },
+        "macro": {
+          "hit@1": 0.9090909090909092,
+          "hit@10": 0.9696969696969697,
+          "hit@5": 0.9696969696969697,
+          "mrr@10": 0.9292929292929294,
+          "ndcg@10": 0.9393939393939394,
+          "recall@1": 0.9090909090909092,
+          "recall@10": 0.9696969696969697,
+          "recall@5": 0.9696969696969697
+        },
+        "macro_n_types": 3,
+        "n_excluded": 1,
+        "n_questions": 29,
+        "no_answer": {
+          "abstain_rate": 0.8333333333333334,
+          "false_abstain_rate": 0.21739130434782608,
+          "n_answerable": 23,
+          "n_no_answer": 6,
+          "tau": 0.13596491228070173
+        }
+      }
+    },
+    "public/rrf": {
+      "dev": {
+        "by_type": {
+          "cve_explicit": {
+            "metrics": {
+              "hit@1": 1.0,
+              "hit@10": 1.0,
+              "hit@5": 1.0,
+              "mrr@10": 1.0,
+              "ndcg@10": 1.0,
+              "recall@1": 1.0,
+              "recall@10": 1.0,
+              "recall@5": 1.0
+            },
+            "n_excluded": 0,
+            "n_questions": 25,
+            "n_scored": 25,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          },
+          "no_answer": {
+            "metrics": {
+              "hit@1": null,
+              "hit@10": null,
+              "hit@5": null,
+              "mrr@10": null,
+              "ndcg@10": null,
+              "recall@1": null,
+              "recall@10": null,
+              "recall@5": null
+            },
+            "n_excluded": 0,
+            "n_questions": 12,
+            "n_scored": 0,
+            "n_skipped": 12,
+            "observation_only": false,
+            "tie_at_cutoff": null
+          },
+          "product_symptom": {
+            "metrics": {
+              "hit@1": 0.5714285714285714,
+              "hit@10": 0.7619047619047619,
+              "hit@5": 0.7142857142857143,
+              "mrr@10": 0.6408730158730159,
+              "ndcg@10": 0.6568917851931696,
+              "recall@1": 0.39251700680272106,
+              "recall@10": 0.7380952380952381,
+              "recall@5": 0.6768707482993197
+            },
+            "n_excluded": 0,
+            "n_questions": 21,
+            "n_scored": 21,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 1,
+              "@10": 0,
+              "@5": 0
+            }
+          }
+        },
+        "macro": {
+          "hit@1": 0.7857142857142857,
+          "hit@10": 0.8809523809523809,
+          "hit@5": 0.8571428571428572,
+          "mrr@10": 0.8204365079365079,
+          "ndcg@10": 0.8284458925965847,
+          "recall@1": 0.6962585034013605,
+          "recall@10": 0.8690476190476191,
+          "recall@5": 0.8384353741496599
+        },
+        "macro_n_types": 2,
+        "n_excluded": 0,
+        "n_questions": 58,
+        "no_answer": {
+          "abstain_rate": 1.0,
+          "false_abstain_rate": 0.021739130434782608,
+          "n_answerable": 46,
+          "n_no_answer": 12,
+          "tau": 0.09171165912738946
+        }
+      },
+      "test": {
+        "by_type": {
+          "cve_explicit": {
+            "metrics": {
+              "hit@1": 1.0,
+              "hit@10": 1.0,
+              "hit@5": 1.0,
+              "mrr@10": 1.0,
+              "ndcg@10": 1.0,
+              "recall@1": 1.0,
+              "recall@10": 1.0,
+              "recall@5": 1.0
+            },
+            "n_excluded": 0,
+            "n_questions": 35,
+            "n_scored": 35,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          },
+          "no_answer": {
+            "metrics": {
+              "hit@1": null,
+              "hit@10": null,
+              "hit@5": null,
+              "mrr@10": null,
+              "ndcg@10": null,
+              "recall@1": null,
+              "recall@10": null,
+              "recall@5": null
+            },
+            "n_excluded": 0,
+            "n_questions": 12,
+            "n_scored": 0,
+            "n_skipped": 12,
+            "observation_only": false,
+            "tie_at_cutoff": null
+          },
+          "product_symptom": {
+            "metrics": {
+              "hit@1": 0.717948717948718,
+              "hit@10": 0.8461538461538461,
+              "hit@5": 0.8461538461538461,
+              "mrr@10": 0.7700854700854701,
+              "ndcg@10": 0.7549372279651553,
+              "recall@1": 0.43883277946934496,
+              "recall@10": 0.6633398857769693,
+              "recall@5": 0.6002946052631472
+            },
+            "n_excluded": 0,
+            "n_questions": 39,
+            "n_scored": 39,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 2,
+              "@10": 1,
+              "@5": 0
+            }
+          }
+        },
+        "macro": {
+          "hit@1": 0.858974358974359,
+          "hit@10": 0.9230769230769231,
+          "hit@5": 0.9230769230769231,
+          "mrr@10": 0.885042735042735,
+          "ndcg@10": 0.8774686139825776,
+          "recall@1": 0.7194163897346725,
+          "recall@10": 0.8316699428884846,
+          "recall@5": 0.8001473026315735
+        },
+        "macro_n_types": 2,
+        "n_excluded": 0,
+        "n_questions": 86,
+        "no_answer": {
+          "abstain_rate": 1.0,
+          "false_abstain_rate": 0.08108108108108109,
+          "n_answerable": 74,
+          "n_no_answer": 12,
+          "tau": 0.09171165912738946
+        }
+      }
+    }
+  }
+}
