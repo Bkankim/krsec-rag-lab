@@ -1,0 +1,244 @@
+{
+  "catalog_count": 1762,
+  "catalog_version": "2026.10.28",
+  "date_released": "2026-10-28T19:00:04.8077Z",
+  "entries": [
+    {
+      "cve_id": "CVE-2025-25249",
+      "date_added": "2026-09-09",
+      "due_date": "2026-09-12",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "Multiple Products",
+      "vendor_project": "Fortinet",
+      "vulnerability_name": "Fortinet Multiple Products Heap-based Buffer Overflow Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2025-68686",
+      "date_added": "2026-07-27",
+      "due_date": "2026-08-10",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "FortiOS",
+      "vendor_project": "Fortinet",
+      "vulnerability_name": "Fortinet FortiOS Exposure of Sensitive Information to an Unauthorized Actor Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-15409",
+      "date_added": "2026-07-14",
+      "due_date": "2026-07-17",
+      "known_ransomware_campaign_use": "Known",
+      "product": "SMA1000 Appliances",
+      "vendor_project": "SonicWall",
+      "vulnerability_name": "SonicWall SMA1000 Appliances Server-Side Request Forgery Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-15410",
+      "date_added": "2026-07-14",
+      "due_date": "2026-07-17",
+      "known_ransomware_campaign_use": "Known",
+      "product": "SMA1000 Appliances",
+      "vendor_project": "SonicWall",
+      "vulnerability_name": "SonicWall SMA1000 Appliances Code Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-16232",
+      "date_added": "2026-07-22",
+      "due_date": "2026-07-25",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "SmartConsole",
+      "vendor_project": "Check Point",
+      "vulnerability_name": "Check Point SmartConsole Improper Authentication Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-19490",
+      "date_added": "2026-09-09",
+      "due_date": "2026-09-12",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "NetScaler",
+      "vendor_project": "Citrix",
+      "vulnerability_name": "Citrix NetScaler Authentication Bypass Using an Alternate Path or Channel Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-20349",
+      "date_added": "2026-08-11",
+      "due_date": "2026-08-14",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "Secure Firewall Adaptive Security Appliance (ASA) and Secure Firewall Threat Defense (FTD) ",
+      "vendor_project": "Cisco",
+      "vulnerability_name": "Cisco Secure Firewall Adaptive Security Appliance (ASA) and Secure Firewall Threat Defense (FTD) Heap Inspection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-34486",
+      "date_added": "2026-08-04",
+      "due_date": "2026-08-07",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "Tomcat",
+      "vendor_project": "Apache",
+      "vulnerability_name": "Apache Tomcat Missing Encryption of Sensitive Data Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-53362",
+      "date_added": "2026-08-27",
+      "due_date": "2026-08-30",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "Kernel",
+      "vendor_project": "Linux",
+      "vulnerability_name": "Linux Kernel Unspecified Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-59310",
+      "date_added": "2026-08-18",
+      "due_date": "2026-08-21",
+      "known_ransomware_campaign_use": "Known",
+      "product": "VMware vCenter",
+      "vendor_project": "Broadcom",
+      "vulnerability_name": "Broadcom VMware vCenter Path Traversal Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-60004",
+      "date_added": "2026-08-25",
+      "due_date": "2026-08-28",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "Gitea",
+      "vendor_project": "Gitea",
+      "vulnerability_name": "Gitea Code Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-63030",
+      "date_added": "2026-07-21",
+      "due_date": "2026-07-24",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "Core",
+      "vendor_project": "WordPress",
+      "vulnerability_name": "WordPress Core Interpretation Conflict Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-63077",
+      "date_added": "2026-08-05",
+      "due_date": "2026-08-08",
+      "known_ransomware_campaign_use": "Known",
+      "product": "TeamCity",
+      "vendor_project": "JetBrains",
+      "vulnerability_name": "JetBrains TeamCity Deserialization of Untrusted Data Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-64849",
+      "date_added": "2026-08-19",
+      "due_date": "2026-09-02",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "MLflow",
+      "vendor_project": "MLflow",
+      "vulnerability_name": "MLflow Server-Side Request Forgery Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-65660",
+      "date_added": "2026-09-25",
+      "due_date": "2026-09-28",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "SharePoint",
+      "vendor_project": "Microsoft",
+      "vulnerability_name": "Microsoft SharePoint Code Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-68820",
+      "date_added": "2026-08-11",
+      "due_date": "2026-08-25",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "Windows Ancillary Function Driver for WinSock ",
+      "vendor_project": "Microsoft",
+      "vulnerability_name": "Microsoft Windows Ancillary Function Driver for WinSock Use-After-Free Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-72898",
+      "date_added": "2026-08-11",
+      "due_date": "2026-08-14",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "Metabase",
+      "vendor_project": "Metabase",
+      "vulnerability_name": "Metabase SQL Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-75650",
+      "date_added": "2026-09-08",
+      "due_date": "2026-09-11",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "Commerce and Magento",
+      "vendor_project": "Adobe",
+      "vulnerability_name": "Adobe Commerce and Magento Improper Neutralization of Special Elements Used in a Template Engine Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-76460",
+      "date_added": "2026-09-16",
+      "due_date": "2026-09-19",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "Identity Services Engine",
+      "vendor_project": "Cisco",
+      "vulnerability_name": "Cisco Identity Services Engine Incorrect Use of Privileged APIs Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-76461",
+      "date_added": "2026-09-14",
+      "due_date": "2026-09-17",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "Secure Email Gateway",
+      "vendor_project": "Cisco",
+      "vulnerability_name": "Cisco Secure Email Gateway SQL Injection Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-81963",
+      "date_added": "2026-09-08",
+      "due_date": "2026-09-22",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "Windows",
+      "vendor_project": "Microsoft",
+      "vulnerability_name": "Microsoft Windows Link Following Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-8452",
+      "date_added": "2026-08-26",
+      "due_date": "2026-08-29",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "NetScaler ADC and NetScaler Gateway",
+      "vendor_project": "Citrix",
+      "vulnerability_name": "Citrix NetScaler ADC and NetScaler Gateway Improper Restriction of Operations within the Bounds of a Memory Buffer Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-85102",
+      "date_added": "2026-09-22",
+      "due_date": "2026-09-25",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "Multiple Products",
+      "vendor_project": "Check Point",
+      "vulnerability_name": "Check Point Multiple Products Improper Certificate Validation Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-85706",
+      "date_added": "2026-09-11",
+      "due_date": "2026-09-14",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "Community Edition and Enterprise Edition",
+      "vendor_project": "GitLab",
+      "vulnerability_name": "GitLab Community Edition and Enterprise Edition Path Traversal Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-85880",
+      "date_added": "2026-09-08",
+      "due_date": "2026-09-22",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "Windows",
+      "vendor_project": "Microsoft",
+      "vulnerability_name": "Microsoft Windows Heap-Based Buffer Overflow Vulnerability"
+    },
+    {
+      "cve_id": "CVE-2026-9198",
+      "date_added": "2026-08-04",
+      "due_date": "2026-08-07",
+      "known_ransomware_campaign_use": "Unknown",
+      "product": "Langflow",
+      "vendor_project": "IBM",
+      "vulnerability_name": "IBM Langflow Code Injection Vulnerability"
+    }
+  ],
+  "license": "CC0 1.0 https://www.cisa.gov/sites/default/files/licenses/kev/license.txt",
+  "selection": "entries whose CVE is cited by fixtures/kisa/metadata.jsonl",
+  "source_url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+}
