@@ -219,6 +219,16 @@ def test_tau_is_chosen_from_dev_no_answer_top1_scores(tmp_path):
     assert entry["selected"]["tau_selection"]["rule"].startswith("dev에서")
 
 
+def test_bm25_selection_fails_clearly_without_scored_answerable_dev_questions(tmp_path):
+    queries = [
+        public_query("q-na-1", "CVE-2026-9001를 설명하는 레코드", "no_answer", "dev"),
+        public_query("q-cve-2", "CVE-2026-0005는?", "cve_explicit", "test", ["CVE-2026-0005"]),
+    ]
+    write_public_fixture(tmp_path, queries)
+    with pytest.raises(ValueError, match="scored answerable dev"):
+        run_public(tmp_path, "bm25")
+
+
 def test_bm25_grid_prefers_defaults_on_ties_and_records_grid(public_root):
     run_public(public_root, "bm25")
     config = read_manifest(public_root)["runs"]["public/bm25"]["config"]
@@ -262,6 +272,27 @@ def test_split_dev_writes_only_dev_and_test_uses_frozen_config(public_root):
 def test_split_test_without_dev_selection_fails(public_root):
     with pytest.raises(ValueError, match="dev-selected"):
         run_public(public_root, "bm25", split="test")
+
+
+def test_split_test_fails_when_inputs_changed_since_the_dev_run(public_root):
+    run_public(public_root, "bm25", split="dev")
+    queries = public_root / data.PUBLIC_QUERIES
+    rows = data.read_jsonl(queries)
+    rows[1]["unjudged"] = []  # 같은 ID, 바뀐 라벨
+    write_jsonl(queries, rows)
+    with pytest.raises(ValueError, match="inputs changed"):
+        run_public(public_root, "bm25", split="test")
+    run_public(public_root, "bm25", split="all")  # 처음부터 다시 돌리면 통과한다
+
+
+def test_compute_metrics_fails_on_partially_stored_split(public_root):
+    run_public(public_root, "exact")
+    path = public_root / OUT / "public" / "exact.jsonl"
+    lines = path.read_text("utf-8").splitlines()
+    dropped = [line for line in lines if json.loads(line)["question_id"] != "q-cve-1"]
+    path.write_text("\n".join(dropped) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="stored rows"):
+        runner.compute_run_metrics("public", "exact", public_root, OUT)
 
 
 def test_rerunning_dev_drops_stale_test_rows(public_root):
@@ -430,6 +461,29 @@ def test_script_kisa_cache_missing_is_exit_1_without_leaking_the_path(tmp_path, 
     assert code == 1
     assert "cache_missing" in captured.err
     assert "no-cache" not in captured.err + captured.out
+
+
+def test_script_exit_1_also_for_kisa_error_subclasses(monkeypatch, capsys, tmp_path):
+    class FakeKisaError(Exception):
+        pass
+
+    class FakeParseError(FakeKisaError):
+        pass
+
+    class FakeKisa:
+        KisaError = FakeKisaError
+
+        @staticmethod
+        def load_cached_body(root, ntt_id, document):
+            raise FakeParseError("invalid_id")
+
+    monkeypatch.setattr(run_baselines, "load_kisa_module", lambda: FakeKisa)
+    code = run_baselines.main(
+        ["--track", "kisa", "--retriever", "exact", "--kisa-root", str(tmp_path)]
+    )
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "error: invalid_id" in captured.err
 
 
 def test_script_requires_kisa_root_for_kisa_track(capsys):

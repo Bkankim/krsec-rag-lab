@@ -68,6 +68,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.track is None or args.retriever is None:
         parser.error("--track and --retriever are required")
     load_body = None
+    kisa = None
     if args.track == "kisa":
         if args.kisa_root is None:
             parser.error("--kisa-root is required for the kisa track")
@@ -79,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     except Exception as error:
         # KisaError 메시지는 본문·경로를 담지 않는다(cache_missing, cache_hash_mismatch 등)
-        if args.track == "kisa" and type(error).__name__ == "KisaError":
+        if kisa is not None and isinstance(error, kisa.KisaError):
             print(f"error: {error}", file=sys.stderr)
             return 1
         raise

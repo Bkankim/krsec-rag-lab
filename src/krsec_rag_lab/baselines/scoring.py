@@ -64,8 +64,8 @@ def validate_record(record: Mapping) -> None:
     if not isinstance(record["question_id"], str):
         raise ValueError("question_id must be a string")  # noqa: TRY004 - 입력 오류는 ValueError로 통일
     top1 = record["top1_score_raw"]
-    if top1 is not None and not isinstance(top1, float):
-        raise ValueError("top1_score_raw must be a float or null")
+    if top1 is not None and (not isinstance(top1, float) or not math.isfinite(top1)):
+        raise ValueError("top1_score_raw must be a finite float or null")
     removed = record["n_unjudged_removed"]
     if not isinstance(removed, int) or isinstance(removed, bool) or removed < 0:
         raise ValueError("n_unjudged_removed must be a non-negative int")
@@ -79,7 +79,7 @@ def validate_record(record: Mapping) -> None:
             raise ValueError(f"result fields {sorted(item)} != allowed {sorted(RESULT_FIELDS)}")
         if item["rank"] != rank or not isinstance(item["doc_id"], str):
             raise ValueError(f"rank/doc_id malformed at position {rank}")
-        if not isinstance(item["score"], float) or math.isnan(item["score"]):
+        if not isinstance(item["score"], float) or not math.isfinite(item["score"]):
             raise ValueError(f"score must be a finite float at rank {rank}")
         if item["doc_id"] in seen:
             raise ValueError(f"duplicate doc_id {item['doc_id']}")
@@ -88,6 +88,8 @@ def validate_record(record: Mapping) -> None:
         if previous is not None and key < previous:
             raise ValueError(f"results not sorted by (-score, doc_id) at rank {rank}")
         previous = key
+    if results and top1 is None:
+        raise ValueError("top1_score_raw is null but results are not empty")
     if top1 is not None and results and results[0]["score"] > top1:
         raise ValueError("condensed top score exceeds top1_score_raw")
 

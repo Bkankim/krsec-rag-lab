@@ -127,6 +127,8 @@ def select_on_dev(
             assert isinstance(index, BM25Index)
             records, latencies = score_questions(index.score, dev)
             macro = scoring.evaluate_split(records, dev, "dev", None)["macro"]["ndcg@10"]
+            if macro is None:
+                raise ValueError("bm25 grid selection needs scored answerable dev questions; none")
             grid_rows.append({"k1": k1, "b": b, "dev_macro_ndcg@10": macro})
             if best is None or macro > best[0]:
                 best = (macro, k1, b, index, seconds, records, latencies)
@@ -188,8 +190,12 @@ def compute_run_metrics(track: str, retriever: str, root: Path, out_dir: Path) -
     metrics = {}
     for split in data.SPLITS:
         split_questions = [q for q in questions if q.split == split and not q.excluded]
-        if split_questions and all(q.question_id in records for q in split_questions):
-            metrics[split] = scoring.evaluate_split(records, questions, split, tau)
+        stored = [q for q in split_questions if q.question_id in records]
+        if not stored:
+            continue
+        if len(stored) != len(split_questions):
+            raise ValueError(f"{key}: {split} has {len(stored)}/{len(split_questions)} stored rows")
+        metrics[split] = scoring.evaluate_split(records, questions, split, tau)
     return metrics
 
 
@@ -243,6 +249,8 @@ def run_baseline(
     previous = manifest["runs"].get(key)
     if not run_dev and previous is None:
         raise ValueError(f"{key}: --split test needs a dev-selected config; run --split dev first")
+    if not run_dev and previous["inputs"] != data.input_fingerprints(track, root):
+        raise ValueError(f"{key}: inputs changed since the dev run; rerun --split dev or all")
 
     questions = data.load_questions(track, root)
     if track == "public":
@@ -289,7 +297,10 @@ def run_baseline(
         "protocol_version": scoring.PROTOCOL_VERSION,
         "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "splits_stored": [
-            s for s in data.SPLITS if any(q.split == s and q.question_id in records for q in scored)
+            s
+            for s in data.SPLITS
+            if any(q.split == s for q in scored)
+            and all(q.question_id in records for q in scored if q.split == s)
         ],
         "inputs": data.input_fingerprints(track, root),
         "n_documents": len(corpus.texts),

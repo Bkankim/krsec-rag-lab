@@ -15,7 +15,9 @@ M2의 기준선이다. M3 실험(하이브리드, 리랭커, 청킹, 한영 교�
 | 질의·정답 | `eval/public/queries.jsonl`: 144문항 (dev 58 / test 86), 정답은 fixture 메타데이터로 기계적 결정 | `eval/golden/golden_v1.jsonl`: 54문항 중 `excluded` 2건 제외, 정답은 두 모델의 교차 판정(`gold`) |
 | 새 클론 재현 | exact, BM25 (표준 라이브러리만) | 로컬 KISA 캐시 필요 (`--kisa-root`) |
 
-검색기 3종은 모두 코퍼스 전체에 점수를 매기고 `(점수 내림차순, 문서 ID 오름차순)`으로 정렬한다(7.4).
+검색기 3종의 점수는 `(점수 내림차순, 문서 ID 오름차순)`으로 정렬한다(7.4). dense는 코퍼스 전체에 점수를 매기고,
+exact와 BM25는 질의와 일치한 문서에만 점수를 매겨 나머지 문서는 검색되지 않은 것으로 본다(정답이 있는 질문의 빈 결과는
+0점, 7.2 B8).
 채점 전에 질문의 `unjudged` 문서를 순위에서 지운다(condensed list, 1절). 지표는 `src/krsec_rag_lab/metrics.py`를
 그대로 쓰고, 기권(abstain)은 `unjudged`를 지우기 전 원래 1위 점수를 쓴다.
 

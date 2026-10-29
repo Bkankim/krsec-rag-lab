@@ -140,6 +140,10 @@ def test_validate_record_accepts_generated_records():
         lambda r: r.update(results=[r["results"][0]] * 101),
         lambda r: r.pop("top1_score_raw"),
         lambda r: r["results"][1].update(score=float("nan")),
+        lambda r: r["results"][1].update(score=float("-inf")),
+        lambda r: r["results"][0].update(score=float("inf")),
+        lambda r: r.update(top1_score_raw=float("inf")),
+        lambda r: r.update(top1_score_raw=None),  # 결과가 있는데 원래 1위 점수가 null
     ],
 )
 def test_validate_record_rejects_disallowed_shape(mutate):
