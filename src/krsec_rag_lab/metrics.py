@@ -118,6 +118,16 @@ def abstain(top_score: float | None, tau: float) -> int:
     return 1 if top_score is None or top_score < tau else 0
 
 
+def abstain_rate(top_scores: Iterable[float | None], tau: float) -> float | None:
+    """답 없음 질의들의 abstain 평균(높을수록 좋음). top_scores는 질의별 1위 점수, 빈 결과는 None."""
+    return mean_defined(float(abstain(score, tau)) for score in top_scores).mean
+
+
+def false_abstain_rate(top_scores: Iterable[float | None], tau: float) -> float | None:
+    """정답이 있는 질의들의 abstain 평균(낮을수록 좋음). 계산은 abstain_rate와 같고 질의 집합만 다르다."""
+    return abstain_rate(top_scores, tau)
+
+
 def sort_by_score(scores: Mapping[str, float]) -> list[str]:
     """문서 점수를 `(-score, doc_id)` 오름차순으로 정렬해 결정적인 순위를 만든다(7.4)."""
     return sorted(scores, key=lambda doc_id: (-scores[doc_id], doc_id))

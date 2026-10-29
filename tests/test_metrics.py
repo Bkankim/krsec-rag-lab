@@ -10,7 +10,9 @@ import pytest
 
 from krsec_rag_lab.metrics import (
     abstain,
+    abstain_rate,
     ann_recall_at_k,
+    false_abstain_rate,
     hit_at_k,
     macro_mean,
     mean_defined,
@@ -138,6 +140,14 @@ def test_no_answer_rows_are_undefined(ranked, k):
 )
 def test_abstain_rows(top_score, tau, expected):
     assert abstain(top_score, tau) == expected
+
+
+def test_abstain_rate_and_false_abstain_rate():
+    # tau = 0.5. no_answer 질의 1위 점수 0.42, 0.50, 빈 결과, 0.9 -> abstain 1, 0, 1, 0 -> 0.5
+    assert abstain_rate([0.42, 0.50, None, 0.9], 0.5) == pytest.approx(0.5, abs=TOL)
+    # 정답이 있는 질의 1위 점수 0.9, 0.8, 0.3 -> abstain 0, 0, 1 -> 1/3 (낮을수록 좋음)
+    assert false_abstain_rate([0.9, 0.8, 0.3], 0.5) == pytest.approx(1 / 3, abs=TOL)
+    assert abstain_rate([], 0.5) is None
 
 
 # --- 7.4 동점 순위 (T1~T3) ---------------------------------------------------------------------

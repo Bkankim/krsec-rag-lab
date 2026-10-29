@@ -91,5 +91,5 @@ ranx와 규약(eval-protocol-v1)의 동작이 다른 곳이다. 모두 **규약�
 - `ann_recall_at_k`의 두 목록에도 중복 ID와 `k <= 0` 검사(7.1)를 같게 적용했다.
 - `macro_mean`이 채점 질의가 있는 유형이 하나도 없으면 `None`을 돌려준다(5절은 분모가 채점 유형 수라고만 정함).
 - 규약 7절 표에는 지표 4종 외에 `abstain`(7.3 A1~A3), 동점 정렬(T1~T3), `ann_recall@k`(R1~R4), 평균·macro(7.6)
-  행이 있어, 표의 모든 행을 테스트하려고 `abstain`, `sort_by_score`, `ann_recall_at_k`, `mean_defined`,
+  행이 있어, 표의 모든 행을 테스트하려고 `abstain`, `abstain_rate`, `false_abstain_rate`, `sort_by_score`, `ann_recall_at_k`, `mean_defined`,
   `macro_mean`, `mrr_at_k`를 `metrics.py`에 함께 두었다. 이 함수들은 ranx 대조 범위 밖이고 규약 표로만 검증한다.
