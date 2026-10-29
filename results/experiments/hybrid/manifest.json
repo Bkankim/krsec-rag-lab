@@ -1,0 +1,326 @@
+{
+  "experiment": "hybrid",
+  "protocol_version": "eval-protocol-v2",
+  "runs": {
+    "kisa/rrf": {
+      "baseline": {
+        "retriever": "bm25",
+        "stored_results": "results/baselines/kisa/bm25.jsonl"
+      },
+      "created_at": "2026-10-29T15:06:33+00:00",
+      "description": {
+        "bm25": {
+          "b": 0.9,
+          "candidates": "질의 토큰이 하나라도 든 문서만 순위에 든다(일치가 없으면 빈 순위)",
+          "k1": 3.0,
+          "tokenizer": "bm25-tok-v1"
+        },
+        "dense": {
+          "candidates": "코퍼스 전체",
+          "doc_encode_seconds": 50.908119833002274,
+          "model": {
+            "batch_size": 2,
+            "device": "cpu",
+            "dimension": 1024,
+            "document_format": "색인 텍스트 그대로, 8192 토큰 초과분은 절단(청킹 없음)",
+            "dtype": "float32",
+            "max_doc_tokens": 22749,
+            "max_seq_length": 8192,
+            "n_truncated_docs": 2,
+            "name": "BAAI/bge-m3",
+            "normalized": true,
+            "pooling": "cls",
+            "query_format": "질의 문자열 그대로(지시문 접두사 없음)",
+            "representation": "dense only (bge-m3의 sparse/colbert 헤드는 사용하지 않음)",
+            "revision": "5617a9f61b028005a4858fdac845db406aefb181"
+          },
+          "runtime": {
+            "numpy": "2.5.3",
+            "python": "3.13.14",
+            "sentence_transformers": "6.1.0",
+            "torch": "2.14.1"
+          }
+        },
+        "fusion": "RRF: score(d) = sum over {BM25, dense} 1 / (k + rank), rank는 각 검색기의 전체 순위(1부터)",
+        "tie_break": "RRF 점수가 같으면 문서 ID 오름차순(공통 채점 코드)"
+      },
+      "environment": {
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "machine": "arm64",
+        "omp_num_threads": "4",
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.14"
+      },
+      "experiment": "hybrid",
+      "fixed": {
+        "bm25": {
+          "b": 0.9,
+          "k1": 3.0,
+          "tokenizer": "bm25-tok-v1"
+        },
+        "dense": {
+          "name": "BAAI/bge-m3",
+          "revision": "5617a9f61b028005a4858fdac845db406aefb181"
+        },
+        "fusion": "RRF: score(d) = sum over {BM25, dense} 1 / (k + rank), rank는 각 검색기의 전체 순위(1부터)"
+      },
+      "grid": {
+        "rows": [
+          {
+            "config": {
+              "k": 10
+            },
+            "dev_macro_ndcg@10": 0.9383582798677268
+          },
+          {
+            "config": {
+              "k": 30
+            },
+            "dev_macro_ndcg@10": 0.9383582798677268
+          },
+          {
+            "config": {
+              "k": 60
+            },
+            "dev_macro_ndcg@10": 0.9246890114814845
+          },
+          {
+            "config": {
+              "k": 100
+            },
+            "dev_macro_ndcg@10": 0.9246890114814845
+          }
+        ],
+        "selection_rule": "트랙마다 dev macro nDCG@10 최대인 k. 최댓값이 여럿(abs 1e-12 이내)이면 60, 60이 그중에 없으면 그중 가장 작은 k"
+      },
+      "index_text": "'{title}\\n{body}' (공지 제목 + 줄바꿈 + 정규화 본문)",
+      "inputs": {
+        "corpus_manifest": {
+          "path": "fixtures/kisa/manifest.json",
+          "sha256": "bf670ecd666e77139ae0c53a7be0badb5bdd82e8ff54d4876d59290b68c8b0c4"
+        },
+        "corpus_metadata": {
+          "path": "fixtures/kisa/metadata.jsonl",
+          "sha256": "c1512e8d234e0dbe4d32430877e61775612dd2248046122f74e227d446737eaf"
+        },
+        "queries": {
+          "path": "eval/golden/golden_v1.jsonl",
+          "sha256": "2f94253c6c0551c536973c95b830dcf123e7acb858304fa8678812a19360d3dc"
+        }
+      },
+      "n_documents": 50,
+      "protocol_version": "eval-protocol-v2",
+      "reproduction_inputs": {},
+      "selected": {
+        "config": {
+          "k": 10
+        },
+        "dev_macro_ndcg@10": 0.9383582798677268,
+        "selected_on": "dev",
+        "tau": 0.13596491228070173,
+        "tau_selection": {
+          "dev_abstain_rate": 1.0,
+          "dev_false_abstain_rate": 0.0,
+          "dev_j": 1.0,
+          "n_candidates": 10,
+          "rule": "dev에서 abstain_rate - false_abstain_rate 최대, 같으면 가장 낮은 tau",
+          "tau": 0.13596491228070173
+        }
+      },
+      "splits_stored": [
+        "dev",
+        "test"
+      ],
+      "stored_results": {
+        "fields": [
+          "n_unjudged_removed",
+          "question_id",
+          "results",
+          "top1_score_raw"
+        ],
+        "path": "results/experiments/hybrid/kisa/rrf.jsonl",
+        "ranking": "(점수 내림차순, 문서 ID 오름차순) 정렬 뒤 질문의 unjudged를 지운 condensed list",
+        "result_fields": [
+          "doc_id",
+          "rank",
+          "score"
+        ],
+        "top_n": 100
+      },
+      "test": {
+        "config": {
+          "k": 10
+        },
+        "config_hash": "f4d2bca06ebf0aff13cd7d88ae1763070fe2ab1850e0a41f58739578bb7f9a0f",
+        "executed_at": "2026-10-29T15:06:33+00:00",
+        "tau": 0.13596491228070173
+      },
+      "timing": {
+        "index_seconds": 55.77223666700593,
+        "n_queries_timed": 52,
+        "query_latency_median_seconds": 0.03546581249975134
+      },
+      "track": "kisa",
+      "variant": "rrf"
+    },
+    "public/rrf": {
+      "baseline": {
+        "retriever": "bm25",
+        "stored_results": "results/baselines/public/bm25.jsonl"
+      },
+      "created_at": "2026-10-29T15:05:26+00:00",
+      "description": {
+        "bm25": {
+          "b": 0.75,
+          "candidates": "질의 토큰이 하나라도 든 문서만 순위에 든다(일치가 없으면 빈 순위)",
+          "k1": 1.2,
+          "tokenizer": "bm25-tok-v1"
+        },
+        "dense": {
+          "candidates": "코퍼스 전체",
+          "doc_encode_seconds": 52.319097624997084,
+          "model": {
+            "batch_size": 2,
+            "device": "cpu",
+            "dimension": 1024,
+            "document_format": "색인 텍스트 그대로, 8192 토큰 초과분은 절단(청킹 없음)",
+            "dtype": "float32",
+            "max_doc_tokens": 517,
+            "max_seq_length": 8192,
+            "n_truncated_docs": 0,
+            "name": "BAAI/bge-m3",
+            "normalized": true,
+            "pooling": "cls",
+            "query_format": "질의 문자열 그대로(지시문 접두사 없음)",
+            "representation": "dense only (bge-m3의 sparse/colbert 헤드는 사용하지 않음)",
+            "revision": "5617a9f61b028005a4858fdac845db406aefb181"
+          },
+          "runtime": {
+            "numpy": "2.5.3",
+            "python": "3.13.14",
+            "sentence_transformers": "6.1.0",
+            "torch": "2.14.1"
+          }
+        },
+        "fusion": "RRF: score(d) = sum over {BM25, dense} 1 / (k + rank), rank는 각 검색기의 전체 순위(1부터)",
+        "tie_break": "RRF 점수가 같으면 문서 ID 오름차순(공통 채점 코드)"
+      },
+      "environment": {
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "machine": "arm64",
+        "omp_num_threads": "4",
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.14"
+      },
+      "experiment": "hybrid",
+      "fixed": {
+        "bm25": {
+          "b": 0.75,
+          "k1": 1.2,
+          "tokenizer": "bm25-tok-v1"
+        },
+        "dense": {
+          "name": "BAAI/bge-m3",
+          "revision": "5617a9f61b028005a4858fdac845db406aefb181"
+        },
+        "fusion": "RRF: score(d) = sum over {BM25, dense} 1 / (k + rank), rank는 각 검색기의 전체 순위(1부터)"
+      },
+      "grid": {
+        "rows": [
+          {
+            "config": {
+              "k": 10
+            },
+            "dev_macro_ndcg@10": 0.8284458925965847
+          },
+          {
+            "config": {
+              "k": 30
+            },
+            "dev_macro_ndcg@10": 0.8272231263906838
+          },
+          {
+            "config": {
+              "k": 60
+            },
+            "dev_macro_ndcg@10": 0.8276947145051818
+          },
+          {
+            "config": {
+              "k": 100
+            },
+            "dev_macro_ndcg@10": 0.8276947145051818
+          }
+        ],
+        "selection_rule": "트랙마다 dev macro nDCG@10 최대인 k. 최댓값이 여럿(abs 1e-12 이내)이면 60, 60이 그중에 없으면 그중 가장 작은 k"
+      },
+      "index_text": "'{id} {description_en}' (레코드 id + 공백 + 영문 설명, CPE·CWE·CVSS 미색인)",
+      "inputs": {
+        "corpus": {
+          "path": "fixtures/nvd/cves.jsonl",
+          "sha256": "96ce6757d724ab85593357a1806698bfe9026854b2f9823b6da4cbf01ce83ffa"
+        },
+        "queries": {
+          "path": "eval/public/queries.jsonl",
+          "sha256": "1d8ab42360e3cee23e8d67bc933e5af7ec6a8365eb32d315105233016d294a99"
+        }
+      },
+      "n_documents": 1560,
+      "protocol_version": "eval-protocol-v2",
+      "reproduction_inputs": {},
+      "selected": {
+        "config": {
+          "k": 10
+        },
+        "dev_macro_ndcg@10": 0.8284458925965847,
+        "selected_on": "dev",
+        "tau": 0.09171165912738946,
+        "tau_selection": {
+          "dev_abstain_rate": 1.0,
+          "dev_false_abstain_rate": 0.021739130434782608,
+          "dev_j": 0.9782608695652174,
+          "n_candidates": 27,
+          "rule": "dev에서 abstain_rate - false_abstain_rate 최대, 같으면 가장 낮은 tau",
+          "tau": 0.09171165912738946
+        }
+      },
+      "splits_stored": [
+        "dev",
+        "test"
+      ],
+      "stored_results": {
+        "fields": [
+          "n_unjudged_removed",
+          "question_id",
+          "results",
+          "top1_score_raw"
+        ],
+        "path": "results/experiments/hybrid/public/rrf.jsonl",
+        "ranking": "(점수 내림차순, 문서 ID 오름차순) 정렬 뒤 질문의 unjudged를 지운 condensed list",
+        "result_fields": [
+          "doc_id",
+          "rank",
+          "score"
+        ],
+        "top_n": 100
+      },
+      "test": {
+        "config": {
+          "k": 10
+        },
+        "config_hash": "b085b266d993d3d0c3c86b19d9604cf851ec39140fff620936c995a9cdd82572",
+        "executed_at": "2026-10-29T15:05:26+00:00",
+        "tau": 0.09171165912738946
+      },
+      "timing": {
+        "index_seconds": 57.67322170799889,
+        "n_queries_timed": 144,
+        "query_latency_median_seconds": 0.0359030210020137
+      },
+      "track": "public",
+      "variant": "rrf"
+    }
+  }
+}
