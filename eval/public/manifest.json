@@ -1,0 +1,109 @@
+{
+  "attempts": [
+    {
+      "accepted": true,
+      "reason": "ok",
+      "seed": 35
+    }
+  ],
+  "counts": {
+    "by_split": {
+      "dev": 58,
+      "test": 86
+    },
+    "by_type": {
+      "cve_explicit": 60,
+      "no_answer": 24,
+      "product_symptom": 60
+    },
+    "by_type_split": {
+      "cve_explicit": {
+        "dev": 25,
+        "test": 35
+      },
+      "no_answer": {
+        "dev": 12,
+        "test": 12
+      },
+      "product_symptom": {
+        "dev": 21,
+        "test": 39
+      }
+    },
+    "dev_ratio": 0.4028,
+    "minimum_by_type": {
+      "cve_explicit": 50,
+      "no_answer": 20,
+      "product_symptom": 50
+    },
+    "total": 144
+  },
+  "cpe_rules": {
+    "truncation": "cpe_total이 담긴 cpe 수보다 크면 cpe 목록은 절단된 것이다(비-KEV 3건, KEV 25건 상한). 정답과 unjudged는 절단된 cpe가 아니라 절단 없는 vendor_products에서 정한다. 절단된 레코드 1291건도 제품 소속이 확정되므로 CPE 절단 때문에 unjudged가 되는 레코드는 없다(unjudged.from_cpe_truncation). 빌드 때 모든 레코드에서 cpe의 vendor:product가 vendor_products의 부분집합인지 검사한다.",
+    "vendor_product_extraction": "CPE 2.3 형식 문자열을 이스케이프되지 않은 ':'로 나눠 13개 필드를 확인하고 4번째(vendor)와 5번째(product) 필드를 원문 그대로(소문자·역슬래시 이스케이프 유지) 'vendor:product'로 잇는다. vendor나 product가 '*'·'-'이면 제품을 특정할 수 없어 거부한다."
+  },
+  "excluded_products": {
+    "gold_over_max": {
+      "count": 13,
+      "max_gold": 200
+    },
+    "large_component": {
+      "cap_fraction": 0.25,
+      "cap_queries": 36,
+      "count": 0
+    }
+  },
+  "generation_rules": {
+    "cve_explicit": "레코드 60건을 seed로 무작위 추출해 CVE ID가 든 한국어 템플릿 질문을 만든다. gold = 그 레코드 하나.",
+    "explanation_comparison": "만들지 않는다. 개념·조치·차이를 묻는 질문은 fixture 메타데이터로 기계적 정답을 정할 수 없고 LLM 판정은 쓰지 않는다.",
+    "no_answer": "코퍼스에 없는 형식상 유효한 CVE ID 24개(연도 [2024, 2025, 2026])를 seed로 만든다. gold = 빈 집합. 부재는 이 fixture 코퍼스 기준이며 NVD 전체에 없다는 뜻이 아니다.",
+    "product_symptom": "vendor_products에 든 vendor:product 60개를 seed로 뽑아 CVE ID 없는 한국어 템플릿 질문을 만든다. gold = vendor_products에 그 제품이 있는 레코드 전부. unjudged = vendor_products_status가 no_configurations인 레코드, 그리고 drifted인데 그 제품이 vendor_products에 없는 레코드. 그 밖은 비관련. 이 표본에서 gold가 비는 질문은 없다(제품은 gold가 1건 이상인 것만 뽑는다)."
+  },
+  "input": {
+    "path": "fixtures/nvd/cves.jsonl",
+    "records": 1560,
+    "sha256": "96ce6757d724ab85593357a1806698bfe9026854b2f9823b6da4cbf01ce83ffa"
+  },
+  "language": {
+    "document": "en",
+    "query": "ko"
+  },
+  "protocol_version": "eval-protocol-v2",
+  "query_fields": [
+    "id",
+    "query",
+    "query_type",
+    "gold",
+    "unjudged",
+    "split",
+    "vendor_product"
+  ],
+  "query_file": "eval/public/queries.jsonl",
+  "query_file_sha256": "86badfd84077a75f2ac91a08f7400bdf35dbaa4d989ca1e9185a0f357c545eda",
+  "seed": 35,
+  "seed_used": 35,
+  "split_rules": {
+    "assignment": "연결 성분을 큰 것부터 목표 dev 비율 0.4의 부족분이 큰 쪽에 둔다(동점은 dev).",
+    "checks": "빌드마다 키 교차 검사와 splits.assert_disjoint를 통과해야 쓴다.",
+    "component_cap": "질의 25%(36건)를 넘는 연결 성분을 만드는 제품은 표본에서 뺀다. gold 레코드가 200건을 넘는 제품도 뺀다.",
+    "dev_ratio_range": [
+      0.3,
+      0.5
+    ],
+    "group_keys": "CVE ID(질문에 적힌 ID와 gold 레코드 id)와 vendor:product(product_symptom 질의의 제품). 같은 키를 가진 질의를 연결 성분으로 묶어 같은 split에 둔다.",
+    "redraw": "비율 미달이거나 유형이 한 split에 없으면 seed+1, seed+2 ...로 표본을 다시 뽑는다(최대 10회). 시도는 attempts에 기록한다."
+  },
+  "track": "public",
+  "unjudged": {
+    "from_cpe_truncation": 0,
+    "product_queries": 60,
+    "product_queries_with_unjudged": 60,
+    "unjudged_ids_per_product_query": [
+      39
+    ],
+    "vendor_products_status_counts": {
+      "no_configurations": 39,
+      "ok": 1521
+    }
+  }
+}
