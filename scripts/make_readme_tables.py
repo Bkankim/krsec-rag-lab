@@ -19,6 +19,12 @@ manifest에 적힌 해시를 쓰되 기준선 manifest의 같은 해시와 대�
 `--summary`·`--note`로 M3 요약과 v0.2 노트 경로를 따로 줄 수 있다(문서가 없는 asset 사본을 `--root`로 줄 때).
 M3 검증은 `results/experiments/`가 있거나 README에 M3 구간 마커가 있으면 돈다(데이터가 없으면 실패한다).
 
+M4(`results/m4/`가 있거나 README에 M4 구간 마커가 있을 때, 데이터가 없으면 실패한다)는
+`results/m4/collection/report.json`, `results/m4/idempotency/report.json`, `fixtures/kisa_full/{manifest.json,metadata.jsonl}`에서
+README의 M4 구간과 `docs/release-v0.3.md`의 M4 구간(과 M3 구간)을 만든다. 보고서와 manifest가 서로 어긋나면(문서 수,
+결과별 건수, 발견 계측, 메타데이터 ID) 문서와 비교하기 전에 불일치로 보고한다. `--note-v03`으로 v0.3 노트 경로를 따로 줄 수 있다.
+M4 수치는 어디에도 고치지 않고 README와 v0.3 노트의 생성 구간만 쓴다. 본문 유출 점검(KISA 캐시 필요)은 이 스크립트의 일이 아니다.
+
 `--root`로 리포 루트를 바꿀 수 있다(릴리스 asset 사본 검증용, scripts/check_release.py). README는 기본으로
 `<root>/README.md`이고 `--readme`로 따로 정할 수 있다.
 """
@@ -27,7 +33,7 @@ import argparse
 import json
 import math
 import sys
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path, PurePosixPath
 
 from krsec_rag_lab.baselines import data, scoring
@@ -55,6 +61,7 @@ EXPERIMENTS = ("hybrid", "rerank", "chunking", "crossling", "embedding")
 EXPERIMENTS_DIR = Path("results/experiments")
 SUMMARY_PATH = Path("docs/experiments/summary.md")
 NOTE_V02_PATH = Path("docs/release-v0.2.md")
+NOTE_V03_PATH = Path("docs/release-v0.3.md")
 README_M3 = (
     "<!-- BEGIN M3 TABLES (scripts/make_readme_tables.py) -->",
     "<!-- END M3 TABLES (scripts/make_readme_tables.py) -->",
@@ -66,6 +73,101 @@ SUMMARY_RANGE = (
 NOTE_RANGE = (
     "<!-- BEGIN M3 RESULTS (scripts/make_readme_tables.py) -->",
     "<!-- END M3 RESULTS (scripts/make_readme_tables.py) -->",
+)
+README_M4 = (
+    "<!-- BEGIN M4 TABLES (scripts/make_readme_tables.py) -->",
+    "<!-- END M4 TABLES (scripts/make_readme_tables.py) -->",
+)
+NOTE_M4_RANGE = (
+    "<!-- BEGIN M4 RESULTS (scripts/make_readme_tables.py) -->",
+    "<!-- END M4 RESULTS (scripts/make_readme_tables.py) -->",
+)
+M4_COLLECTION = Path("results/m4/collection/report.json")
+M4_IDEMPOTENCY = Path("results/m4/idempotency/report.json")
+M4_MANIFEST = Path("fixtures/kisa_full/manifest.json")
+M4_METADATA = Path("fixtures/kisa_full/metadata.jsonl")
+M4_DIR = Path("results/m4")
+M4_PROBLEM = "results/m4:"  # M4 입력 데이터끼리 어긋난 항목의 접두어(쓰기 모드는 이때 문서를 건드리지 않는다)
+# 보고서 키 표: docs/m4-collection.md, docs/m4-idempotency.md
+COLLECTION_KEYS = (
+    "schema_version",
+    "parser_version",
+    "discovery_complete",
+    "complete",
+    "discovered_ids",
+    "list_pages",
+    "list_pages_with_rows",
+    "list_rows",
+    "displayed_total",
+    "displayed_total_gap",
+    "rss_ids",
+    "rss_only_ids",
+    "rss_error",
+    "discovery_error",
+    "list_duplicate_in_page",
+    "list_duplicate_across_pages",
+    "list_duplicate_ids",
+    "list_conflict_ids",
+    "detail_ok",
+    "detail_failed",
+    "parse_failed",
+    "failed_ids",
+    "detail_pending",
+    "missing_ids",
+    "content_duplicate_group_count",
+    "content_duplicate_doc_count",
+    "content_duplicate_groups",
+    "fixed_expected",
+    "fixed_present",
+    "fixed_missing_ids",
+    "fixed_hash_match",
+    "fixed_hash_mismatch_ids",
+    "new_since_freeze",
+    "rediscovery_pages",
+    "rediscovery_complete",
+    "aborted",
+    "resumed",
+    "retry_failed",
+    "requests",
+    "elapsed_seconds",
+)
+IDEMPOTENCY_KEYS = (
+    "schema_version",
+    "passed",
+    "failed_step",
+    "error",
+    "started_at",
+    "finished_at",
+    "elapsed_seconds",
+    "k",
+    "seed",
+    "tolerances",
+    "corpus",
+    "model",
+    "qdrant",
+    "runtime",
+    "environment",
+    "steps",
+)
+# manifest.discovery의 키는 보고서의 같은 이름 키와 같은 값이다(manifest의 `error`는 보고서의 `discovery_error`).
+DISCOVERY_KEYS = (
+    "list_pages",
+    "list_pages_with_rows",
+    "list_rows",
+    "displayed_total",
+    "list_duplicate_in_page",
+    "list_duplicate_across_pages",
+    "list_duplicate_ids",
+    "list_conflict_ids",
+    "rss_ids",
+    "rss_only_ids",
+    "rss_error",
+)
+M4_NOTE = (
+    "이 구간은 `scripts/make_readme_tables.py`가 `results/m4/collection/report.json`, "
+    "`results/m4/idempotency/report.json`, `fixtures/kisa_full/manifest.json`, `fixtures/kisa_full/metadata.jsonl`에서 "
+    "다시 만들어 쓴다. 손으로 고치지 않는다. 검증: `uv run python scripts/make_readme_tables.py --check`. "
+    "보고서와 manifest의 건수가 서로 맞는지 대조한 뒤에 표를 만든다."
 )
 M3_NOTE = (
     "이 구간은 `scripts/make_readme_tables.py`가 `results/experiments/`의 질문별 원시 결과와 질의셋 라벨에서 "
@@ -606,13 +708,20 @@ def render_summary_tables(recomputed: Mapping[str, Mapping]) -> str:
 
 
 def m3_documents(
-    root: Path, readme: Path, summary: Path | None = None, note: Path | None = None
+    root: Path,
+    readme: Path,
+    summary: Path | None = None,
+    note: Path | None = None,
+    notes: Sequence[Path] | None = None,
 ) -> list[tuple[Path, tuple[str, str], str]]:
-    """(문서 경로, 마커 쌍, 구간 종류). 문서를 따로 정하지 않으면 `<root>` 아래 고정 경로다."""
+    """(문서 경로, 마커 쌍, 구간 종류). 문서를 따로 정하지 않으면 `<root>` 아래 고정 경로다.
+
+    `notes`는 M3 판정 구간을 가진 릴리스 노트 전부다(주지 않으면 `note` 하나, 그것도 없으면 v0.2 노트)."""
+    paths = list(notes) if notes is not None else [note or root / NOTE_V02_PATH]
     return [
         (readme, README_M3, "readme"),
         (summary or root / SUMMARY_PATH, SUMMARY_RANGE, "summary"),
-        (note or root / NOTE_V02_PATH, NOTE_RANGE, "note"),
+        *[(path, NOTE_RANGE, "note") for path in paths],
     ]
 
 
@@ -630,13 +739,14 @@ def verify_m3(
     *,
     summary: Path | None = None,
     note: Path | None = None,
+    notes: Sequence[Path] | None = None,
 ) -> tuple[list[str], Mapping[str, Mapping]]:
-    """(불일치 목록, 다시 계산한 M3 값). 저장된 metrics·comparison과 세 문서의 생성 구간을 대조한다.
+    """(불일치 목록, 다시 계산한 M3 값). 저장된 metrics·comparison과 문서(README, summary, 노트)의 생성 구간을 대조한다.
 
     `root`는 원시 결과·라벨을 읽는 곳(릴리스 asset 사본이면 그 사본), 문서 경로는 따로 줄 수 있다."""
     documents = []
     for path, markers, kind in m3_documents(
-        root, readme, summary, note
+        root, readme, summary, note, notes
     ):  # 마커 오류는 재계산 전에 멈춘다
         text = _read_readme(path)
         documents.append((path, text, _split_readme(text, path.name, markers), kind))
@@ -665,8 +775,9 @@ def write_m3(
     recomputed: Mapping[str, Mapping],
     summary: Path | None = None,
     note: Path | None = None,
+    notes: Sequence[Path] | None = None,
 ) -> None:
-    for path, markers, kind in m3_documents(root, readme, summary, note):
+    for path, markers, kind in m3_documents(root, readme, summary, note, notes):
         text = _read_readme(path)
         start, stop = _split_readme(text, path.name, markers)
         path.write_text(
@@ -685,6 +796,312 @@ def m3_active(root: Path, readme: Path) -> bool:
         return False
 
 
+# ------------------------------------------------------------ M4: 전체 수집·멱등성 보고서, 표, 검증
+
+
+def _ids(values: Sequence) -> str:
+    return ", ".join(str(v) for v in values) if values else "없음"
+
+
+def _by_reason(values: Mapping) -> str:
+    return "; ".join(f"`{reason}`: {_ids(ids)}" for reason, ids in sorted(values.items())) or "없음"
+
+
+def _m4_facts(
+    collection: Mapping, idempotency: Mapping, manifest: Mapping, rows: list[dict]
+) -> tuple[dict, list[str]]:
+    """manifest·메타데이터에서 센 값(facts)과 보고서가 manifest와 어긋난 항목(problems)."""
+    documents = manifest["documents"]
+    target = manifest["target_ids"]
+    ids = [str(d["nttId"]) for d in documents]
+    failed: dict[str, list[str]] = {}
+    for item in documents:
+        if item["result"] != "ok":
+            failed.setdefault(item["result"], []).append(str(item["nttId"]))
+    failed = {reason: sorted(found, key=int) for reason, found in failed.items()}
+    ok_ids = sorted((str(d["nttId"]) for d in documents if d["result"] == "ok"), key=int)
+    unresolved = sorted((i for found in failed.values() for i in found), key=int)
+    cves = {cve for row in rows for cve in row["cve_ids"]}
+    facts = {
+        "target": len(target),
+        "ok": len(ok_ids),
+        "metadata_rows": len(rows),
+        "metadata_with_cve": sum(1 for row in rows if row["cve_ids"]),
+        "metadata_distinct_cve": len(cves),
+    }
+    problems: list[str] = []
+
+    def expect(label: str, got: object, want: object) -> None:
+        if got != want:
+            problems.append(f"{M4_PROBLEM} {label}: {got!r} != {want!r}")
+
+    expect(
+        "manifest documents vs target_ids", sorted(ids, key=int), sorted(map(str, target), key=int)
+    )
+    expect(
+        "collection report discovered_ids vs manifest target_ids",
+        collection["discovered_ids"],
+        len(target),
+    )
+    expect(
+        "collection report detail_ok vs manifest ok documents", collection["detail_ok"], len(ok_ids)
+    )
+    expect(
+        "collection report parse_failed vs manifest",
+        collection["parse_failed"],
+        {r: len(v) for r, v in failed.items() if r.startswith("parse_failed:")},
+    )
+    expect(
+        "collection report detail_failed vs manifest",
+        collection["detail_failed"],
+        {r: len(v) for r, v in failed.items() if r.startswith("fetch_failed:")},
+    )
+    expect("collection report failed_ids vs manifest", collection["failed_ids"], failed)
+    expect(
+        "collection report missing_ids vs manifest",
+        sorted(collection["missing_ids"], key=int),
+        unresolved,
+    )
+    expect(
+        "collection report detail_pending vs manifest",
+        collection["detail_pending"],
+        len(target) - len(documents),
+    )
+    for key in ("complete", "discovery_complete", "parser_version"):
+        expect(f"collection report {key} vs manifest", collection[key], manifest[key])
+    discovery = manifest["discovery"]
+    for key in DISCOVERY_KEYS:
+        expect(f"collection report {key} vs manifest discovery", collection[key], discovery[key])
+    expect(
+        "collection report discovery_error vs manifest discovery",
+        collection["discovery_error"],
+        discovery["error"],
+    )
+    if collection["displayed_total"] is not None:
+        expect(
+            "collection report displayed_total_gap",
+            collection["displayed_total_gap"],
+            collection["displayed_total"] - len(target),
+        )
+    expect(
+        "metadata nttIds vs manifest ok documents",
+        sorted((str(r["nttId"]) for r in rows), key=int),
+        ok_ids,
+    )
+    corpus = idempotency["corpus"]
+    expect("idempotency report corpus target_ids vs manifest", corpus["target_ids"], len(target))
+    expect("idempotency report corpus ok_docs vs manifest", corpus["ok_docs"], len(ok_ids))
+    expect(
+        "idempotency report corpus unresolved_ids vs manifest",
+        corpus["unresolved_ids"],
+        len(unresolved),
+    )
+    expect(
+        "idempotency report corpus baseline_docs",
+        corpus["baseline_docs"],
+        len(ok_ids) - idempotency["k"],
+    )
+    expect(
+        "idempotency report corpus parser_version vs manifest",
+        corpus["parser_version"],
+        manifest["parser_version"],
+    )
+    steps = idempotency["steps"]
+    expect("idempotency report step numbers", [s["step"] for s in steps], list(range(1, 6)))
+    expect(
+        "idempotency report passed vs step results",
+        idempotency["passed"],
+        all(s["passed"] for s in steps),
+    )
+    expect(
+        "idempotency report failed_step",
+        idempotency["failed_step"],
+        next((s["step"] for s in steps if not s["passed"]), None),
+    )
+    return facts, problems
+
+
+def load_m4(root: Path) -> dict:
+    """M4 입력(두 보고서, kisa_full manifest·메타데이터)과 서로의 대조 결과. 입력 문제는 CheckError.
+
+    `{"collection", "idempotency", "facts", "problems"}`. problems는 보고서가 manifest와 어긋난 항목이다."""
+    collection = _read_json(root / M4_COLLECTION, M4_COLLECTION.as_posix())
+    idempotency = _read_json(root / M4_IDEMPOTENCY, M4_IDEMPOTENCY.as_posix())
+    manifest = _read_json(root / M4_MANIFEST, M4_MANIFEST.as_posix())
+    rows = _read_jsonl(root / M4_METADATA, M4_METADATA.as_posix())
+    for report, keys, path in (
+        (collection, COLLECTION_KEYS, M4_COLLECTION),
+        (idempotency, IDEMPOTENCY_KEYS, M4_IDEMPOTENCY),
+    ):
+        if missing := [key for key in keys if key not in report]:
+            raise CheckError(f"{path.as_posix()}: missing keys {missing[:5]} ({len(missing)})")
+    try:
+        facts, problems = _m4_facts(collection, idempotency, manifest, rows)
+    except (KeyError, TypeError, ValueError, AttributeError) as error:
+        raise CheckError(f"M4 inputs are malformed ({type(error).__name__})") from None
+    return {
+        "collection": collection,
+        "idempotency": idempotency,
+        "facts": facts,
+        "problems": problems,
+    }
+
+
+def _comparison_cell(comparison: Mapping) -> str:
+    parts = []
+    if "points_equal_snapshot_docs" in comparison:
+        parts.append(
+            "point 수 = 스냅샷 문서 수"
+            if comparison["points_equal_snapshot_docs"]
+            else "point 수 != 스냅샷 문서 수"
+        )
+    if "ids_equal" in comparison:
+        same = comparison["ids_equal"] and comparison["payload_equal"]
+        parts.append("ID 집합·payload 동일" if same else "ID 집합이나 payload 다름")
+    if "vectors_max_abs_diff" in comparison:
+        parts.append(f"벡터 최대 차 {comparison['vectors_max_abs_diff']}")
+    if "unchanged_points" in comparison:
+        parts.append(
+            f"영향 없는 {comparison['unchanged_points']}건 중 {comparison['unchanged_points_identical']}건 동일"
+        )
+    if "updated_vectors_changed" in comparison:
+        parts.append(f"갱신 벡터 변경 {comparison['updated_vectors_changed']}건")
+    if "deleted_absent" in comparison:
+        parts.append("삭제 확인" if comparison["deleted_absent"] else "삭제 안 됨")
+    if "added_present" in comparison:
+        parts.append("추가 확인" if comparison["added_present"] else "추가 안 됨")
+    return ", ".join(parts) or "-"
+
+
+def render_m4(m4: Mapping, link_prefix: str) -> str:
+    """M4 구간(README·릴리스 노트용). 보고서 문서 링크는 `<link_prefix>m4-collection.md`·`<link_prefix>m4-idempotency.md`다."""
+    c, i, f = m4["collection"], m4["idempotency"], m4["facts"]
+    req = c["requests"]
+    parse_failed = {r: v for r, v in c["failed_ids"].items() if r.startswith("parse_failed:")}
+    model, runtime, env, corpus = i["model"], i["runtime"], i["environment"], i["corpus"]
+    lines = [
+        M4_NOTE,
+        "",
+        f"### 전체 수집: 규모, 누락, 중복, 파싱 실패 ([m4-collection.md]({link_prefix}m4-collection.md))",
+        "",
+        "| 항목 | 값 |",
+        "|---|---|",
+        f"| 발견 ID (고정 대상) | {c['discovered_ids']} |",
+        f"| 게시판 표시 총수 / 차이 | {c['displayed_total']} / {c['displayed_total_gap']} |",
+        f"| 상세 성공 | {c['detail_ok']} |",
+        f"| 상세 실패 (fetch_failed) | {sum(c['detail_failed'].values())} |",
+        f"| 파싱 실패 | {sum(c['parse_failed'].values())} ({_by_reason(parse_failed)}) |",
+        f"| 미처리 | {c['detail_pending']} |",
+        f"| 누락 (발견했지만 `ok` 아님) | {len(c['missing_ids'])} ({_ids(c['missing_ids'])}) |",
+        f"| 목록 페이지 / 원시 행 | {c['list_pages']} / {c['list_rows']} |",
+        f"| 목록 중복: 페이지 안 / 페이지 사이 | {c['list_duplicate_in_page']} / {c['list_duplicate_across_pages']} |",
+        f"| 목록 중복 ID / 제목·날짜 충돌 ID | {len(c['list_duplicate_ids'])} ({_ids(c['list_duplicate_ids'])}) / {len(c['list_conflict_ids'])} |",
+        f"| 내용 중복 (본문 sha256이 같은 묶음 / 문서) | {c['content_duplicate_group_count']} / {c['content_duplicate_doc_count']} |",
+        f"| RSS 항목 / 목록에 없는 RSS 전용 ID | {c['rss_ids']} / {len(c['rss_only_ids'])} |",
+        f"| 고정 50건 포함 / 본문 sha256 일치 | {c['fixed_present']} / {c['fixed_hash_match']} (기대 {c['fixed_expected']}) |",
+        f"| 메타데이터 행 / CVE ID가 있는 행 / 서로 다른 CVE ID | {f['metadata_rows']} / {f['metadata_with_cve']} / {f['metadata_distinct_cve']} |",
+        f"| 수집 완료 / 중단 | {'예' if c['complete'] else '아니오'} / {c['aborted'] or '없음'} |",
+        f"| 요청 수 | {req['total']} (robots {req['robots']}, RSS {req['rss']}, 목록 {req['list']}, 상세 {req['detail']}) |",
+        f"| 소요 시간 (초) | {c['elapsed_seconds']:.1f} |",
+        "",
+        f"### 멱등성 검증 1~5단계 ([m4-idempotency.md]({link_prefix}m4-idempotency.md))",
+        "",
+        (
+            f"검증 {'통과' if i['passed'] else '실패'} (갱신·삭제·추가 각 {i['k']}건, 시드 {i['seed']}, "
+            f"실패 단계 {i['failed_step'] or '없음'}, 소요 {i['elapsed_seconds']:.1f}초)."
+        ),
+        "",
+        "| 항목 | 값 |",
+        "|---|---|",
+        f"| 스냅샷 | 대상 ID {corpus['target_ids']}, `ok` {corpus['ok_docs']}, 파싱 실패 {corpus['unresolved_ids']}, 기준 스냅샷 {corpus['baseline_docs']} |",
+        f"| 모델 | `{model['name']}` revision `{model['revision']}` |",
+        f"| pooling / dtype / 차원 | {model['pooling']} / {model['dtype']} / {model['dimension']} |",
+        f"| `max_seq_length` / batch_size / 장치 | {model['max_seq_length']} / {model['batch_size']} / {model['device']} |",
+        f"| Qdrant | 서버 {i['qdrant']['version']}, 이미지 `{i['qdrant']['image']}` |",
+        (
+            f"| 런타임 | Python {runtime['python']}, sentence-transformers {runtime['sentence_transformers']}, "
+            f"torch {runtime['torch']}, numpy {runtime['numpy']}, qdrant-client {runtime['qdrant_client']} |"
+        ),
+        f"| 환경 | {env['system']} {env['machine']}, 코어 {env['cpu_count']}, `OMP_NUM_THREADS={env['omp_num_threads']}` |",
+        f"| 허용오차 | 영향 없는 point {i['tolerances']['unchanged_points']}, 벡터 abs {i['tolerances']['vector_abs']} |",
+        "",
+        "| 단계 | 동작 | 계획 (추가/갱신/삭제) | point 수 | 인코딩 | 쓰기 (upsert/payload/delete) | 비교 | 통과 | 소요 (초) |",
+        "|---|---|---|---|---|---|---|---|---|",
+    ]
+    for step in i["steps"]:
+        plan, writes = step["plan"], step["writes"]
+        lines.append(
+            f"| {step['step']} | `{step['name']}` | {plan['add']}/{plan['update']}/{plan['delete']} "
+            f"| {step['points']} | {step['encoded_texts']} "
+            f"| {writes['upsert']}/{writes['payload_update']}/{writes['delete']} "
+            f"| {_comparison_cell(step['comparison'])} | {'예' if step['passed'] else '아니오'} "
+            f"| {step['elapsed_seconds']:.1f} |"
+        )
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def m4_documents(
+    root: Path, readme: Path, note: Path | None = None
+) -> list[tuple[Path, tuple[str, str], str]]:
+    return [
+        (readme, README_M4, "readme"),
+        (note or root / NOTE_V03_PATH, NOTE_M4_RANGE, "note"),
+    ]
+
+
+def _render_m4_range(kind: str, m4: Mapping) -> str:
+    return render_m4(m4, "docs/" if kind == "readme" else "")
+
+
+def verify_m4(root: Path, readme: Path, *, note: Path | None = None) -> tuple[list[str], Mapping]:
+    """(불일치 목록, M4 입력). 보고서·manifest끼리의 대조와 README·v0.3 노트의 M4 구간을 본다.
+
+    `root`는 보고서·manifest·메타데이터를 읽는 곳(릴리스 asset 사본이면 그 사본)이다."""
+    documents = []
+    for path, markers, kind in m4_documents(
+        root, readme, note
+    ):  # 마커 오류는 입력을 읽기 전에 멈춘다
+        text = _read_readme(path)
+        documents.append((path, text, _split_readme(text, path.name, markers), kind))
+    m4 = load_m4(root)
+    problems = list(m4["problems"])
+    for path, text, (start, stop), kind in documents:
+        expected = _render_m4_range(kind, m4).strip()
+        if text[start:stop].strip() != expected:
+            shown = text[start:stop].strip().splitlines()
+            problems.append(
+                f"{path.name}: M4 generated range differs from recomputed tables "
+                f"({len(shown)} lines in file, {len(expected.splitlines())} expected)"
+            )
+            for number, (have, want) in enumerate(
+                zip(shown, expected.splitlines(), strict=False), 1
+            ):
+                if have != want:
+                    problems.append(f"  first difference at {path.name} range line {number}")
+                    break
+    return problems, m4
+
+
+def write_m4(root: Path, readme: Path, m4: Mapping, note: Path | None = None) -> None:
+    for path, markers, kind in m4_documents(root, readme, note):
+        text = _read_readme(path)
+        start, stop = _split_readme(text, path.name, markers)
+        path.write_text(
+            text[:start] + "\n\n" + _render_m4_range(kind, m4) + "\n" + text[stop:],
+            encoding="utf-8",
+        )
+
+
+def m4_active(root: Path, readme: Path) -> bool:
+    """`results/m4/`가 있거나 README가 M4 구간 마커를 갖고 있으면 M4를 검증한다(데이터가 사라져도 통과하지 않는다)."""
+    if (root / M4_DIR).is_dir():
+        return True
+    try:
+        return README_M4[0] in readme.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return False
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="README를 쓰지 않고 검증만 한다")
@@ -698,6 +1115,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--note", type=Path, help="v0.2 노트 경로(기본: <root>/docs/release-v0.2.md)"
     )
+    parser.add_argument(
+        "--note-v03",
+        type=Path,
+        help="v0.3 노트 경로(기본: <root>/docs/release-v0.3.md). M4가 켜졌을 때만 쓴다",
+    )
     return parser
 
 
@@ -707,12 +1129,18 @@ def main(argv: list[str] | None = None) -> int:
     readme = args.readme.resolve() if args.readme else root / "README.md"
     summary = args.summary.resolve() if args.summary else None
     note = args.note.resolve() if args.note else None
+    note_v03 = args.note_v03.resolve() if args.note_v03 else root / NOTE_V03_PATH
     try:
         problems, recomputed = verify(root, readme)
-        m3 = None
+        m3 = m4 = None
+        m4_on = m4_active(root, readme)
+        notes = [note or root / NOTE_V02_PATH, *([note_v03] if m4_on else [])]
         if m3_active(root, readme):
-            m3_problems, m3 = verify_m3(root, readme, summary=summary, note=note)
+            m3_problems, m3 = verify_m3(root, readme, summary=summary, notes=notes)
             problems += m3_problems
+        if m4_on:
+            m4_problems, m4 = verify_m4(root, readme, note=note_v03)
+            problems += m4_problems
         if args.check:
             if problems:
                 for problem in problems:
@@ -722,8 +1150,15 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 f"OK: {len(recomputed['runs'])} runs{extra}, metrics.json and README tables match"
             )
+            if m4 is not None:
+                facts = m4["facts"]
+                print(
+                    f"OK: M4 {facts['target']} target ids, {facts['ok']} ok, "
+                    f"{len(m4['idempotency']['steps'])} idempotency steps; "
+                    "reports, manifest, README and release-v0.3 ranges match"
+                )
             return 0
-        if any(p.startswith(("metrics.json", "results/experiments")) for p in problems):
+        if any(p.startswith(("metrics.json", "results/experiments", M4_PROBLEM)) for p in problems):
             for problem in problems:
                 print(f"MISMATCH {problem}", file=sys.stderr)
             print(
@@ -733,7 +1168,9 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         write_readme(readme, recomputed)
         if m3 is not None:
-            write_m3(root, readme, m3, summary, note)
+            write_m3(root, readme, m3, summary, notes=notes)
+        if m4 is not None:
+            write_m4(root, readme, m4, note_v03)
         print(f"README tables updated ({len(recomputed['runs'])} runs)")
         return 0
     except CheckError as error:
