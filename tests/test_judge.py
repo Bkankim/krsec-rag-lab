@@ -156,6 +156,19 @@ def test_interpret_answer_flags_unusable_responses(raw):
     assert judge.interpret_answer(raw, [notice()]) == {"valid": False, "docs": {}}
 
 
+@pytest.mark.parametrize(
+    ("relevance", "code", "quote"),
+    [(RELEVANT, "cve_absent", QUOTE), (NOT_RELEVANT, "cve_discussed", "")],
+)
+def test_interpret_answer_rejects_a_reason_code_from_the_other_relevance_side(
+    relevance, code, quote
+):
+    result = judge.interpret_answer(
+        answer(entry(relevance=relevance, code=code, quote=quote)), [notice()]
+    )
+    assert result == {"valid": True, "docs": {}}
+
+
 def test_interpret_answer_ignores_unknown_docs_bad_codes_and_repeats():
     raw = answer(
         entry(doc_id="9"),
@@ -319,9 +332,30 @@ def test_count_calls_separates_judge_retry_and_generation_calls():
     assert counts["total"] == 2
     assert counts["by_kind"] == [
         {"kind": "judge", "judge": "A", "n": 1},
+        {"kind": "judge", "judge": "B", "n": 0},  # 0회인 kind도 0으로 적는다
+        {"kind": "question_generation", "judge": "A", "n": 0},
         {"kind": "retry", "judge": "A", "n": 1},
+        {"kind": "retry", "judge": "B", "n": 0},
     ]
     assert counts["first_at"] <= counts["last_at"]
+
+
+def test_count_calls_leaves_out_stale_entries_that_this_run_did_not_use(tmp_path):
+    stale = CallCache(tmp_path / "cache")
+    run_bundle(
+        FakeJudge("A", responder_from(answer(entry(), entry("2", NOT_RELEVANT, "cve_absent", "")))),
+        cache=stale,
+    )
+    # 다른 실행(지시문이나 입력이 달랐던)이 남긴 항목이 같은 디렉터리에 있다
+    current = CallCache(tmp_path / "cache")
+    run_bundle(
+        FakeJudge("B", responder_from(answer(entry(), entry("2", NOT_RELEVANT, "cve_absent", "")))),
+        cache=current,
+    )
+    assert judge.count_calls(current)["total"] == 2  # 키를 안 주면 디렉터리 전체
+    mine = judge.count_calls(current, current.touched)
+    assert mine["total"] == 1
+    assert [c for c in mine["by_kind"] if c["n"]] == [{"kind": "judge", "judge": "B", "n": 1}]
 
 
 # ------------------------------------------------------------ 일치 규칙
@@ -544,6 +578,12 @@ def test_copies_body_catches_a_whole_sentence_shorter_than_the_overlap_window():
     assert not judge.copies_body("패치 적용 시점이 언제까지인가요?", body)
 
 
+def test_copies_body_counts_fifteen_characters_with_their_spaces():
+    # 공백을 걷으면 13자지만 공백을 포함하면 16자인 연속 겹침
+    body = "관리자 페이지의 인증 우회 취약점이 발견되었다."
+    assert judge.copies_body("관리자 페이지의 인증 우회 취약점 아닌가요?", body)
+
+
 def test_copies_body_boundary_is_fifteen_characters():
     body = "가나다라마바사아자차카타파하거너더러머버서어저처커터퍼허"
     assert judge.copies_body("가나다라마바사아자차카타파하거", body)  # 15자
@@ -730,3 +770,46 @@ def test_answer_schema_lists_exactly_the_fixed_reason_codes():
     assert items["properties"]["reason_code"]["enum"] == list(judge.REASON_CODE_NAMES)
     assert set(items["required"]) == set(items["properties"])
     assert len(set(judge.REASON_CODE_NAMES)) == len(judge.REASON_CODES)
+
+
+# ------------------------------------------------------------ 판정자 실패 메시지에 응답 텍스트 금지
+
+
+class Done:
+    def __init__(self, stdout="", stderr="", returncode=1):
+        self.stdout, self.stderr, self.returncode = stdout, stderr, returncode
+
+
+SECRET = "공지 본문 인용 문장 SECRET-QUOTE-123"
+
+
+@pytest.mark.parametrize(
+    ("judge_obj", "done"),
+    [
+        (judge.ClaudeJudge(), Done(stdout=json.dumps({"is_error": True, "result": SECRET}))),
+        (judge.ClaudeJudge(), Done(stdout=SECRET)),
+        (judge.ClaudeJudge(), Done(stdout="not json", stderr=SECRET)),
+        (judge.CodexJudge(), Done(stdout=json.dumps({"type": "error", "message": SECRET}))),
+        (judge.CodexJudge(), Done(stdout="", stderr=SECRET)),
+        (judge.CodexJudge(), Done(stdout=json.dumps({"type": "turn.failed", "error": SECRET}))),
+    ],
+)
+def test_judge_failure_messages_never_carry_response_or_stderr_text(monkeypatch, judge_obj, done):
+    monkeypatch.setattr(judge, "_run_isolated", lambda *_a, **_k: done)
+    with pytest.raises(judge.JudgeError) as caught:
+        judge_obj.ask("INSTRUCTION", "{}", judge.ANSWER_SCHEMA)
+    message = str(caught.value)
+    assert "SECRET-QUOTE" not in message and "공지 본문" not in message
+    assert "exit 1" in message and "chars" in message
+
+
+def test_a_usage_limit_failure_keeps_only_the_retry_time(monkeypatch):
+    text = "You hit your usage limit. " + SECRET + " try again at 8:38 PM."
+    monkeypatch.setattr(
+        judge,
+        "_run_isolated",
+        lambda *_a, **_k: Done(stdout=json.dumps({"type": "error", "message": text})),
+    )
+    with pytest.raises(judge.JudgeUnavailable) as caught:
+        judge.CodexJudge().ask("INSTRUCTION", "{}", judge.ANSWER_SCHEMA)
+    assert str(caught.value) == "codex exit 1: usage limit, try again at 8:38 PM"

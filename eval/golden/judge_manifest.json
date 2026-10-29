@@ -22,6 +22,16 @@
         "judge": "A",
         "kind": "question_generation",
         "n": 36
+      },
+      {
+        "judge": "A",
+        "kind": "retry",
+        "n": 0
+      },
+      {
+        "judge": "B",
+        "kind": "retry",
+        "n": 0
       }
     ],
     "by_task": [

@@ -72,6 +72,7 @@ REASON_CODES = (
     ),
 )
 REASON_CODE_NAMES = tuple(code for _label, code, _meaning in REASON_CODES)
+CODE_RELEVANCE = {code: label for label, code, _meaning in REASON_CODES}
 
 _CODE_LINES = "\n".join(f"  - {code}: {meaning}" for _label, code, meaning in REASON_CODES)
 
@@ -275,6 +276,7 @@ def interpret_answer(raw: str, notices: Sequence[NoticeText]) -> dict:
             or doc_id in docs
             or relevance not in (RELEVANT, NOT_RELEVANT)
             or code not in REASON_CODE_NAMES
+            or CODE_RELEVANCE[code] != relevance  # relevant에 not_relevant 코드(또는 반대)는 무효
         ):
             continue
         evidence: list[list[int]] | None = []
@@ -307,15 +309,26 @@ class Judge:
 
 
 _LIMIT_RE = re.compile(
-    r"usage limit|rate.?limit|quota|limit reached|too many requests|credit", re.IGNORECASE
+    r"usage limit|rate.?limit|quota|limit reached|too many requests", re.IGNORECASE
 )
 
 
+_RETRY_HINT_RE = re.compile(r"try again at ([0-9:]+ ?[AP]M)")
+
+
 def _failure(prefix: str, detail: str) -> JudgeError:
-    detail = " ".join(detail.split())[:200]
-    if _LIMIT_RE.search(detail):
-        return JudgeUnavailable(f"{prefix}: {detail}")
-    return JudgeError(f"{prefix}: {detail}")
+    """실패 예외. 응답·stderr 텍스트는 분류에만 쓰고 메시지에 넣지 않는다.
+
+    모델 응답에는 공지 본문 인용이 들어 있을 수 있어서, 예외 문자열(stderr, 로그)에는 길이와 분류만 남긴다.
+    사용량 한도면 메시지에서 재시도 시각 하나만 옮긴다.
+    """
+    text = " ".join(detail.split())
+    if _LIMIT_RE.search(text):
+        hint = _RETRY_HINT_RE.search(text)
+        return JudgeUnavailable(
+            f"{prefix}: usage limit" + (f", try again at {hint.group(1)}" if hint else "")
+        )
+    return JudgeError(f"{prefix}: error response omitted ({len(text)} chars)")
 
 
 def _run_isolated(command: Sequence[str], payload: str, cwd_parent: Path | None = None):
@@ -511,6 +524,7 @@ class CallCache:
     def __init__(self, directory: Path | None = None):
         self.directory = directory
         self._memory: dict[str, dict] = {}
+        self.touched: set[str] = set()  # 이 실행이 읽거나 쓴 키(호출 수는 이 키만 센다)
         self._lock = threading.Lock()
         if directory is not None:
             directory.mkdir(parents=True, exist_ok=True)
@@ -524,6 +538,7 @@ class CallCache:
     def get(self, key: str) -> dict | None:
         with self._lock:
             if key in self._memory:
+                self.touched.add(key)
                 return self._memory[key]
         if self.directory is not None:
             path = self.directory / f"{key}.json"
@@ -531,25 +546,32 @@ class CallCache:
                 entry = json.loads(path.read_text(encoding="utf-8"))
                 with self._lock:
                     self._memory[key] = entry
+                    self.touched.add(key)
                 return entry
         return None
 
     def put(self, key: str, entry: dict) -> None:
         with self._lock:
             self._memory[key] = entry
+            self.touched.add(key)
         if self.directory is not None:
             path = self.directory / f"{key}.json"
             tmp = path.with_suffix(".tmp")
             tmp.write_text(json.dumps(entry, ensure_ascii=False, sort_keys=True), encoding="utf-8")
             os.replace(tmp, path)
 
-    def entries(self) -> list[dict]:
+    def entries(self, keys: Iterable[str] | None = None) -> list[dict]:
+        """저장된 항목. keys를 주면 그 키의 항목만(디렉터리에 남은 이전 실행의 항목은 뺀다)."""
+        wanted = None if keys is None else set(keys)
         if self.directory is None:
-            return list(self._memory.values())
-        return [
-            json.loads(path.read_text(encoding="utf-8"))
-            for path in sorted(self.directory.glob("*.json"))
-        ]
+            found = {k: v for k, v in self._memory.items() if wanted is None or k in wanted}
+        else:
+            found = {
+                path.stem: json.loads(path.read_text(encoding="utf-8"))
+                for path in sorted(self.directory.glob("*.json"))
+                if wanted is None or path.stem in wanted
+            }
+        return [found[k] for k in sorted(found)]
 
 
 def _now() -> str:
@@ -587,12 +609,18 @@ def cached_call(
     return result
 
 
-def count_calls(cache: CallCache) -> dict:
-    """캐시 항목에서 실제 호출 수를 센다: kind별(+판정자별, task별)."""
+def count_calls(cache: CallCache, keys: Iterable[str] | None = None) -> dict:
+    """캐시 항목에서 실제 호출 수를 센다: kind별(+판정자별, task별). 0회인 kind도 0으로 적는다.
+
+    keys를 주면 그 키의 항목만 센다(같은 캐시 디렉터리에 남은 이전 실행의 항목은 이번 산출물의 호출이 아니다).
+    """
     by_kind: dict[tuple[str, str], int] = defaultdict(int)
+    for name in JUDGE_NAMES:
+        by_kind[("judge", name)] = by_kind[("retry", name)] = 0
+    by_kind[("question_generation", "A")] = 0
     by_task: dict[tuple[str, str], int] = defaultdict(int)
     times = []
-    for entry in cache.entries():
+    for entry in cache.entries(keys):
         by_kind[(entry["kind"], entry["judge"])] += 1
         by_task[(entry["task"], entry["judge"])] += 1
         times.append(entry["created_at"])
@@ -823,12 +851,14 @@ def _squash(text: str) -> str:
 def copies_body(query: str, body: str, *, window: int = COPY_WINDOW_CHARS) -> bool:
     """질문이 본문을 베꼈는가: 15자 이상 연속으로 겹치거나 본문 문장 하나를 통째로 담으면 True.
 
-    공백 차이는 무시한다(공백을 모두 걷고 비교).
+    공백 차이는 무시한다: 공백을 모두 걷은 글자 기준과 공백을 한 칸으로 접은 글자 기준 둘 다 본다
+    (걷은 기준만 보면 공백이 든 16자 겹침이 13자로 줄어 놓친다).
     """
     squashed_query, squashed_body = _squash(query), _squash(body)
-    if len(squashed_query) >= window:
-        for start in range(len(squashed_query) - window + 1):
-            if squashed_query[start : start + window] in squashed_body:
+    folded_query, folded_body = " ".join(query.split()), " ".join(body.split())
+    for left, right in ((squashed_query, squashed_body), (folded_query, folded_body)):
+        for start in range(len(left) - window + 1):
+            if left[start : start + window] in right:
                 return True
     for sentence in re.split(r"[.!?\n]+", body):
         sentence = _squash(sentence)

@@ -5,6 +5,7 @@ import importlib.util
 import json
 import re
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -462,8 +463,8 @@ def test_build_retries_unfindable_quotes_once_and_counts_the_calls(tmp_path):
     code, records = run_build(ctx)
     assert code == 0
     manifest = json.loads((ctx.root / golden.JUDGE_MANIFEST_FILE).read_text(encoding="utf-8"))
-    retries = [c for c in manifest["calls"]["by_kind"] if c["kind"] == "retry"]
-    assert retries and all(c["judge"] == "A" for c in retries)
+    retries = {c["judge"]: c["n"] for c in manifest["calls"]["by_kind"] if c["kind"] == "retry"}
+    assert retries["A"] > 0 and retries["B"] == 0
     rows = read_jsonl(ctx.root / golden.JUDGMENTS_A_FILE)
     relevant_rows = [r for r in rows if r["doc_id"] == victim_doc and r["relevance"] == "relevant"]
     assert relevant_rows and {r["status"] for r in relevant_rows} == {"no_evidence"}
@@ -622,3 +623,54 @@ def test_kisa_body_loader_reads_only_the_given_root_and_checks_the_hash(tmp_path
 def test_cli_requires_a_kisa_root_when_no_context_is_given():
     with pytest.raises(SystemExit):
         jg.main(["sample"])
+
+
+def test_no_answer_record_lists_the_truncated_docs_as_unjudged(tmp_path):
+    ctx = make_context(tmp_path)
+    ctx.load_body = lambda ntt_id: (
+        "긴 본문 채움 문장이다. " * 3000
+    )  # 20,000자 상한을 넘겨 모두 잘린다
+    records, _, _, stats = jg.run_no_answer(ctx, set())
+    assert stats["accepted"] == 10
+    for record in records:
+        assert record["answers"] == [] and len(record["unjudged"]) == jg.NO_ANSWER_DOCS
+
+
+def test_manifest_counts_only_the_calls_behind_these_outputs_not_stale_cache_entries(tmp_path):
+    ctx = make_context(tmp_path)
+    stale = judge.FakeJudge("A", lambda _i, _p: "x")
+    ctx.cache.put(
+        ctx.cache.key(stale, "old instruction", "old payload"),
+        {
+            "kind": "judge",
+            "task": "old",
+            "judge": "A",
+            "model": "fake",
+            "created_at": "2020-01-01T00:00:00Z",
+            "result": {},
+        },
+    )
+    assert jg.main(["sample"], context=ctx) == 0
+    manifest = json.loads((ctx.root / golden.JUDGE_MANIFEST_FILE).read_text(encoding="utf-8"))
+    assert manifest["calls"]["total"] == len(ctx.cache.entries()) - 1
+    assert manifest["judged_at"]["first"] > "2020-01-02"
+    assert [c["n"] for c in manifest["calls"]["by_kind"] if c["kind"] == "retry"] == [0, 0]
+
+
+def test_run_parallel_raises_the_usage_limit_even_when_an_earlier_item_failed_otherwise():
+    def work(item):
+        if item == 0:
+            time.sleep(0.2)  # 먼저 제출됐지만 늦게 다른 이유로 실패한다
+            raise judge.JudgeError("timeout")
+        if item == 1:
+            raise judge.JudgeUnavailable("usage limit reached")
+        return item
+
+    with pytest.raises(judge.JudgeUnavailable):
+        jg.run_parallel(work, [0, 1, 2], jobs=3)
+
+
+def test_run_parallel_keeps_the_input_order_and_the_first_error_otherwise():
+    assert jg.run_parallel(lambda x: x * 2, [3, 1, 2], jobs=3) == [6, 2, 4]
+    with pytest.raises(ValueError, match="first"):
+        jg.run_parallel(lambda x: (_ for _ in ()).throw(ValueError("first")), [1, 2], jobs=2)

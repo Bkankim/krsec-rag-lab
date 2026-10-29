@@ -382,6 +382,9 @@ def test_golden_records_are_exactly_what_the_two_judges_agreed_on():
                 for r in resolutions.values()
             )
             assert record["answers"] == [] and record["excluded"] is False
+            assert set(record["unjudged"]) == {
+                d for d, r in resolutions.items() if r.outcome == judge.UNJUDGED
+            }
             continue
         gold = {d for d, r in resolutions.items() if r.outcome == judge.GOLD}
         assert {a["doc_id"] for a in record["answers"]} == gold

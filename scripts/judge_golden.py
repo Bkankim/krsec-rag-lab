@@ -106,23 +106,27 @@ class Context:
 
 
 def run_parallel(fn: Callable, items: Sequence, jobs: int) -> list:
-    """items를 jobs개씩 병렬로 처리한다. 하나라도 실패하면 대기 중인 항목을 취소하고 첫 예외를 던진다."""
+    """items를 jobs개씩 병렬로 처리한다. 하나라도 실패하면 대기 중인 항목을 취소하고 예외를 던진다.
+
+    사용량 한도(JudgeUnavailable)는 다른 실패보다 먼저 던진다: 제출 순서가 앞선 항목의 시간 초과가 한도 중단을 가리면
+    종료 코드 3과 한도 기록이 사라진다.
+    """
     if jobs <= 1 or len(items) <= 1:
         return [fn(item) for item in items]
     with ThreadPoolExecutor(max_workers=jobs) as pool:
         futures = [pool.submit(fn, item) for item in items]
         results = []
-        failure: BaseException | None = None
+        failures: list[BaseException] = []
         for future in futures:
             try:
                 results.append(future.result())
-            except BaseException as exc:  # noqa: BLE001 - 첫 예외를 모아서 다시 던진다
-                if failure is None:
-                    failure = exc
+            except BaseException as exc:  # noqa: BLE001 - 모아서 우선순위대로 다시 던진다
+                if not failures:
                     for pending in futures:
                         pending.cancel()
-        if failure is not None:
-            raise failure
+                failures.append(exc)
+        if failures:
+            raise next((f for f in failures if isinstance(f, judge.JudgeUnavailable)), failures[0])
         return results
 
 
@@ -228,6 +232,7 @@ def read_state(ctx: Context, name: str) -> dict | None:
 
 def run_sample(ctx: Context) -> dict:
     """#27 표본 쌍을 판정해 오라벨률·누락률·kappa를 계산한다."""
+    ctx.cache.touched.clear()
     pairs = read_jsonl(ctx.root / golden.PAIRS_FILE)
     candidate_manifest = json.loads((ctx.root / golden.MANIFEST_FILE).read_text(encoding="utf-8"))
     by_question: dict[str, list[dict]] = defaultdict(list)
@@ -258,6 +263,7 @@ def run_sample(ctx: Context) -> dict:
         "rates": rates,
         "strata": strata,
         "seed": candidate_manifest["seed"],
+        "call_keys": sorted(ctx.cache.touched),
     }
     write_state(ctx, "sample", state)
     return state
@@ -606,7 +612,7 @@ def run_no_answer(
                         "cve_ids": [bundle.cve_id],
                         "surface_cve": True,
                         "answers": [],
-                        "unjudged": [],
+                        "unjudged": [r.doc_id for r in resolutions if r.outcome == judge.UNJUDGED],
                         "excluded": False,
                         "no_answer_reason": NO_ANSWER_REASON,
                     }
@@ -620,6 +626,7 @@ def run_no_answer(
 def run_build(
     ctx: Context, *, cve_count: int = CVE_TARGET, per_type: int = PER_TYPE_TARGET
 ) -> dict:
+    ctx.cache.touched.clear()
     non_records, non_bundles, non_judged, provenance, gen_stats = run_non_cve(ctx, per_type)
     corpus_cves, corpus_digest = corpus_cve_ids(ctx)
     na_records, na_bundles, na_judged, na_stats = run_no_answer(ctx, corpus_cves)
@@ -649,6 +656,7 @@ def run_build(
     scored = [r for r in records if not r["excluded"]]
     state = {
         "records": records,
+        "call_keys": sorted(ctx.cache.touched),
         "rows": rows_of(judged),
         "tasks": tasks,
         "provenance": provenance,
@@ -718,7 +726,14 @@ def agreement_output(sample: Mapping | None, build: Mapping | None) -> dict:
 
 
 def manifest_output(ctx: Context, sample: Mapping | None, build: Mapping | None) -> dict:
-    calls = judge.count_calls(ctx.cache)
+    states = [s for s in (sample, build) if s]
+    # 이번 산출물을 만든 호출만 센다(캐시 디렉터리에 남은 이전 실행의 항목 제외). 키 기록이 없는 상태면 전부 센다
+    keys = (
+        set().union(*(s["call_keys"] for s in states))
+        if states and all("call_keys" in s for s in states)
+        else None
+    )
+    calls = judge.count_calls(ctx.cache, keys)
     events = read_limit_events(ctx)
     n_generation = sum(c["n"] for c in calls["by_kind"] if c["kind"] == "question_generation")
     inputs = [
