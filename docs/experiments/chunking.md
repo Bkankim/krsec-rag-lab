@@ -33,7 +33,7 @@ uv sync --locked --dev
 uv run python scripts/run_experiment.py --exp chunking --compare   # 모델·KISA 캐시 없이 저장본에서 metrics·comparison을 다시 계산해 대조(불일치 exit 1)
 ```
 
-산출물: `results/experiments/chunking/kisa/chunk_max.jsonl`, `manifest.json`, `metrics.json`, `comparison.json`. test 설정 해시는 manifest의 `runs["kisa/chunk_max"].test.config_hash`다. 청크 순위 파일은 저장하지 않는다. 이 문서의 4.3절 청크 단위 값과 4.6절 색인 시간은 모델 실행 때의 관측값으로 manifest의 `description`에만 있고 `--compare`가 다시 계산하지 않는다(문서 단위 지표와 판정만 다시 계산한다). 이 실험의 dev 전용 실행을 빈 `--out-dir`에 한 번 먼저 돌렸고(저장하지 않는 확인용), 그 격자 값이 아래 4.1절과 같았다.
+산출물: `results/experiments/chunking/kisa/chunk_max.jsonl`, `manifest.json`, `metrics.json`, `comparison.json`. test 설정 해시는 manifest의 `runs["kisa/chunk_max"].test.config_hash`다. 청크 순위 파일은 저장하지 않는다. 이 문서의 4.7절 청크 단위 hit@10과 색인 시간은 모델 실행 때의 관측값으로 manifest의 `description`에만 있고 `--compare`가 다시 계산하지 않는다(문서 단위 지표와 판정만 다시 계산한다). 이 실험의 dev 전용 실행을 빈 `--out-dir`에 한 번 먼저 돌렸고(저장하지 않는 확인용), 그 격자 값이 아래 4.1절과 같았다.
 
 ## 4. 결과
 
@@ -114,7 +114,7 @@ no_answer 질문은 6건뿐이라 기권율의 한 칸이 0.1667이다.
 | 청크 인코딩 1024/0, 1024/128 | 77.17, 100.69 |
 | 토큰화·청크 경계(`timing.index_seconds`) | 3.94 |
 
-청크 인코딩 시간은 설정마다 모델을 새로 올려 코퍼스를 한 번 인코딩한 값이다(`description.dense.doc_encode_seconds_by_config`). 질의 지연 중앙값은 기준선 0.0452초, 청크 0.0962초(참고값, 병렬 간섭이 섞였다).
+청크 인코딩 시간은 설정마다 모델을 새로 올려 코퍼스를 한 번 인코딩한 값이다(`description.dense.doc_encode_seconds_by_config`). `comparison.json`의 `timing.experiment.index_seconds`(3.94)는 dense 인코딩이 점수를 낼 때 설정별로 이뤄져 토큰화·청크 경계 시간만 담으므로 기준선의 56.58초와 같은 기준이 아니다. 색인 비용 비교는 위 표의 청크 인코딩 시간을 쓴다. 질의 지연 중앙값은 기준선 0.0452초, 청크 0.0962초(참고값, 병렬 간섭이 섞였다).
 
 ## 5. 판정
 
@@ -156,6 +156,6 @@ no_answer 질문은 6건뿐이라 기권율의 한 칸이 0.1667이다.
 - dev 정답 질문이 19건이라 6개 격자 사이의 차이는 질문 한두 개 수준이다. 선택은 규칙대로 했지만 이 격자 안의 설정 사이에서 test 결과가 안정적이라고 확인한 것은 아니고, test는 선택한 설정 하나만 돌았다.
 - 첫 정답 순위는 저장된 상위 100건 안의 순위다. 이번 비교의 모든 정답이 100위 안에 있었다.
 - 청크 크기는 토큰화 한 번의 토큰 수 기준이고 청크 텍스트를 다시 인코딩할 때 특수 토큰이 더해져 모델이 보는 길이는 크기 + 2 안팎이다. 제목은 첫 청크에만 있다. 청크 점수 합산은 최댓값 하나만 측정했고(합산 방식 비교, BM25 청킹, 문장·구조 기반 청킹, 파서 개선은 범위 밖), 청크 크기 격자는 6개다.
-- 청크 단위 hit@10과 색인 시간은 모델 실행 때의 관측값이라 `--compare`가 다시 계산하지 않는다. 기본 경로에 `--split dev`를 다시 돌리면 manifest `description`이 그 실행의 관측(dev만)으로 다시 쓰여 test 청크 hit@10이 빠진다. 그래서 확인용 재실행은 빈 `--out-dir`에서 한다.
-- 시간 수치는 같은 맥에서 다른 실험과 병렬로 돌았을 수 있어 참고값이다. dense 인덱스는 설정마다 새로 만들고(한 번에 하나만 메모리에 둔다) 선택된 설정은 test를 위해 한 번 더 만들었다. 같은 모델·시드·배치라 결과는 같다.
+- 청크 단위 hit@10과 색인 시간은 모델 실행 때의 관측값이라 `--compare`가 다시 계산하지 않는다. 기본 경로에 `--split dev`를 다시 돌리면 manifest `description`이 그 실행의 관측(dev만)으로 다시 쓰여 test 청크 hit@10이 빠지고, 같은 해시의 `--split test` 재실행(잠금 해시가 같아 허용된다)은 `description`이 확정 설정의 test 순위만으로 다시 쓰여 격자의 다른 설정과 확정 설정(1024/128)의 dev 청크 hit@10이 모두 빠지고 인코딩 시간도 확정 설정 것만 남는다. 그래서 확인용 재실행은 빈 `--out-dir`에서 한다.
+- 시간 수치는 같은 맥에서 다른 실험과 병렬로 돌았을 수 있어 참고값이다. dense 인덱스는 설정마다 새로 만들고(한 번에 하나만 메모리에 둔다) 마지막 격자 설정(1024/128)이 선택돼 test도 dev에서 만든 같은 인덱스로 돌았다(선택된 설정이 마지막이 아니면 test를 위해 한 번 더 만들며, 같은 모델·시드·배치라 결과는 같을 것으로 기대하지만 이번 실행에서는 관측하지 않았다).
 - 이 결과는 "고정 길이 토큰 청크 + bge-m3 dense + 최댓값 집계" 하나에만 해당한다.
