@@ -86,6 +86,8 @@ def query(query_id, split, gold=(), text="", vendor_product=None):
         ("cpe:2.3:a:microsoft:azure\\/msal-node:1.0:*:*:*:*:*:*:*", "microsoft:azure\\/msal-node"),
         # 이스케이프된 콜론은 필드 구분자가 아니다
         ("cpe:2.3:a:vend\\:or:prod:1.0:*:*:*:*:*:*:*", "vend\\:or:prod"),
+        # 이스케이프된 역슬래시 뒤의 ':'는 구분자다
+        ("cpe:2.3:a:foo\\\\:bar:1.0:*:*:*:*:*:*:*", "foo\\\\:bar"),
     ],
 )
 def test_cpe_vendor_product_extracts_raw_fields(criteria, expected):
@@ -152,7 +154,8 @@ def test_committed_answers_match_recomputed_rules(committed_queries, records):
         elif q["query_type"] == "product_symptom":
             assert found == []
             gold, unjudged = expected_product_gold_unjudged(records, q["vendor_product"])
-            assert q["vendor_product"] in q["query"]
+            assert public_eval.readable_vendor_product(q["vendor_product"]) in q["query"]
+            assert "\\" not in q["query"]
             assert gold  # 뽑은 제품은 gold가 비지 않는다
             assert q["gold"] == gold
             assert q["unjudged"] == unjudged
@@ -437,3 +440,64 @@ def test_main_writes_files_with_same_hashes(tmp_path):
     assert first == second
     for name in (QUERIES_FILE, MANIFEST_FILE):
         assert first[name] == hashlib.sha256((PUBLIC_DIR / name).read_bytes()).hexdigest()
+
+
+# --- 리뷰 반영(C2, C4, C7) ---------------------------------------------------------------------
+
+
+def test_no_answer_ids_skip_cve_ids_cited_in_descriptions(monkeypatch):
+    import random
+
+    cited = {"description_en": "Similar to CVE-2026-1000 and CVE-2026-1001."}
+    assert public_eval.cited_cve_ids([cited, {"description_en": ""}]) == {
+        "CVE-2026-1000",
+        "CVE-2026-1001",
+    }
+    # 후보 번호 범위를 인용된 두 ID로 좁혀, 제외 규칙이 없으면 반드시 걸리게 한다
+    monkeypatch.setattr(public_eval, "NO_ANSWER_YEARS", (2026,))
+    monkeypatch.setattr(
+        random.Random, "randint", lambda self, a, b: self.choice([1000, 1001, 1002])
+    )
+    ids = public_eval._no_answer_ids(
+        random.Random(0), {"CVE-2026-1002"} | public_eval.cited_cve_ids([cited]), 0
+    )
+    assert ids == []
+    found = public_eval._no_answer_ids(random.Random(0), public_eval.cited_cve_ids([cited]), 1)
+    assert found == ["CVE-2026-1002"]
+
+
+def test_committed_no_answer_ids_are_not_cited_in_any_description(committed_queries, records):
+    cited = public_eval.cited_cve_ids(records)
+    assert cited
+    no_answer = [q for q in committed_queries if q["query_type"] == "no_answer"]
+    assert no_answer
+    for q in no_answer:
+        assert not set(extract_cve_ids(q["query"])) & cited
+
+
+@pytest.mark.parametrize(
+    ("raw", "readable"),
+    [
+        ("microsoft:azure\\/msal-node", "microsoft:azure/msal-node"),
+        ("cisco:ios_xr", "cisco:ios_xr"),
+        ("foo\\\\:bar", "foo\\:bar"),
+    ],
+)
+def test_readable_vendor_product_unescapes_cpe(raw, readable):
+    assert public_eval.readable_vendor_product(raw) == readable
+
+
+def test_escaped_product_question_is_readable_but_key_stays_raw(committed_queries):
+    escaped = [q for q in committed_queries if q["vendor_product"] == "microsoft:azure\\/msal-node"]
+    assert len(escaped) == 1
+    assert "microsoft:azure/msal-node" in escaped[0]["query"]
+    assert "\\" not in escaped[0]["query"]
+
+
+def test_main_output_has_lf_only_bytes(tmp_path):
+    fixture_dir = tmp_path / "fixtures" / "nvd"
+    fixture_dir.mkdir(parents=True)
+    (fixture_dir / "cves.jsonl").write_bytes(FIXTURE.read_bytes())
+    assert public_eval.main(["--root", str(tmp_path)]) == 0
+    for name in (QUERIES_FILE, MANIFEST_FILE):
+        assert b"\r" not in (tmp_path / "eval/public" / name).read_bytes()

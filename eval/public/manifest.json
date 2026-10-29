@@ -79,7 +79,7 @@
     "vendor_product"
   ],
   "query_file": "eval/public/queries.jsonl",
-  "query_file_sha256": "86badfd84077a75f2ac91a08f7400bdf35dbaa4d989ca1e9185a0f357c545eda",
+  "query_file_sha256": "1d8ab42360e3cee23e8d67bc933e5af7ec6a8365eb32d315105233016d294a99",
   "seed": 35,
   "seed_used": 35,
   "split_rules": {

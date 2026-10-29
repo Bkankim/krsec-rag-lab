@@ -62,7 +62,6 @@ PRODUCT_TEMPLATES = (
 )
 
 CPE_FIELD_COUNT = 13
-_UNESCAPED_COLON = re.compile(r"(?<!\\):")
 
 
 class ProductShortageError(ValueError):
@@ -80,6 +79,24 @@ class PublicSplitLeakError(AssertionError):
         )
 
 
+def _split_cpe_fields(criteria: str) -> list[str]:
+    """이스케이프되지 않은 ':'로 나눈다. 역슬래시는 바로 뒤 한 글자를 이스케이프한다."""
+    fields: list[str] = []
+    current: list[str] = []
+    chars = iter(criteria)
+    for char in chars:
+        if char == "\\":
+            current.append(char)
+            current.extend(next(chars, ""))
+        elif char == ":":
+            fields.append("".join(current))
+            current = []
+        else:
+            current.append(char)
+    fields.append("".join(current))
+    return fields
+
+
 def cpe_vendor_product(criteria: str) -> str:
     """CPE 2.3 형식 문자열에서 `vendor:product`를 뽑는다.
 
@@ -87,7 +104,7 @@ def cpe_vendor_product(criteria: str) -> str:
     원문 그대로 이어 붙인다(소문자·역슬래시 이스케이프 포함, 정규화하지 않는다). vendor나 product가 `*`·`-`이면
     제품을 특정할 수 없으므로 거부한다.
     """
-    fields = _UNESCAPED_COLON.split(criteria)
+    fields = _split_cpe_fields(criteria)
     if len(fields) != CPE_FIELD_COUNT or fields[0] != "cpe" or fields[1] != "2.3":
         raise ValueError(f"not a CPE 2.3 formatted string: {criteria!r}")
     vendor, product = fields[3], fields[4]
@@ -266,6 +283,19 @@ def assert_public_split(queries: Sequence[Mapping], records: Sequence[Mapping]) 
     assert_disjoint(items, notices)
 
 
+def cited_cve_ids(records: Iterable[Mapping]) -> set[str]:
+    """레코드 설명(description_en)이 본문에서 인용한 CVE ID 집합. no_answer 후보에서 뺀다."""
+    cited: set[str] = set()
+    for record in records:
+        cited.update(extract_cve_ids(record.get("description_en", "")))
+    return cited
+
+
+def readable_vendor_product(vendor_product: str) -> str:
+    """CPE 이스케이프(역슬래시 + 문자)를 풀어 질문 문장에 넣을 사람이 읽는 형태로 만든다."""
+    return re.sub(r"\\(.)", r"\1", vendor_product)
+
+
 def _no_answer_ids(rng: random.Random, corpus_ids: set[str], count: int) -> list[str]:
     found: list[str] = []
     while len(found) < count:
@@ -314,7 +344,9 @@ def _draw(
         row = append("cve_explicit", number, template.format(cve=record_id), [record_id], [], None)
         components.add(query_keys(row))
 
-    for number, cve_id in enumerate(_no_answer_ids(rng, corpus_ids, N_NO_ANSWER), start=1):
+    for number, cve_id in enumerate(
+        _no_answer_ids(rng, corpus_ids | cited_cve_ids(records), N_NO_ANSWER), start=1
+    ):
         template = rng.choice(CVE_TEMPLATES)
         row = append("no_answer", number, template.format(cve=cve_id), [], [], None)
         components.add(query_keys(row))
@@ -336,7 +368,7 @@ def _draw(
         row = append(
             "product_symptom",
             accepted,
-            template.format(vendor_product=vendor_product),
+            template.format(vendor_product=readable_vendor_product(vendor_product)),
             gold,
             product_unjudged(records, vendor_product),
             vendor_product,
@@ -539,8 +571,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     out_dir = args.root / OUT_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
     for name, text in files.items():
-        (out_dir / name).write_text(text, encoding="utf-8")
-        print(f"{OUT_DIR}/{name} sha256={hashlib.sha256(text.encode('utf-8')).hexdigest()}")
+        # 텍스트 모드는 Windows에서 LF를 CRLF로 바꿔 파일 바이트가 manifest의 sha256과 어긋난다
+        data = text.encode("utf-8")
+        (out_dir / name).write_bytes(data)
+        print(f"{OUT_DIR}/{name} sha256={hashlib.sha256(data).hexdigest()}")
     return 0
 
 
