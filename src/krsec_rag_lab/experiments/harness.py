@@ -372,7 +372,8 @@ def run_experiment(
         exp_records=None,
         base_records=read_baseline_records(root, track, baseline),
     )
-    for variant in selected_variants:
+    # 모든 변형을 메모리에서 먼저 끝낸다: 뒤쪽 변형이 잠금 위반으로 실패해도 앞쪽 변형의 test가 저장되지 않는다
+    pending = [
         _run_variant(
             module,
             track,
@@ -385,8 +386,59 @@ def run_experiment(
             baselines_manifest=baselines_manifest,
             dense_factory=dense_factory,
         )
-        write_outputs(module, root, out_dir)
+        for variant in selected_variants
+    ]
+    _commit(module, root, out_dir, pending)
     return _read_json(exp_dir(root, out_dir, name) / "comparison.json")
+
+
+@dataclass
+class Pending:
+    """한 변형의 쓸 내용. `_commit`이 파일에 쓰기 전까지 디스크는 바뀌지 않는다."""
+
+    key: str
+    results_path: Path
+    records: dict[str, dict]
+    order: list[str]
+    entry: dict
+
+
+def _snapshot(directory: Path) -> dict[Path, bytes]:
+    return (
+        {p: p.read_bytes() for p in directory.rglob("*") if p.is_file()}
+        if directory.exists()
+        else {}
+    )
+
+
+def _restore(directory: Path, before: Mapping[Path, bytes]) -> None:
+    if directory.exists():
+        for path in directory.rglob("*"):
+            if path.is_file() and path not in before:
+                path.unlink()
+    for path, content in before.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+
+
+def _commit(module: ModuleType, root: Path, out_dir: Path, pending: Sequence[Pending]) -> None:
+    """결과 jsonl·manifest·metrics·comparison을 쓴다. 쓰다가(재계산의 비교 전 검사 포함) 실패하면 쓰기 전 상태로 되돌린다."""
+    directory = exp_dir(root, out_dir, module.NAME)
+    before = _snapshot(directory)
+    try:
+        manifest = read_manifest(
+            root, out_dir, module.NAME
+        )  # 긴 setup 동안 바뀐 항목을 덮지 않도록 쓰기 직전에 다시 읽는다
+        for item in pending:
+            _write_results(item.results_path, item.records, item.order)
+            manifest["runs"][item.key] = item.entry
+        manifest["protocol_version"] = scoring.PROTOCOL_VERSION
+        manifest["experiment"] = module.NAME
+        _write_json(directory / "manifest.json", manifest)
+        write_outputs(module, root, out_dir)
+    except BaseException:
+        _restore(directory, before)
+        raise
 
 
 def _run_variant(
@@ -401,7 +453,7 @@ def _run_variant(
     corpus: data.Corpus,
     baselines_manifest: dict,
     dense_factory: Callable[..., object],
-) -> None:
+) -> Pending:
     name = module.NAME
     key = f"{track}/{variant}"
     run_dev = split in ("dev", "all")
@@ -563,12 +615,7 @@ def _run_variant(
     if leaked:
         raise ContractError(f"{key}: manifest would contain absolute paths at {leaked}")
 
-    # 여기까지 실패하면 아무 파일도 건드리지 않는다
-    _write_results(results_path, records, order)
-    manifest["protocol_version"] = scoring.PROTOCOL_VERSION
-    manifest["experiment"] = name
-    manifest["runs"][key] = new_entry
-    _write_json(exp_dir(root, out_dir, name) / "manifest.json", manifest)
+    return Pending(key, results_path, records, order, new_entry)
 
 
 # ------------------------------------------------------------ 저장본에서 metrics·comparison 재계산
@@ -615,16 +662,21 @@ def compute_outputs(module: ModuleType, root: Path, out_dir: Path) -> tuple[dict
                 run_metrics[split] = scoring.evaluate_split(records, questions, split, tau)
             metrics["runs"][key] = run_metrics
             lock = entry.get("test")
-            if lock is None:
-                continue
-            if entry_hash(name, entry) != lock["config_hash"]:
+            if lock is not None and entry_hash(name, entry) != lock["config_hash"]:
                 raise LockError(f"{key}: manifest config_hash does not match its recorded config")
-            if "test" not in run_metrics:
-                raise ExperimentError(f"{key}: test lock recorded but test rows are not stored")
+            # 잠금이 없는 dev 전용 항목도 지금 입력 파일에서 만든 것이어야 한다(라벨이 바뀐 채 옛 순위를 채점하지 않는다)
+            if entry["inputs"] != current_inputs:
+                raise ComparisonError(
+                    f"{key}: stored input hashes differ from the current input files"
+                )
             for label, fingerprint in entry["reproduction_inputs"].items():
                 current = data.file_sha256(root / fingerprint["path"])
                 if current != fingerprint["sha256"]:
                     raise ComparisonError(f"{key}: reproduction input {label!r} changed")
+            if lock is None:
+                continue
+            if "test" not in run_metrics:
+                raise ExperimentError(f"{key}: test lock recorded but test rows are not stored")
             base_entry = cmp.check_baseline_entry(baselines_manifest, track, baseline)
             blocks[key] = cmp.compare_run(
                 track=track,

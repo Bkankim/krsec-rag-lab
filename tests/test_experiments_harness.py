@@ -1127,3 +1127,38 @@ def test_kisa_cache_failure_is_exit_1_without_leaking_the_path(monkeypatch, cli,
     assert code == 1
     assert "error:" in captured.err
     assert "secret-cache" not in captured.err + captured.out
+
+
+# ------------------------------------------------------------ final-review 수정: 저장 원자성, 오래된 입력
+
+
+def test_lock_violation_in_a_later_variant_changes_no_files_and_runs_no_earlier_test(root, synth):
+    run_synth(root, synth, variants=["copy"])
+    before = snapshot(root)
+    synth.GRID = [{"boost": 3.0}]  # copy가 test를 돈 설정과 다른 설정을 고르게 된다
+    with pytest.raises(LockError):
+        run_synth(root, synth)  # 변형 순서: oracle 먼저, copy에서 잠금 위반
+    assert snapshot(root) == before  # oracle의 결과·manifest·잠금도 저장되지 않았다
+    assert not (exp_dir(root) / "public/oracle.jsonl").exists()
+
+
+def test_failure_while_regenerating_outputs_rolls_back_the_written_files(root, synth):
+    run_synth(root, synth, variants=["worse"], split="dev")  # 잠금 없는 dev 전용 항목
+    with (root / data.PUBLIC_QUERIES).open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(public_query("t-new", "새 질문", "no_answer", "test")) + "\n")
+    runner.run_baseline("public", "bm25", root)  # 기준선도 새 질의셋에 맞춘다
+    before = snapshot(root)
+    with pytest.raises(ComparisonError, match="input hashes"):
+        run_synth(root, synth, variants=["oracle"])  # worse 항목의 입력이 오래돼 재계산이 실패한다
+    assert snapshot(root) == before  # oracle의 jsonl·manifest 항목이 남지 않았다
+
+
+def test_dev_only_entries_are_checked_against_the_current_input_files(root, synth):
+    run_synth(root, synth, variants=["oracle"], split="dev")
+    rows = data.read_jsonl(root / data.PUBLIC_QUERIES)
+    for row in rows:
+        if row["id"] == "d-prod-1":
+            row["gold"] = [doc_id(30)]  # 같은 질문 ID, 바뀐 정답 라벨
+    write_jsonl(root / data.PUBLIC_QUERIES, rows)
+    with pytest.raises(ComparisonError, match="input hashes"):
+        harness.compute_outputs(synth, root, OUT)
