@@ -2,6 +2,8 @@
 
 Only official sources are used: NVD API 2.0, NVD yearly JSON feeds, CISA KEV JSON.
 Raw responses are cached under data/nvd (gitignored); fixtures/nvd holds selected fields only.
+When fixtures/nvd/cves.jsonl is already committed it is the source of the existing fields:
+only vendor_products / vendor_products_status come from the fresh source (see build()).
 The only KISA input is the public cve_ids column of fixtures/kisa/metadata.jsonl.
 Never print the API key or response bodies.
 """
@@ -42,7 +44,7 @@ OTHER_INTERVAL = 2.0
 # A year with at least this many target CVEs is read from the yearly feed (one download),
 # fewer are fetched one by one through the API (a few requests).
 FEED_MIN_CVES = 25
-# Per-record CPE cap keeps fixtures/nvd under 2 MB; KEV records get a higher cap, cpe_total is kept.
+# Per-record CPE cap keeps fixtures/nvd under 3 MB; KEV records get a higher cap, cpe_total is kept.
 CPE_CAP = 3
 CPE_CAP_KEV = 25
 CVSS_KEYS = (("cvssMetricV40", "4.0"), ("cvssMetricV31", "3.1"), ("cvssMetricV30", "3.0"))
@@ -52,6 +54,8 @@ RANGE_KEYS = (
     ("versionEndIncluding", "version_end_including"),
     ("versionEndExcluding", "version_end_excluding"),
 )
+ADDED_KEYS = ("vendor_products", "vendor_products_status")
+STATUSES = ("ok", "no_configurations", "drifted")
 KEV_KEYS = (
     ("vendorProject", "vendor_project"),
     ("product", "product"),
@@ -238,6 +242,32 @@ def english(descriptions):
     return ""
 
 
+def vulnerable_matches(cve):
+    """Unique `vulnerable: true` cpeMatch rows of one CVE, sorted by their canonical JSON."""
+    matches = {}
+    for config in cve.get("configurations") or []:
+        for node in config.get("nodes") or []:
+            for match in node.get("cpeMatch") or []:
+                if not match.get("vulnerable"):
+                    continue
+                row = {"criteria": match["criteria"]}
+                row.update({new: match[old] for old, new in RANGE_KEYS if match.get(old)})
+                matches[canonical(row)] = row
+    return [matches[key] for key in sorted(matches)]
+
+
+def vendor_product(criteria):
+    """`vendor:product` of a CPE 2.3 formatted string (escaped colons stay inside a field)."""
+    parts = re.split(r"(?<!\\):", criteria)
+    if len(parts) < 5 or parts[0] != "cpe" or parts[1] != "2.3":
+        raise NvdError("malformed_cpe_criteria")
+    return f"{parts[3]}:{parts[4]}"
+
+
+def vendor_products_of(matches):
+    return sorted({vendor_product(m["criteria"]) for m in matches})
+
+
 def select_record(cve, kev_ids):
     """Project one NVD 2.0 CVE object onto the committed field set."""
     cvss = []
@@ -263,16 +293,7 @@ def select_record(cve, kev_ids):
             if d.get("lang") == "en" and d.get("value")
         }
     )
-    matches = {}
-    for config in cve.get("configurations") or []:
-        for node in config.get("nodes") or []:
-            for match in node.get("cpeMatch") or []:
-                if not match.get("vulnerable"):
-                    continue
-                row = {"criteria": match["criteria"]}
-                row.update({new: match[old] for old, new in RANGE_KEYS if match.get(old)})
-                matches[canonical(row)] = row
-    ordered = [matches[key] for key in sorted(matches)]
+    ordered = vulnerable_matches(cve)
     is_kev = cve["id"] in kev_ids
     return {
         "id": cve["id"],
@@ -391,42 +412,127 @@ def collect(targets, cache, client, refresh):
     return found, kev, sources, not_found
 
 
-def build(targets, found, kev, sources, not_found):
-    """Pure projection: same inputs always give byte-identical fixture files."""
+def merge_record(cve, kev_ids, old):
+    """One fixture row and its vendor_products_status.
+
+    `old` is the committed row (or None on a first collection), `cve` the freshly fetched NVD
+    object (or None when the source no longer has it). Existing fields always come from `old`
+    when there is one; only vendor_products / vendor_products_status come from `cve`.
+    """
+    if old is None:
+        row = select_record(cve, kev_ids)
+        products = vendor_products_of(vulnerable_matches(cve))
+        return row | {
+            "vendor_products": products,
+            "vendor_products_status": "ok" if products else "no_configurations",
+        }
+    fields = {k: v for k, v in old.items() if k not in ADDED_KEYS}
+    kept = vendor_products_of(fields.get("cpe") or [])
+    if cve is None:
+        products, drifted = kept, True
+    else:
+        fresh = select_record(cve, kev_ids)
+        products = vendor_products_of(vulnerable_matches(cve))
+        drifted = fresh != fields
+        if drifted:  # the committed cpe products must survive whatever the new source says
+            products = sorted(set(products) | set(kept))
+    if drifted:
+        status = "drifted"
+    else:
+        status = "ok" if products else "no_configurations"
+    return fields | {"vendor_products": products, "vendor_products_status": status}
+
+
+def load_base(root):
+    """The committed fixture as the source of existing fields; None when there is none yet."""
+    fixture = root / "fixtures/nvd"
+    if not (fixture / "cves.jsonl").is_file():
+        return None
+    try:
+        rows = [
+            json.loads(line)
+            for line in (fixture / "cves.jsonl").read_text(encoding="utf-8").splitlines()
+        ]
+        kev_bytes = (fixture / "kev.json").read_bytes()
+        manifest = json.loads((fixture / "manifest.json").read_text(encoding="utf-8"))
+        return {
+            "rows": {row["id"]: row for row in rows},
+            "kev_bytes": kev_bytes,
+            "manifest": manifest,
+            "record_sources": {i: r["source"] for i, r in manifest["records"].items()},
+            "coverage": manifest["coverage"],
+            "not_found": manifest["not_found"],
+            "base_sources": manifest.get("base_sources") or manifest["sources"],
+        }
+    except (OSError, ValueError, KeyError, TypeError):
+        raise NvdError("unreadable_committed_fixture") from None
+
+
+def build(targets, found, kev, sources, not_found, base=None):
+    """Pure projection: same inputs always give byte-identical fixture files.
+
+    With `base` (see load_base) the existing row fields, kev.json bytes, coverage and not_found
+    are carried over from the committed fixture unchanged; a row the new source disagrees with
+    (or no longer has) is marked drifted.
+    """
     kev_ids = set(kev["entries"])
-    records = {cve_id: select_record(found[cve_id][0], kev_ids) for cve_id in sorted(found)}
+    ids = sorted(found) if base is None else sorted(set(found) | set(base["rows"]))
+    records = {
+        cve_id: merge_record(
+            found[cve_id][0] if cve_id in found else None,
+            kev_ids,
+            base["rows"].get(cve_id) if base else None,
+        )
+        for cve_id in ids
+    }
     lines = [canonical(records[cve_id]) for cve_id in records]
     cves_bytes = ("".join(line + "\n" for line in lines)).encode()
     intersection = sorted(kev_ids.intersection(targets))
-    kev_doc = {
-        "source_url": KEV_URL,
-        "catalog_version": kev["catalog_version"],
-        "date_released": kev["date_released"],
-        "catalog_count": kev["count"],
-        "license": "CC0 1.0 https://www.cisa.gov/sites/default/files/licenses/kev/license.txt",
-        "selection": "entries whose CVE is cited by fixtures/kisa/metadata.jsonl",
-        "entries": [
-            {"cve_id": cve_id} | {new: kev["entries"][cve_id].get(old) for old, new in KEV_KEYS}
-            for cve_id in intersection
-        ],
-    }
-    kev_bytes = (json.dumps(kev_doc, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode()
+    if base:
+        kev_bytes = base["kev_bytes"]
+    else:
+        kev_doc = {
+            "source_url": KEV_URL,
+            "catalog_version": kev["catalog_version"],
+            "date_released": kev["date_released"],
+            "catalog_count": kev["count"],
+            "license": "CC0 1.0 https://www.cisa.gov/sites/default/files/licenses/kev/license.txt",
+            "selection": "entries whose CVE is cited by fixtures/kisa/metadata.jsonl",
+            "entries": [
+                {"cve_id": cve_id} | {new: kev["entries"][cve_id].get(old) for old, new in KEV_KEYS}
+                for cve_id in intersection
+            ],
+        }
+        kev_bytes = (
+            json.dumps(kev_doc, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+        ).encode()
+    statuses = Counter(row["vendor_products_status"] for row in records.values())
     manifest = {
         "schema_version": 1,
         "selection_version": SELECTION_VERSION,
         "collected_at": max(s["fetched_at"] for s in sources),
         "user_agent": USER_AGENT,
         "sources": sources,
+        "base_sources": base["base_sources"] if base else sources,
         "target_cve_ids": list(targets),
-        "not_found": dict(sorted(not_found.items())),
-        "coverage": {
+        "not_found": base["not_found"] if base else dict(sorted(not_found.items())),
+        "coverage": base["coverage"]
+        if base
+        else {
             "kisa_unique_cves": len(targets),
             "found_in_nvd": len(found),
             "kev_intersection": len(intersection),
         },
+        "vendor_products_status_counts": {s: statuses[s] for s in STATUSES},
+        "vendor_products_drifted_ids": [
+            cve_id for cve_id, row in records.items() if row["vendor_products_status"] == "drifted"
+        ],
         "files": {"cves.jsonl": sha256(cves_bytes), "kev.json": sha256(kev_bytes)},
         "records": {
-            cve_id: {"sha256": sha256(line.encode()), "source": found[cve_id][1]}
+            cve_id: {
+                "sha256": sha256(line.encode()),
+                "source": found[cve_id][1] if cve_id in found else base["record_sources"][cve_id],
+            }
             for cve_id, line in zip(records, lines, strict=True)
         },
         "notice": "NOTICE.md",
@@ -467,6 +573,7 @@ def run(args, root=ROOT, client=None, env=None):
     cache = Cache(root / "data/nvd")
     print(f"targets={len(targets)} api_key={'set' if key else 'unset'}")
     try:
+        base = load_base(root)
         found, kev, sources, not_found = collect(targets, cache, client, args.refresh)
     except AccessDenied as error:
         print(f"stopped reason={error} requests={client.requests}")
@@ -474,7 +581,7 @@ def run(args, root=ROOT, client=None, env=None):
     except NvdError as error:
         print(f"failed reason={error} requests={client.requests}")
         return 1
-    files = build(targets, found, kev, sources, not_found)
+    files = build(targets, found, kev, sources, not_found, base)
     for name, data in files.items():
         write_file(root / "fixtures/nvd" / name, data)
     counts = Counter(name for _, name in found.values())
@@ -482,6 +589,8 @@ def run(args, root=ROOT, client=None, env=None):
         f"requests={client.requests} found={len(found)} not_found={len(not_found)} "
         f"kev_intersection={len(kev['entries'].keys() & set(targets))} sources={dict(counts)}"
     )
+    status = json.loads(files["manifest.json"])["vendor_products_status_counts"]
+    print(f"vendor_products_status={status} base={'committed' if base else 'none'}")
     return 0
 
 

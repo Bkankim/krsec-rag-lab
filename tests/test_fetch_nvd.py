@@ -138,8 +138,19 @@ def cve_object(cve_id, **extra):
     return base
 
 
-def synthetic_world(clock=None):
-    feed_objects = [cve_object(c) for c in FEED_IDS if c != MISSING_FROM_FEED]
+def synthetic_world(changes=None, kev_ids=(KEV_ID,)):
+    """`changes` maps a CVE id to cve_object overrides, or to None to drop it from the source."""
+    changes = changes or {}
+
+    def make(cve_id):
+        return (
+            None
+            if changes.get(cve_id, {}) is None
+            else cve_object(cve_id, **changes.get(cve_id, {}))
+        )
+
+    feed_objects = [make(c) for c in FEED_IDS if c != MISSING_FROM_FEED]
+    feed_objects = [c for c in feed_objects if c]
     feed_objects.append(cve_object("CVE-2098-9999"))
     feed = {
         "resultsPerPage": len(feed_objects),
@@ -155,7 +166,7 @@ def synthetic_world(clock=None):
         "count": 2,
         "vulnerabilities": [
             {
-                "cveID": KEV_ID,
+                "cveID": kev_id,
                 "vendorProject": "Invented",
                 "product": "Widget",
                 "vulnerabilityName": "Invented Widget flaw",
@@ -165,9 +176,10 @@ def synthetic_world(clock=None):
                 "dueDate": "2026-10-22",
                 "knownRansomwareCampaignUse": "Unknown",
                 "notes": "must not be copied",
-            },
-            {"cveID": "CVE-2000-0001", "vendorProject": "Elsewhere"},
-        ],
+            }
+            for kev_id in kev_ids
+        ]
+        + [{"cveID": "CVE-2000-0001", "vendorProject": "Elsewhere"}],
     }
 
     def world(url):
@@ -179,7 +191,8 @@ def synthetic_world(clock=None):
             cve_id = url.rsplit("=", 1)[1]
             if cve_id == MISSING_FROM_API:
                 return json.dumps({"totalResults": 0, "vulnerabilities": []}).encode()
-            return json.dumps({"vulnerabilities": [{"cve": cve_object(cve_id)}]}).encode()
+            made = make(cve_id)
+            return json.dumps({"vulnerabilities": [{"cve": made}] if made else []}).encode()
         raise AssertionError(f"unexpected url {url}")
 
     return world
@@ -198,8 +211,8 @@ def setup(tmp_path, monkeypatch):
     ]
     (kisa / "metadata.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
 
-    def start(deny=None):
-        opener = FakeOpener(clock, synthetic_world(), deny)
+    def start(deny=None, **world):
+        opener = FakeOpener(clock, synthetic_world(**world), deny)
         monkeypatch.setattr(nvd, "build_opener", lambda *handlers: opener)
         return opener
 
@@ -389,7 +402,7 @@ def test_fixture_contents_selected_fields_manifest_and_coverage(setup, capsys):
     row = rows[KEV_ID]
     assert set(row) == {
         "id", "published", "last_modified", "vuln_status", "description_en",
-        "cvss", "cwe", "cpe_total", "cpe", "kev",
+        "cvss", "cwe", "cpe_total", "cpe", "kev", "vendor_products", "vendor_products_status",
     }  # fmt: skip
     assert row["description_en"] == f"Synthetic description for {KEV_ID}."
     assert row["cvss"] == [
@@ -413,6 +426,8 @@ def test_fixture_contents_selected_fields_manifest_and_coverage(setup, capsys):
     ]
     assert row["kev"] is True
     assert rows[FEED_IDS[1]]["kev"] is False
+    assert row["vendor_products"] == ["invented:widget"]  # invented:os is not vulnerable
+    assert row["vendor_products_status"] == "ok"
 
     kev = json.loads((fixture / "kev.json").read_text())
     assert [e["cve_id"] for e in kev["entries"]] == [KEV_ID]  # CVE-2000-0001 is not cited
@@ -544,3 +559,206 @@ def test_metadata_with_malformed_cve_id_is_rejected(tmp_path):
 
     with pytest.raises(nvd.NvdError):
         nvd.load_targets(tmp_path)
+
+
+def vulnerable(*criteria):
+    return [{"nodes": [{"cpeMatch": [{"vulnerable": True, "criteria": c} for c in criteria]}]}]
+
+
+def cpe(vendor, product, version="*"):
+    return f"cpe:2.3:a:{vendor}:{product}:{version}:*:*:*:*:*:*:*"
+
+
+def test_vendor_products_are_untruncated_unique_sorted_and_vulnerable_only():
+    matches = [{"vulnerable": True, "criteria": cpe("v", f"p{n:03d}")} for n in range(40)]
+    matches += [{"vulnerable": True, "criteria": cpe("v", "p000", "2.0")}]  # same product twice
+    matches += [{"vulnerable": False, "criteria": cpe("running-on", "os")}]
+    cve = cve_object("CVE-2098-0100", configurations=[{"nodes": [{"cpeMatch": matches}]}])
+
+    row = nvd.merge_record(cve, set(), None)
+
+    assert row["vendor_products"] == [f"v:p{n:03d}" for n in range(40)]
+    assert len(row["cpe"]) == nvd.CPE_CAP and row["cpe_total"] == 41  # existing fields unchanged
+    assert row["vendor_products_status"] == "ok"
+
+
+@pytest.mark.parametrize(
+    ("criteria", "expected"),
+    [
+        (cpe("acme", "widget", "1.0"), "acme:widget"),
+        ("cpe:2.3:o:linux:linux_kernel:-:*:*:*:*:*:*:*", "linux:linux_kernel"),
+        (cpe("a\\:b", "c"), "a\\:b:c"),
+    ],
+    ids=["plain", "os-part", "escaped-colon"],
+)
+def test_vendor_product_split(criteria, expected):
+    assert nvd.vendor_product(criteria) == expected
+
+
+@pytest.mark.parametrize(
+    "criteria", ["", "cpe:2.3:a:only", "cpe:/a:acme:widget:1.0", "x:2.3:a:b:c"]
+)
+def test_malformed_cpe_is_a_reported_error(criteria):
+    with pytest.raises(nvd.NvdError, match="malformed_cpe_criteria"):
+        nvd.vendor_product(criteria)
+
+
+def old_row(**extra):
+    cve = cve_object("CVE-2098-0300", configurations=vulnerable(cpe("a", "one"), cpe("b", "two")))
+    return nvd.select_record(cve, set()) | extra
+
+
+@pytest.mark.parametrize(
+    ("name", "new", "old", "status", "products"),
+    [
+        ("same", {}, {}, "ok", ["a:one", "b:two"]),
+        ("description", {"descriptions": []}, {}, "drifted", ["a:one", "b:two"]),
+        ("kev-flag", {}, {"kev": True}, "drifted", ["a:one", "b:two"]),
+        # the new source dropped every vulnerable match: drifted wins over no_configurations
+        ("gone-configs", {"configurations": []}, {}, "drifted", ["a:one", "b:two"]),
+        (
+            "other-products",
+            {"configurations": vulnerable(cpe("c", "three"))},
+            {},
+            "drifted",
+            ["a:one", "b:two", "c:three"],
+        ),
+        ("missing-from-source", None, {}, "drifted", ["a:one", "b:two"]),
+    ],
+)
+def test_merge_with_committed_row(name, new, old, status, products):
+    committed = old_row(**old)
+    cve = (
+        None
+        if new is None
+        else cve_object(
+            "CVE-2098-0300",
+            **{"configurations": vulnerable(cpe("a", "one"), cpe("b", "two"))} | new,
+        )
+    )
+
+    row = nvd.merge_record(cve, set(), committed)
+
+    assert {k: v for k, v in row.items() if k not in nvd.ADDED_KEYS} == committed
+    assert row["vendor_products_status"] == status
+    assert row["vendor_products"] == products
+    assert {nvd.vendor_product(m["criteria"]) for m in committed["cpe"]} <= set(
+        row["vendor_products"]
+    )
+
+
+@pytest.mark.parametrize(
+    "configurations",
+    [
+        [],
+        vulnerable(),
+        [{"nodes": [{"cpeMatch": [{"vulnerable": False, "criteria": cpe("x", "y")}]}]}],
+    ],
+    ids=["none", "empty-nodes", "only-non-vulnerable"],
+)
+def test_no_vulnerable_match_is_no_configurations(configurations):
+    cve = cve_object("CVE-2098-0301", configurations=configurations)
+    fresh = nvd.merge_record(cve, set(), None)
+    assert fresh["vendor_products"] == [] and fresh["vendor_products_status"] == "no_configurations"
+
+    committed = nvd.select_record(cve, set())  # old cpe is empty too, nothing differs
+    again = nvd.merge_record(cve, set(), committed)
+    assert again["vendor_products"] == [] and again["vendor_products_status"] == "no_configurations"
+
+
+def fixture_state(root):
+    fixture = root / "fixtures/nvd"
+    manifest = json.loads((fixture / "manifest.json").read_text())
+    rows = {r["id"]: r for r in map(json.loads, (fixture / "cves.jsonl").read_text().splitlines())}
+    return fixture, manifest, rows
+
+
+def test_first_collection_marks_every_record_and_counts_statuses(setup):
+    setup.start(changes={API_IDS[0]: {"configurations": []}})
+    assert nvd.run(args(), root=setup.root, env={}) == 0
+
+    _, manifest, rows = fixture_state(setup.root)
+    assert rows[API_IDS[0]]["vendor_products_status"] == "no_configurations"
+    assert rows[KEV_ID]["vendor_products_status"] == "ok"
+    assert manifest["vendor_products_status_counts"] == {
+        "ok": 2, "no_configurations": 1, "drifted": 0
+    }  # fmt: skip
+    assert manifest["vendor_products_drifted_ids"] == []
+    assert manifest["base_sources"] == manifest["sources"]
+
+
+@pytest.mark.parametrize(
+    ("changes", "kev_ids", "drifted"),
+    [
+        ({FEED_IDS[1]: {"vulnStatus": "Modified"}}, (KEV_ID,), FEED_IDS[1]),
+        ({FEED_IDS[1]: {"configurations": []}}, (KEV_ID,), FEED_IDS[1]),
+        ({FEED_IDS[1]: None}, (KEV_ID,), FEED_IDS[1]),
+        ({API_IDS[0]: {"descriptions": []}}, (KEV_ID,), API_IDS[0]),
+        ({}, (), KEV_ID),
+    ],
+    ids=["field-changed", "configs-vanished", "dropped-from-feed", "api-record", "kev-flag-flips"],
+)
+def test_new_source_drift_keeps_committed_fields(setup, changes, kev_ids, drifted):
+    setup.start()
+    assert nvd.run(args(), root=setup.root, env={}) == 0
+    fixture, before, rows_before = fixture_state(setup.root)
+    kev_bytes = (fixture / "kev.json").read_bytes()
+    stripped = {
+        i: {k: v for k, v in r.items() if k not in nvd.ADDED_KEYS} for i, r in rows_before.items()
+    }
+
+    setup.start(changes=changes, kev_ids=kev_ids)
+    assert nvd.run(Namespace(refresh=True, report=False), root=setup.root, env={}) == 0
+
+    fixture, after, rows = fixture_state(setup.root)
+    assert {
+        i: {k: v for k, v in r.items() if k not in nvd.ADDED_KEYS} for i, r in rows.items()
+    } == stripped
+    assert (fixture / "kev.json").read_bytes() == kev_bytes
+    assert after["coverage"] == before["coverage"] and after["not_found"] == before["not_found"]
+    assert after["vendor_products_drifted_ids"] == [drifted]
+    assert rows[drifted]["vendor_products_status"] == "drifted"
+    assert set(rows[drifted]["vendor_products"]) >= {
+        nvd.vendor_product(m["criteria"]) for m in rows[drifted]["cpe"]
+    }
+    assert sum(after["vendor_products_status_counts"].values()) == len(rows)
+    assert after["vendor_products_status_counts"]["drifted"] == 1
+    assert after["base_sources"] == before["sources"]
+    assert after["sources"] != before["sources"]  # the refreshed raw responses are new
+    assert after["files"]["cves.jsonl"] == nvd.sha256((fixture / "cves.jsonl").read_bytes())
+
+
+def test_committed_fixture_without_new_keys_is_upgraded_and_then_stable(setup):
+    """The pre-#36 fixture shape (no vendor_products, no base_sources) merges, then reruns clean."""
+    opener = setup.start()
+    assert nvd.run(args(), root=setup.root, env={}) == 0
+    fixture, manifest, rows = fixture_state(setup.root)
+    legacy = {i: {k: v for k, v in r.items() if k not in nvd.ADDED_KEYS} for i, r in rows.items()}
+    (fixture / "cves.jsonl").write_text(
+        "".join(nvd.canonical(legacy[i]) + "\n" for i in sorted(legacy))
+    )
+    for key in ("base_sources", "vendor_products_status_counts", "vendor_products_drifted_ids"):
+        del manifest[key]
+    (fixture / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    calls = len(opener.calls)
+
+    assert nvd.run(args(), root=setup.root, env={}) == 0
+    upgraded = tree_hashes(fixture)
+    assert len(opener.calls) == calls  # cache only
+    _, after, new_rows = fixture_state(setup.root)
+    assert after["base_sources"] == manifest["sources"]
+    assert new_rows == rows  # same data, nothing drifted
+
+    assert nvd.run(args(), root=setup.root, env={}) == 0
+    assert tree_hashes(fixture) == upgraded
+    assert len(opener.calls) == calls
+
+
+def test_incomplete_committed_fixture_is_a_reported_failure(setup, capsys):
+    setup.start()
+    fixture = setup.root / "fixtures/nvd"
+    fixture.mkdir(parents=True)
+    (fixture / "cves.jsonl").write_text("{}\n")  # no id, no kev.json, no manifest.json
+
+    assert nvd.run(args(), root=setup.root, env={}) == 1
+    assert "failed reason=unreadable_committed_fixture" in capsys.readouterr().out
