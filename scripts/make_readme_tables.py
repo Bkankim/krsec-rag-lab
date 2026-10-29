@@ -9,12 +9,15 @@
 같을 때만 검증이 통과한다. 필수 파일 누락, 빈 입력, 질문 ID 누락·중복·초과, 입력 해시 불일치는
 비교하기 전에 종료 코드 1로 멈춘다. 결과 값은 어디에도 고치지 않는다(쓰는 곳은 README 생성 구간뿐이다).
 
-M3 실험(`results/experiments/` 디렉터리가 있을 때만)은 `results/experiments/<exp>/`의 질문별 원시 결과·manifest와
+M3 실험(`results/experiments/` 디렉터리가 있거나 README에 M3 구간 마커가 있을 때)은 `results/experiments/<exp>/`의 질문별 원시 결과·manifest와
 질의셋 라벨에서 하네스(`krsec_rag_lab.experiments`)의 비교 함수로 `metrics.json`·`comparison.json`을 다시 계산해
 저장된 파일과 abs 1e-9로 대조하고, 그 값으로 README의 M3 판정 구간, `docs/experiments/summary.md`의 표 구간,
 `docs/release-v0.2.md`의 판정 구간을 만든다. 베이스라인 표 검증은 그대로이고 M3 구간은 마커 쌍이 따로다.
 M3 재계산은 NVD 코퍼스 파일(`fixtures/nvd/cves.jsonl`)이 없는 릴리스 asset 사본에서도 돌도록, 그 파일이 없으면
 manifest에 적힌 해시를 쓰되 기준선 manifest의 같은 해시와 대조한다.
+
+`--summary`·`--note`로 M3 요약과 v0.2 노트 경로를 따로 줄 수 있다(문서가 없는 asset 사본을 `--root`로 줄 때).
+M3 검증은 `results/experiments/`가 있거나 README에 M3 구간 마커가 있으면 돈다(데이터가 없으면 실패한다).
 
 `--root`로 리포 루트를 바꿀 수 있다(릴리스 asset 사본 검증용, scripts/check_release.py). README는 기본으로
 `<root>/README.md`이고 `--readme`로 따로 정할 수 있다.
@@ -656,8 +659,14 @@ def verify_m3(
     return problems, recomputed
 
 
-def write_m3(root: Path, readme: Path, recomputed: Mapping[str, Mapping]) -> None:
-    for path, markers, kind in m3_documents(root, readme):
+def write_m3(
+    root: Path,
+    readme: Path,
+    recomputed: Mapping[str, Mapping],
+    summary: Path | None = None,
+    note: Path | None = None,
+) -> None:
+    for path, markers, kind in m3_documents(root, readme, summary, note):
         text = _read_readme(path)
         start, stop = _split_readme(text, path.name, markers)
         path.write_text(
@@ -666,8 +675,14 @@ def write_m3(root: Path, readme: Path, recomputed: Mapping[str, Mapping]) -> Non
         )
 
 
-def m3_active(root: Path) -> bool:
-    return (root / EXPERIMENTS_DIR).is_dir()
+def m3_active(root: Path, readme: Path) -> bool:
+    """실험 결과 디렉터리가 있거나 README가 M3 구간 마커를 갖고 있으면 M3를 검증한다(데이터가 사라져도 통과하지 않는다)."""
+    if (root / EXPERIMENTS_DIR).is_dir():
+        return True
+    try:
+        return README_M3[0] in readme.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return False
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -677,6 +692,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--root", type=Path, default=ROOT, help="리포 루트(기본: 이 스크립트의 리포)"
     )
     parser.add_argument("--readme", type=Path, help="README 경로(기본: <root>/README.md)")
+    parser.add_argument(
+        "--summary", type=Path, help="M3 요약 경로(기본: <root>/docs/experiments/summary.md)"
+    )
+    parser.add_argument(
+        "--note", type=Path, help="v0.2 노트 경로(기본: <root>/docs/release-v0.2.md)"
+    )
     return parser
 
 
@@ -684,11 +705,13 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     root = args.root.resolve()
     readme = args.readme.resolve() if args.readme else root / "README.md"
+    summary = args.summary.resolve() if args.summary else None
+    note = args.note.resolve() if args.note else None
     try:
         problems, recomputed = verify(root, readme)
         m3 = None
-        if m3_active(root):
-            m3_problems, m3 = verify_m3(root, readme)
+        if m3_active(root, readme):
+            m3_problems, m3 = verify_m3(root, readme, summary=summary, note=note)
             problems += m3_problems
         if args.check:
             if problems:
@@ -710,7 +733,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         write_readme(readme, recomputed)
         if m3 is not None:
-            write_m3(root, readme, m3)
+            write_m3(root, readme, m3, summary, note)
         print(f"README tables updated ({len(recomputed['runs'])} runs)")
         return 0
     except CheckError as error:

@@ -247,6 +247,18 @@ def _absolute_paths(value: object) -> int:
     return 0
 
 
+def _bad_keys(value: object) -> int:
+    """긴 문자열이거나 절대 경로 모양인 JSON 객체 키의 수(값 검사는 키를 보지 않는다)."""
+    if isinstance(value, dict):
+        own = sum(
+            len(key) > MAX_STRING_CHARS or ABSOLUTE_PATH.match(key) is not None for key in value
+        )
+        return own + sum(_bad_keys(v) for v in value.values())
+    if isinstance(value, list):
+        return sum(_bad_keys(v) for v in value)
+    return 0
+
+
 def check_fields(kind: str, path: Path) -> list[str]:
     """한 asset의 허용 필드 위반 목록(비면 통과)."""
     problems: list[str] = []
@@ -259,6 +271,10 @@ def check_fields(kind: str, path: Path) -> list[str]:
                 problems.append(f"{n} string(s) longer than {MAX_STRING_CHARS} chars")
             if kind == "exp_json" and (n := _absolute_paths(payload)):
                 problems.append(f"{n} string(s) shaped like an absolute path")
+            if kind == "exp_json" and (n := _bad_keys(payload)):
+                problems.append(
+                    f"{n} key(s) longer than {MAX_STRING_CHARS} chars or shaped like an absolute path"
+                )
             return problems
         rows = _jsonl(path)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:

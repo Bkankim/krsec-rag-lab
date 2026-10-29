@@ -375,11 +375,39 @@ def test_synthetic_copy_passes_both_checks(repo, capsys):
     assert run_tables(capsys, repo, "--check")[0] == 0
 
 
-def test_check_without_the_experiments_dir_is_baseline_only(repo, capsys):
+def test_check_without_experiments_dir_and_without_m3_markers_is_baseline_only(repo, capsys):
     shutil.rmtree(repo / "results/experiments")
+    begin, end = tables.README_M3
+    edit_text(repo / README, lambda t: t.replace(begin, "").replace(end, ""))
     code, out, err = run_tables(capsys, repo, "--check")
     assert code == 0, err
     assert "experiments" not in out
+
+
+def test_missing_experiments_dir_with_m3_markers_in_the_readme_is_exit_1(repo, capsys):
+    """README에 M3 구간이 있는데 원시 결과 디렉터리가 사라지면 조용히 통과하지 않는다."""
+    shutil.rmtree(repo / "results/experiments")
+    code, _, err = run_tables(capsys, repo, "--check")
+    assert code == 1 and "missing required file" in err
+
+
+def test_asset_tree_without_docs_is_checked_with_explicit_summary_and_note(repo, tmp_path, capsys):
+    """문서가 없는 asset 사본(`--root`)도 --summary·--note로 문서 경로를 주면 검증된다."""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    shutil.move(repo / SUMMARY, docs / "summary.md")
+    shutil.move(repo / NOTE, docs / "note.md")
+    assert run_tables(capsys, repo, "--check")[0] == 1
+    code, _, err = run_tables(
+        capsys,
+        repo,
+        "--check",
+        "--summary",
+        str(docs / "summary.md"),
+        "--note",
+        str(docs / "note.md"),
+    )
+    assert code == 0, err
 
 
 def test_v01_note_does_not_allow_experiment_assets(repo, capsys):
@@ -551,6 +579,8 @@ FIELD_TAMPER = {
     "comparison path /home/": mutate_json(EXP_COMPARISON, lambda p: p.__setitem__("where", "/home/someone/cache")),
     "comparison path /private/": mutate_json(EXP_COMPARISON, lambda p: p.__setitem__("where", "/private/tmp/x")),
     "comparison path /var/folders/": mutate_json(EXP_COMPARISON, lambda p: p.__setitem__("where", "/var/folders/ab/cd")),
+    "manifest key is an absolute path": mutate_json(EXP_MANIFEST, lambda p: p.__setitem__("cache", {"/Users/x/.cache/model": "0" * 64})),
+    "comparison key is a long passage": mutate_json(EXP_COMPARISON, lambda p: p.__setitem__("x" * 600, 1)),
     "manifest nested path /Users/": mutate_json(EXP_MANIFEST, lambda p: p.__setitem__("where", {"deep": ["/Users/x"]})),
     "metrics path /home/": mutate_json(EXP_METRICS, lambda p: p.__setitem__("where", "/home/x")),
 }  # fmt: skip
