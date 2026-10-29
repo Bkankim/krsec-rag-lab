@@ -17,7 +17,7 @@
     },
     {
       "path": "fixtures/nvd/cves.jsonl",
-      "sha256": "0413970c3dee50cb239656c899fb9feb79150317c89172d12f41ad1f78e40e69"
+      "sha256": "96ce6757d724ab85593357a1806698bfe9026854b2f9823b6da4cbf01ce83ffa"
     }
   ],
   "join": {
