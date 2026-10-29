@@ -31,15 +31,17 @@
   계획(건수와 ID)은 실행 전에 출력한다(ID가 50개를 넘으면 앞 50개만, `--all-ids`로 전부). `--dry-run`은 계획만
   출력하고 쓰기 호출을 하지 않으며 모델도 읽지 않는다.
 - 삭제 거부: 입력 manifest가 `complete: true`가 아니면 삭제가 들어간 동기화를 `incomplete_manifest_delete_refused`로
-  거부한다(부분 수집을 삭제로 오해하지 않도록). 삭제가 없는 동기화는 미완료 manifest에서도 된다.
+  거부한다(부분 수집을 삭제로 오해하지 않도록). 삭제가 없는 동기화는 미완료 manifest에서도 된다. 검증 모드는
+  파생 스냅샷이 `complete: true`라 이 거부가 걸리지 않으므로, 입력 manifest가 미완료면 컬렉션을 건드리기 전에
+  `incomplete_manifest_verify_refused`로 멈춘다. 검증 모드에 `--dry-run`을 주면 `verify_dry_run_unsupported`로 거부한다.
 - 쓰기 순서: payload 갱신, 추가·갱신(32건 단위로 인코딩 후 upsert), 삭제 순이다. 중간에 실패해도 컬렉션은
   스냅샷의 부분 집합 + 이전 상태라 같은 명령을 다시 돌리면 이어진다.
 - 출력 규율: 화면·오류·보고서에는 진행 수치와 고정 reason code만 찍는다. 예상 밖 예외는
   `unexpected_failure:<예외 클래스 이름>`만 남긴다.
 
 고정 reason code: `snapshot_invalid`, `cache_missing`, `cache_invalid`, `cache_hash_mismatch`,
-`incomplete_manifest_delete_refused`, `dimension_mismatch`, `invalid_id`, `corpus_too_small`,
-`verify_requires_batch_size_1`, `report_string_rejected`, `unexpected_failure:<클래스>`.
+`incomplete_manifest_delete_refused`, `incomplete_manifest_verify_refused`, `dimension_mismatch`, `invalid_id`, `corpus_too_small`,
+`verify_requires_batch_size_1`, `verify_dry_run_unsupported`, `report_string_rejected`, `unexpected_failure:<클래스>`.
 
 ## 재현 명령
 

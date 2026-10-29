@@ -18,6 +18,7 @@ import re
 import sys
 import tempfile
 import time
+import urllib.parse
 import urllib.request
 import uuid
 from array import array
@@ -357,6 +358,28 @@ def load_sentence_transformer(name, revision, device):
 # ---------------------------------------------------------------- 백엔드
 
 
+def normalize_url(url):
+    """스킴이 없는 `host:port`는 urlsplit이 호스트를 스킴으로 읽으므로 `http://`를 붙여 해석한다."""
+    url = url.strip()
+    return url if "://" in url else f"http://{url}"
+
+
+def client_kwargs(url):
+    """`url`의 호스트·포트·스킴·접두사. QdrantClient(url=...)는 포트가 없으면 6333을 쓰지만 urllib은
+    스킴 기본 포트(80/443)를 쓰므로, 둘이 같은 서버를 보도록 포트를 명시해 넘긴다."""
+    parts = urllib.parse.urlsplit(normalize_url(url))
+    https = parts.scheme == "https"
+    host = parts.hostname or ""
+    if ":" in host:  # QdrantClient는 host:port를 이어 붙일 뿐 IPv6 대괄호를 더하지 않는다
+        host = f"[{host}]"
+    return {
+        "host": host,
+        "port": parts.port or (443 if https else 80),
+        "https": https,
+        "prefix": parts.path.strip("/") or None,
+    }
+
+
 class QdrantBackend:
     """컬렉션 하나에 대한 Qdrant REST 접근. 이 컬렉션 밖은 건드리지 않는다."""
 
@@ -364,7 +387,7 @@ class QdrantBackend:
         from qdrant_client import QdrantClient
 
         self.collection = collection
-        self.client = QdrantClient(url=url, prefer_grpc=False, timeout=120)
+        self.client = QdrantClient(**client_kwargs(url), prefer_grpc=False, timeout=120)
 
     def exists(self):
         return self.client.collection_exists(self.collection)
@@ -652,6 +675,8 @@ def verify_idempotency(
 def run_verification(report, fixtures_dir, cache_root, backend_factory, encoder, k, seed, log):
     main_name, scratch_name = VERIFY_COLLECTIONS
     full = load_snapshot(fixtures_dir, cache_root)
+    if not full.complete:  # 파생 스냅샷은 complete: true라 미완료 거부를 입력에서 먼저 적용한다
+        raise SyncError("incomplete_manifest_verify_refused")
     update_ids, delete_ids, spare_ids = pick_sets(full, k, seed)
     report["corpus"] = {
         "parser_version": full.parser_version,
@@ -805,10 +830,11 @@ def run_verification(report, fixtures_dir, cache_root, backend_factory, encoder,
             (5, "revert_to_baseline", baseline, main_name, check5),
         )
         for number, name, snapshot, collection, check in plan_steps:
+            report["failed_step"] = number  # 단계 안에서 예외가 나도 어느 단계인지 남는다
             states[number], ok = step(number, name, snapshot, collection, check)
             if not ok:
-                report["failed_step"] = number
                 break
+            report["failed_step"] = None
         else:
             report["passed"] = True
 
@@ -919,13 +945,15 @@ def main(argv=None):
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE)
     parser.add_argument("--max-seq-length", type=int, default=MAX_SEQ_LENGTH)
     args = parser.parse_args(argv)
-    url = (args.qdrant_url or os.environ.get(URL_ENV) or DEFAULT_URL).rstrip("/")
+    url = normalize_url(args.qdrant_url or os.environ.get(URL_ENV) or DEFAULT_URL).rstrip("/")
 
     def log(message):
         print(message, flush=True)
 
     try:
         if args.verify_idempotency:
+            if args.dry_run:  # 검증은 컬렉션을 지우고 다시 만들므로 쓰기 없는 미리보기가 없다
+                raise SyncError("verify_dry_run_unsupported")
             if args.batch_size != BATCH_SIZE:
                 raise SyncError("verify_requires_batch_size_1")
             encoder = SentenceTransformerEncoder(args.max_seq_length, BATCH_SIZE)

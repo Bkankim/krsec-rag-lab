@@ -685,6 +685,34 @@ def test_verification_reports_failed_step_when_resync_writes(tmp_path):
     assert [s["step"] for s in report["steps"]] == [1, 2]
 
 
+def test_verification_records_failed_step_when_a_step_raises(tmp_path):
+    class FlakyDump(FakeBackend):
+        """같은 컬렉션의 세 번째 dump(= 3단계)에서 예외를 낸다."""
+
+        dumps = 0
+
+        def dump(self):
+            self.dumps += 1
+            if self.dumps == 3:
+                raise RuntimeError(f"{SENTINEL} boom")
+            return super().dump()
+
+    fixtures, cache = write_snapshot(tmp_path / "src", make_docs(40))
+    backends = {}
+    report = sync.verify_idempotency(
+        fixtures,
+        cache,
+        lambda name: backends.setdefault(name, FlakyDump()),
+        FakeEncoder(),
+        log=lambda message: None,
+    )
+    assert report["passed"] is False
+    assert report["failed_step"] == 3
+    assert report["error"] == "unexpected_failure:RuntimeError"
+    assert [s["step"] for s in report["steps"]] == [1, 2]
+    assert SENTINEL not in json.dumps(report)
+
+
 def test_verification_failure_report_has_fixed_code_and_no_leaks(tmp_path):
     docs = make_docs(40)
     fixtures, cache = write_snapshot(tmp_path / "private-scratch-dir", docs)
@@ -695,6 +723,21 @@ def test_verification_failure_report_has_fixed_code_and_no_leaks(tmp_path):
     assert report["passed"] is False and report["error"] == "cache_hash_mismatch"
     text = json.dumps(report, ensure_ascii=False)
     assert SENTINEL not in text and "private-scratch-dir" not in text and str(tmp_path) not in text
+
+
+def test_verification_refuses_an_incomplete_input_manifest_before_any_write(tmp_path):
+    fixtures, cache = write_snapshot(tmp_path / "src", make_docs(40), complete=False)
+    backends = {}
+    report = sync.verify_idempotency(
+        fixtures,
+        cache,
+        lambda name: backends.setdefault(name, FakeBackend()),
+        FakeEncoder(),
+        log=lambda message: None,
+    )
+    assert report["passed"] is False
+    assert report["error"] == "incomplete_manifest_verify_refused"
+    assert report["steps"] == [] and backends == {}
 
 
 def test_verification_with_too_small_corpus_fails_with_fixed_code(tmp_path):
@@ -747,6 +790,64 @@ def test_cli_verify_rejects_other_batch_sizes(tmp_path, monkeypatch, capsys):
     )
     assert code == 1
     assert capsys.readouterr().err.strip() == "error=verify_requires_batch_size_1"
+
+
+def test_cli_verify_rejects_dry_run_before_touching_anything(tmp_path, monkeypatch, capsys):
+    fixtures, cache = write_snapshot(tmp_path / "src", make_docs(40))
+    backend = FakeBackend()
+    patch_cli(monkeypatch, backend)
+
+    def no_model(*args, **kwargs):
+        raise AssertionError("model must not load")
+
+    monkeypatch.setattr(sync, "SentenceTransformerEncoder", no_model)
+    results = tmp_path / "results"
+    code = sync.main(
+        [
+            "--verify-idempotency",
+            "--dry-run",
+            "--fixtures-dir",
+            str(fixtures),
+            "--cache-root",
+            str(cache),
+            "--results-dir",
+            str(results),
+        ]
+    )
+    assert code == 1
+    assert capsys.readouterr().err.strip() == "error=verify_dry_run_unsupported"
+    assert backend.calls == [] and not results.exists()
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        ("http://127.0.0.1:16340", ("127.0.0.1", 16340, False, None)),
+        ("http://qdrant-host", ("qdrant-host", 80, False, None)),
+        ("https://qdrant-host", ("qdrant-host", 443, True, None)),
+        ("http://[::1]:6333", ("[::1]", 6333, False, None)),
+        ("http://qdrant-host:6333/proxy/", ("qdrant-host", 6333, False, "proxy")),
+        ("localhost:16333", ("localhost", 16333, False, None)),
+        ("127.0.0.1:16340", ("127.0.0.1", 16340, False, None)),
+        ("qdrant-host", ("qdrant-host", 80, False, None)),
+    ],
+)
+def test_client_kwargs_name_the_same_endpoint_urllib_reaches(url, expected):
+    got = sync.client_kwargs(url)
+    assert (got["host"], got["port"], got["https"], got["prefix"]) == expected
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("localhost:16333", "http://localhost:16333"),
+        ("http://localhost:16333", "http://localhost:16333"),
+        ("https://qdrant-host", "https://qdrant-host"),
+        ("qdrant-host", "http://qdrant-host"),
+    ],
+)
+def test_normalize_url_adds_a_scheme_only_when_missing(raw, expected):
+    assert sync.normalize_url(raw) == expected
 
 
 # ------------------------------------------------------------------ 보고서 형식
