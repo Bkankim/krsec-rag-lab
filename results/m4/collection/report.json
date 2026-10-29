@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "parser_version": "kisa-html-v1",
+  "discovery_complete": true,
+  "complete": true,
+  "discovered_ids": 2592,
+  "list_pages": 262,
+  "list_pages_with_rows": 262,
+  "list_rows": 3902,
+  "displayed_total": 2592,
+  "displayed_total_gap": 0,
+  "rss_ids": 10,
+  "rss_only_ids": [],
+  "rss_error": null,
+  "discovery_error": null,
+  "list_duplicate_in_page": 5,
+  "list_duplicate_across_pages": 1305,
+  "list_duplicate_ids": [
+    "72027",
+    "72132",
+    "72133",
+    "72207",
+    "72230"
+  ],
+  "list_conflict_ids": [],
+  "detail_ok": 2590,
+  "detail_failed": {},
+  "parse_failed": {
+    "parse_failed:empty_article": 2
+  },
+  "failed_ids": {
+    "parse_failed:empty_article": [
+      "71467",
+      "71509"
+    ]
+  },
+  "detail_pending": 0,
+  "missing_ids": [
+    "71467",
+    "71509"
+  ],
+  "content_duplicate_group_count": 0,
+  "content_duplicate_doc_count": 0,
+  "content_duplicate_groups": [],
+  "fixed_expected": 50,
+  "fixed_present": 50,
+  "fixed_missing_ids": [],
+  "fixed_hash_match": 50,
+  "fixed_hash_mismatch_ids": [],
+  "new_since_freeze": [],
+  "rediscovery_pages": null,
+  "rediscovery_complete": null,
+  "aborted": null,
+  "resumed": false,
+  "retry_failed": false,
+  "requests": {
+    "rss": 1,
+    "list": 262,
+    "detail": 2592,
+    "robots": 1,
+    "total": 2856
+  },
+  "elapsed_seconds": 4935.4
+}
