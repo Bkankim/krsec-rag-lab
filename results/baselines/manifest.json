@@ -1,0 +1,783 @@
+{
+  "protocol_version": "eval-protocol-v2",
+  "runs": {
+    "kisa/bm25": {
+      "config": {
+        "candidates": "질의 토큰이 하나라도 든 문서만 반환(일치가 없으면 빈 결과)",
+        "defaults": {
+          "b": 0.75,
+          "k1": 1.2
+        },
+        "formula": "Okapi BM25, idf = ln(1 + (N - df + 0.5) / (df + 0.5)), 질의 토큰 중복은 접음",
+        "grid": {
+          "b": [
+            0.3,
+            0.5,
+            0.75,
+            0.9,
+            1.0
+          ],
+          "k1": [
+            0.9,
+            1.2,
+            1.5,
+            2.0,
+            3.0
+          ],
+          "rows": [
+            {
+              "b": 0.75,
+              "dev_macro_ndcg@10": 0.6444588982431179,
+              "k1": 1.2
+            },
+            {
+              "b": 0.3,
+              "dev_macro_ndcg@10": 0.5771976150019982,
+              "k1": 0.9
+            },
+            {
+              "b": 0.5,
+              "dev_macro_ndcg@10": 0.5791181940160611,
+              "k1": 0.9
+            },
+            {
+              "b": 0.75,
+              "dev_macro_ndcg@10": 0.6101516312158273,
+              "k1": 0.9
+            },
+            {
+              "b": 0.9,
+              "dev_macro_ndcg@10": 0.5963909948137159,
+              "k1": 0.9
+            },
+            {
+              "b": 1.0,
+              "dev_macro_ndcg@10": 0.599491130136299,
+              "k1": 0.9
+            },
+            {
+              "b": 0.3,
+              "dev_macro_ndcg@10": 0.601169745944912,
+              "k1": 1.2
+            },
+            {
+              "b": 0.5,
+              "dev_macro_ndcg@10": 0.6352642681019743,
+              "k1": 1.2
+            },
+            {
+              "b": 0.9,
+              "dev_macro_ndcg@10": 0.6703369855304021,
+              "k1": 1.2
+            },
+            {
+              "b": 1.0,
+              "dev_macro_ndcg@10": 0.6852802254212026,
+              "k1": 1.2
+            },
+            {
+              "b": 0.3,
+              "dev_macro_ndcg@10": 0.5920256918894712,
+              "k1": 1.5
+            },
+            {
+              "b": 0.5,
+              "dev_macro_ndcg@10": 0.6408208335123934,
+              "k1": 1.5
+            },
+            {
+              "b": 0.75,
+              "dev_macro_ndcg@10": 0.6925053899674731,
+              "k1": 1.5
+            },
+            {
+              "b": 0.9,
+              "dev_macro_ndcg@10": 0.7232127958950989,
+              "k1": 1.5
+            },
+            {
+              "b": 1.0,
+              "dev_macro_ndcg@10": 0.7232127958950989,
+              "k1": 1.5
+            },
+            {
+              "b": 0.3,
+              "dev_macro_ndcg@10": 0.6176965228177351,
+              "k1": 2.0
+            },
+            {
+              "b": 0.5,
+              "dev_macro_ndcg@10": 0.6927330773046423,
+              "k1": 2.0
+            },
+            {
+              "b": 0.75,
+              "dev_macro_ndcg@10": 0.7258387233008065,
+              "k1": 2.0
+            },
+            {
+              "b": 0.9,
+              "dev_macro_ndcg@10": 0.7481452739092771,
+              "k1": 2.0
+            },
+            {
+              "b": 1.0,
+              "dev_macro_ndcg@10": 0.7787155861107319,
+              "k1": 2.0
+            },
+            {
+              "b": 0.3,
+              "dev_macro_ndcg@10": 0.6910330978987919,
+              "k1": 3.0
+            },
+            {
+              "b": 0.5,
+              "dev_macro_ndcg@10": 0.7226741421133457,
+              "k1": 3.0
+            },
+            {
+              "b": 0.75,
+              "dev_macro_ndcg@10": 0.7647361256847761,
+              "k1": 3.0
+            },
+            {
+              "b": 0.9,
+              "dev_macro_ndcg@10": 0.7970064172920813,
+              "k1": 3.0
+            },
+            {
+              "b": 1.0,
+              "dev_macro_ndcg@10": 0.7879622078134011,
+              "k1": 3.0
+            }
+          ]
+        },
+        "selected": {
+          "b": 0.9,
+          "dev_macro_ndcg@10": 0.7970064172920813,
+          "k1": 3.0
+        },
+        "selection": "dev의 macro nDCG@10(condensed, 정답이 있는 유형의 단순 평균) 최대, 같으면 기본값(k1=1.2, b=0.75)을 먼저, 그다음 격자 순서(k1 오름차순, b 오름차순)에서 앞선 쪽",
+        "tokenizer": {
+          "id": "bm25-tok-v1",
+          "rules": "casefold, NFKC 없음 / CVE-YYYY-NNNN+ 하이픈 유지 단일 토큰(ASCII look-around 경계) / [a-z0-9]+ 영숫자 토큰(구분자 _ : . -, 어간·불용어 처리 없음) / 한글 음절 연속열은 겹치는 문자 2-gram(한 글자 연속열은 1-gram) / 그 밖의 문자는 버림"
+        }
+      },
+      "created_at": "2026-10-29T12:48:16+00:00",
+      "environment": {
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "machine": "arm64",
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.14"
+      },
+      "index_text": "'{title}\\n{body}' (공지 제목 + 줄바꿈 + 정규화 본문)",
+      "inputs": {
+        "corpus_manifest": {
+          "path": "fixtures/kisa/manifest.json",
+          "sha256": "bf670ecd666e77139ae0c53a7be0badb5bdd82e8ff54d4876d59290b68c8b0c4"
+        },
+        "corpus_metadata": {
+          "path": "fixtures/kisa/metadata.jsonl",
+          "sha256": "c1512e8d234e0dbe4d32430877e61775612dd2248046122f74e227d446737eaf"
+        },
+        "queries": {
+          "path": "eval/golden/golden_v1.jsonl",
+          "sha256": "2f94253c6c0551c536973c95b830dcf123e7acb858304fa8678812a19360d3dc"
+        }
+      },
+      "n_documents": 50,
+      "protocol_version": "eval-protocol-v2",
+      "retriever": "bm25",
+      "selected": {
+        "b": 0.9,
+        "dev_macro_ndcg@10": 0.7970064172920813,
+        "k1": 3.0,
+        "selected_on": "dev",
+        "tau": 11.436208248079549,
+        "tau_selection": {
+          "dev_abstain_rate": 1.0,
+          "dev_false_abstain_rate": 0.15789473684210525,
+          "dev_j": 0.8421052631578947,
+          "n_candidates": 20,
+          "rule": "dev에서 abstain_rate - false_abstain_rate 최대, 같으면 가장 낮은 tau",
+          "tau": 11.436208248079549
+        }
+      },
+      "splits_stored": [
+        "dev",
+        "test"
+      ],
+      "stored_results": {
+        "fields": [
+          "n_unjudged_removed",
+          "question_id",
+          "results",
+          "top1_score_raw"
+        ],
+        "path": "results/baselines/kisa/bm25.jsonl",
+        "ranking": "(점수 내림차순, 문서 ID 오름차순) 정렬 뒤 질문의 unjudged를 지운 condensed list",
+        "result_fields": [
+          "doc_id",
+          "rank",
+          "score"
+        ],
+        "top_n": 100
+      },
+      "timing": {
+        "index_seconds": 0.009876040996459778,
+        "n_queries_timed": 52,
+        "query_latency_median_seconds": 2.860400127246976e-05
+      },
+      "track": "kisa"
+    },
+    "kisa/dense": {
+      "config": {
+        "candidates": "코퍼스 전체",
+        "model": {
+          "batch_size": 2,
+          "device": "cpu",
+          "dimension": 1024,
+          "document_format": "색인 텍스트 그대로, 8192 토큰 초과분은 절단(청킹 없음)",
+          "dtype": "float32",
+          "max_doc_tokens": 22749,
+          "max_seq_length": 8192,
+          "n_truncated_docs": 2,
+          "name": "BAAI/bge-m3",
+          "normalized": true,
+          "pooling": "cls",
+          "query_format": "질의 문자열 그대로(지시문 접두사 없음)",
+          "representation": "dense only (bge-m3의 sparse/colbert 헤드는 사용하지 않음)",
+          "revision": "5617a9f61b028005a4858fdac845db406aefb181"
+        },
+        "runtime": {
+          "numpy": "2.5.3",
+          "python": "3.13.14",
+          "sentence_transformers": "6.1.0",
+          "torch": "2.14.1"
+        },
+        "score": "정규화 벡터 내적(= 코사인), 코퍼스 전체에 점수를 매김(전수 검색)"
+      },
+      "created_at": "2026-10-29T12:49:22+00:00",
+      "environment": {
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "machine": "arm64",
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.14"
+      },
+      "index_text": "'{title}\\n{body}' (공지 제목 + 줄바꿈 + 정규화 본문)",
+      "inputs": {
+        "corpus_manifest": {
+          "path": "fixtures/kisa/manifest.json",
+          "sha256": "bf670ecd666e77139ae0c53a7be0badb5bdd82e8ff54d4876d59290b68c8b0c4"
+        },
+        "corpus_metadata": {
+          "path": "fixtures/kisa/metadata.jsonl",
+          "sha256": "c1512e8d234e0dbe4d32430877e61775612dd2248046122f74e227d446737eaf"
+        },
+        "queries": {
+          "path": "eval/golden/golden_v1.jsonl",
+          "sha256": "2f94253c6c0551c536973c95b830dcf123e7acb858304fa8678812a19360d3dc"
+        }
+      },
+      "n_documents": 50,
+      "protocol_version": "eval-protocol-v2",
+      "retriever": "dense",
+      "selected": {
+        "selected_on": "dev",
+        "tau": 0.6149108409881592,
+        "tau_selection": {
+          "dev_abstain_rate": 0.75,
+          "dev_false_abstain_rate": 0.15789473684210525,
+          "dev_j": 0.5921052631578947,
+          "n_candidates": 23,
+          "rule": "dev에서 abstain_rate - false_abstain_rate 최대, 같으면 가장 낮은 tau",
+          "tau": 0.6149108409881592
+        }
+      },
+      "splits_stored": [
+        "dev",
+        "test"
+      ],
+      "stored_results": {
+        "fields": [
+          "n_unjudged_removed",
+          "question_id",
+          "results",
+          "top1_score_raw"
+        ],
+        "path": "results/baselines/kisa/dense.jsonl",
+        "ranking": "(점수 내림차순, 문서 ID 오름차순) 정렬 뒤 질문의 unjudged를 지운 condensed list",
+        "result_fields": [
+          "doc_id",
+          "rank",
+          "score"
+        ],
+        "top_n": 100
+      },
+      "timing": {
+        "index_seconds": 56.58103983299952,
+        "n_queries_timed": 52,
+        "query_latency_median_seconds": 0.04520214600051986
+      },
+      "track": "kisa"
+    },
+    "kisa/exact": {
+      "config": {
+        "candidates": "CVE ID가 일치한 문서만 반환(없으면 빈 결과)",
+        "index": "CVE ID -> 문서 ID 역색인",
+        "keys": "공개 트랙은 레코드 id, KISA 트랙은 제목+본문에서 splits.extract_cve_ids로 뽑은 ID",
+        "n_keys": 1560,
+        "score": "질의의 서로 다른 CVE ID 중 문서가 키로 가진 개수"
+      },
+      "created_at": "2026-10-29T12:48:15+00:00",
+      "environment": {
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "machine": "arm64",
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.14"
+      },
+      "index_text": "'{title}\\n{body}' (공지 제목 + 줄바꿈 + 정규화 본문)",
+      "inputs": {
+        "corpus_manifest": {
+          "path": "fixtures/kisa/manifest.json",
+          "sha256": "bf670ecd666e77139ae0c53a7be0badb5bdd82e8ff54d4876d59290b68c8b0c4"
+        },
+        "corpus_metadata": {
+          "path": "fixtures/kisa/metadata.jsonl",
+          "sha256": "c1512e8d234e0dbe4d32430877e61775612dd2248046122f74e227d446737eaf"
+        },
+        "queries": {
+          "path": "eval/golden/golden_v1.jsonl",
+          "sha256": "2f94253c6c0551c536973c95b830dcf123e7acb858304fa8678812a19360d3dc"
+        }
+      },
+      "n_documents": 50,
+      "protocol_version": "eval-protocol-v2",
+      "retriever": "exact",
+      "selected": {
+        "selected_on": "dev",
+        "tau": 1.0,
+        "tau_selection": {
+          "dev_abstain_rate": 1.0,
+          "dev_false_abstain_rate": 0.5263157894736842,
+          "dev_j": 0.4736842105263158,
+          "n_candidates": 1,
+          "rule": "dev에서 abstain_rate - false_abstain_rate 최대, 같으면 가장 낮은 tau",
+          "tau": 1.0
+        }
+      },
+      "splits_stored": [
+        "dev",
+        "test"
+      ],
+      "stored_results": {
+        "fields": [
+          "n_unjudged_removed",
+          "question_id",
+          "results",
+          "top1_score_raw"
+        ],
+        "path": "results/baselines/kisa/exact.jsonl",
+        "ranking": "(점수 내림차순, 문서 ID 오름차순) 정렬 뒤 질문의 unjudged를 지운 condensed list",
+        "result_fields": [
+          "doc_id",
+          "rank",
+          "score"
+        ],
+        "top_n": 100
+      },
+      "timing": {
+        "index_seconds": 0.00032658400596119463,
+        "n_queries_timed": 52,
+        "query_latency_median_seconds": 1.2294949556235224e-06
+      },
+      "track": "kisa"
+    },
+    "public/bm25": {
+      "config": {
+        "candidates": "질의 토큰이 하나라도 든 문서만 반환(일치가 없으면 빈 결과)",
+        "defaults": {
+          "b": 0.75,
+          "k1": 1.2
+        },
+        "formula": "Okapi BM25, idf = ln(1 + (N - df + 0.5) / (df + 0.5)), 질의 토큰 중복은 접음",
+        "grid": {
+          "b": [
+            0.3,
+            0.5,
+            0.75,
+            0.9,
+            1.0
+          ],
+          "k1": [
+            0.9,
+            1.2,
+            1.5,
+            2.0,
+            3.0
+          ],
+          "rows": [
+            {
+              "b": 0.75,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 1.2
+            },
+            {
+              "b": 0.3,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 0.9
+            },
+            {
+              "b": 0.5,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 0.9
+            },
+            {
+              "b": 0.75,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 0.9
+            },
+            {
+              "b": 0.9,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 0.9
+            },
+            {
+              "b": 1.0,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 0.9
+            },
+            {
+              "b": 0.3,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 1.2
+            },
+            {
+              "b": 0.5,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 1.2
+            },
+            {
+              "b": 0.9,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 1.2
+            },
+            {
+              "b": 1.0,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 1.2
+            },
+            {
+              "b": 0.3,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 1.5
+            },
+            {
+              "b": 0.5,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 1.5
+            },
+            {
+              "b": 0.75,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 1.5
+            },
+            {
+              "b": 0.9,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 1.5
+            },
+            {
+              "b": 1.0,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 1.5
+            },
+            {
+              "b": 0.3,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 2.0
+            },
+            {
+              "b": 0.5,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 2.0
+            },
+            {
+              "b": 0.75,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 2.0
+            },
+            {
+              "b": 0.9,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 2.0
+            },
+            {
+              "b": 1.0,
+              "dev_macro_ndcg@10": 0.8516682308257844,
+              "k1": 2.0
+            },
+            {
+              "b": 0.3,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 3.0
+            },
+            {
+              "b": 0.5,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 3.0
+            },
+            {
+              "b": 0.75,
+              "dev_macro_ndcg@10": 0.8533200375784851,
+              "k1": 3.0
+            },
+            {
+              "b": 0.9,
+              "dev_macro_ndcg@10": 0.8516682308257844,
+              "k1": 3.0
+            },
+            {
+              "b": 1.0,
+              "dev_macro_ndcg@10": 0.8504153256831718,
+              "k1": 3.0
+            }
+          ]
+        },
+        "selected": {
+          "b": 0.75,
+          "dev_macro_ndcg@10": 0.8533200375784851,
+          "k1": 1.2
+        },
+        "selection": "dev의 macro nDCG@10(condensed, 정답이 있는 유형의 단순 평균) 최대, 같으면 기본값(k1=1.2, b=0.75)을 먼저, 그다음 격자 순서(k1 오름차순, b 오름차순)에서 앞선 쪽",
+        "tokenizer": {
+          "id": "bm25-tok-v1",
+          "rules": "casefold, NFKC 없음 / CVE-YYYY-NNNN+ 하이픈 유지 단일 토큰(ASCII look-around 경계) / [a-z0-9]+ 영숫자 토큰(구분자 _ : . -, 어간·불용어 처리 없음) / 한글 음절 연속열은 겹치는 문자 2-gram(한 글자 연속열은 1-gram) / 그 밖의 문자는 버림"
+        }
+      },
+      "created_at": "2026-10-29T12:46:59+00:00",
+      "environment": {
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "machine": "arm64",
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.14"
+      },
+      "index_text": "'{id} {description_en}' (레코드 id + 공백 + 영문 설명, CPE·CWE·CVSS 미색인)",
+      "inputs": {
+        "corpus": {
+          "path": "fixtures/nvd/cves.jsonl",
+          "sha256": "96ce6757d724ab85593357a1806698bfe9026854b2f9823b6da4cbf01ce83ffa"
+        },
+        "queries": {
+          "path": "eval/public/queries.jsonl",
+          "sha256": "1d8ab42360e3cee23e8d67bc933e5af7ec6a8365eb32d315105233016d294a99"
+        }
+      },
+      "n_documents": 1560,
+      "protocol_version": "eval-protocol-v2",
+      "retriever": "bm25",
+      "selected": {
+        "b": 0.75,
+        "dev_macro_ndcg@10": 0.8533200375784851,
+        "k1": 1.2,
+        "selected_on": "dev",
+        "tau": 5.191783655695957,
+        "tau_selection": {
+          "dev_abstain_rate": 1.0,
+          "dev_false_abstain_rate": 0.021739130434782608,
+          "dev_j": 0.9782608695652174,
+          "n_candidates": 34,
+          "rule": "dev에서 abstain_rate - false_abstain_rate 최대, 같으면 가장 낮은 tau",
+          "tau": 5.191783655695957
+        }
+      },
+      "splits_stored": [
+        "dev",
+        "test"
+      ],
+      "stored_results": {
+        "fields": [
+          "n_unjudged_removed",
+          "question_id",
+          "results",
+          "top1_score_raw"
+        ],
+        "path": "results/baselines/public/bm25.jsonl",
+        "ranking": "(점수 내림차순, 문서 ID 오름차순) 정렬 뒤 질문의 unjudged를 지운 condensed list",
+        "result_fields": [
+          "doc_id",
+          "rank",
+          "score"
+        ],
+        "top_n": 100
+      },
+      "timing": {
+        "index_seconds": 0.009989042002416681,
+        "n_queries_timed": 144,
+        "query_latency_median_seconds": 5.021000106353313e-06
+      },
+      "track": "public"
+    },
+    "public/dense": {
+      "config": {
+        "candidates": "코퍼스 전체",
+        "model": {
+          "batch_size": 2,
+          "device": "cpu",
+          "dimension": 1024,
+          "document_format": "색인 텍스트 그대로, 8192 토큰 초과분은 절단(청킹 없음)",
+          "dtype": "float32",
+          "max_doc_tokens": 517,
+          "max_seq_length": 8192,
+          "n_truncated_docs": 0,
+          "name": "BAAI/bge-m3",
+          "normalized": true,
+          "pooling": "cls",
+          "query_format": "질의 문자열 그대로(지시문 접두사 없음)",
+          "representation": "dense only (bge-m3의 sparse/colbert 헤드는 사용하지 않음)",
+          "revision": "5617a9f61b028005a4858fdac845db406aefb181"
+        },
+        "runtime": {
+          "numpy": "2.5.3",
+          "python": "3.13.14",
+          "sentence_transformers": "6.1.0",
+          "torch": "2.14.1"
+        },
+        "score": "정규화 벡터 내적(= 코사인), 코퍼스 전체에 점수를 매김(전수 검색)"
+      },
+      "created_at": "2026-10-29T12:48:14+00:00",
+      "environment": {
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "machine": "arm64",
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.14"
+      },
+      "index_text": "'{id} {description_en}' (레코드 id + 공백 + 영문 설명, CPE·CWE·CVSS 미색인)",
+      "inputs": {
+        "corpus": {
+          "path": "fixtures/nvd/cves.jsonl",
+          "sha256": "96ce6757d724ab85593357a1806698bfe9026854b2f9823b6da4cbf01ce83ffa"
+        },
+        "queries": {
+          "path": "eval/public/queries.jsonl",
+          "sha256": "1d8ab42360e3cee23e8d67bc933e5af7ec6a8365eb32d315105233016d294a99"
+        }
+      },
+      "n_documents": 1560,
+      "protocol_version": "eval-protocol-v2",
+      "retriever": "dense",
+      "selected": {
+        "selected_on": "dev",
+        "tau": 0.6073137521743774,
+        "tau_selection": {
+          "dev_abstain_rate": 0.8333333333333334,
+          "dev_false_abstain_rate": 0.41304347826086957,
+          "dev_j": 0.4202898550724638,
+          "n_candidates": 58,
+          "rule": "dev에서 abstain_rate - false_abstain_rate 최대, 같으면 가장 낮은 tau",
+          "tau": 0.6073137521743774
+        }
+      },
+      "splits_stored": [
+        "dev",
+        "test"
+      ],
+      "stored_results": {
+        "fields": [
+          "n_unjudged_removed",
+          "question_id",
+          "results",
+          "top1_score_raw"
+        ],
+        "path": "results/baselines/public/dense.jsonl",
+        "ranking": "(점수 내림차순, 문서 ID 오름차순) 정렬 뒤 질문의 unjudged를 지운 condensed list",
+        "result_fields": [
+          "doc_id",
+          "rank",
+          "score"
+        ],
+        "top_n": 100
+      },
+      "timing": {
+        "index_seconds": 62.8373495420019,
+        "n_queries_timed": 144,
+        "query_latency_median_seconds": 0.044773583500500536
+      },
+      "track": "public"
+    },
+    "public/exact": {
+      "config": {
+        "candidates": "CVE ID가 일치한 문서만 반환(없으면 빈 결과)",
+        "index": "CVE ID -> 문서 ID 역색인",
+        "keys": "공개 트랙은 레코드 id, KISA 트랙은 제목+본문에서 splits.extract_cve_ids로 뽑은 ID",
+        "n_keys": 1560,
+        "score": "질의의 서로 다른 CVE ID 중 문서가 키로 가진 개수"
+      },
+      "created_at": "2026-10-29T12:46:59+00:00",
+      "environment": {
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "machine": "arm64",
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.14"
+      },
+      "index_text": "'{id} {description_en}' (레코드 id + 공백 + 영문 설명, CPE·CWE·CVSS 미색인)",
+      "inputs": {
+        "corpus": {
+          "path": "fixtures/nvd/cves.jsonl",
+          "sha256": "96ce6757d724ab85593357a1806698bfe9026854b2f9823b6da4cbf01ce83ffa"
+        },
+        "queries": {
+          "path": "eval/public/queries.jsonl",
+          "sha256": "1d8ab42360e3cee23e8d67bc933e5af7ec6a8365eb32d315105233016d294a99"
+        }
+      },
+      "n_documents": 1560,
+      "protocol_version": "eval-protocol-v2",
+      "retriever": "exact",
+      "selected": {
+        "selected_on": "dev",
+        "tau": 1.0,
+        "tau_selection": {
+          "dev_abstain_rate": 1.0,
+          "dev_false_abstain_rate": 0.45652173913043476,
+          "dev_j": 0.5434782608695652,
+          "n_candidates": 1,
+          "rule": "dev에서 abstain_rate - false_abstain_rate 최대, 같으면 가장 낮은 tau",
+          "tau": 1.0
+        }
+      },
+      "splits_stored": [
+        "dev",
+        "test"
+      ],
+      "stored_results": {
+        "fields": [
+          "n_unjudged_removed",
+          "question_id",
+          "results",
+          "top1_score_raw"
+        ],
+        "path": "results/baselines/public/exact.jsonl",
+        "ranking": "(점수 내림차순, 문서 ID 오름차순) 정렬 뒤 질문의 unjudged를 지운 condensed list",
+        "result_fields": [
+          "doc_id",
+          "rank",
+          "score"
+        ],
+        "top_n": 100
+      },
+      "timing": {
+        "index_seconds": 0.00048512500507058576,
+        "n_queries_timed": 144,
+        "query_latency_median_seconds": 1.0419971658848226e-06
+      },
+      "track": "public"
+    }
+  }
+}

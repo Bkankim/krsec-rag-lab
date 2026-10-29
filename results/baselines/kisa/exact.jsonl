@@ -1,0 +1,52 @@
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2025-68686", "results": [{"doc_id": "72143", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-10816", "results": [{"doc_id": "72173", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-14669", "results": [{"doc_id": "72164", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-15410", "results": [{"doc_id": "72134", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-20273", "results": [{"doc_id": "72151", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-20315", "results": [{"doc_id": "72168", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-20349", "results": [{"doc_id": "72159", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-48448", "results": [{"doc_id": "72146", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-53362", "results": [{"doc_id": "72176", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-53873", "results": [{"doc_id": "72150", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-60696", "results": [{"doc_id": "72172", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-62817", "results": [{"doc_id": "72160", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-63030", "results": [{"doc_id": "72136", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-66066", "results": [{"doc_id": "72147", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-6637", "results": [{"doc_id": "72184", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-69834", "results": [{"doc_id": "72180", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-72899", "results": [{"doc_id": "72157", "rank": 1, "score": 1.0}, {"doc_id": "72178", "rank": 2, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-75650", "results": [{"doc_id": "72181", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-76461", "results": [{"doc_id": "72193", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-cve-2026-9198", "results": [{"doc_id": "72153", "rank": 1, "score": 1.0}], "top1_score_raw": 1.0}
+{"n_unjudged_removed": 0, "question_id": "g1-ps-01", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ps-02", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ps-03", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ps-04", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ps-05", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ps-06", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ps-07", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ps-08", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ps-09", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ps-10", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ps-11", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ps-12", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ec-01", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ec-03", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ec-05", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ec-06", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ec-07", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ec-08", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ec-09", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ec-10", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ec-11", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-ec-12", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-na-cve-2021-13028", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-na-cve-2022-21510", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-na-cve-2022-42348", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-na-cve-2022-45725", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-na-cve-2022-56039", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-na-cve-2024-21182", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-na-cve-2025-20759", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-na-cve-2025-46176", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-na-cve-2025-63798", "results": [], "top1_score_raw": null}
+{"n_unjudged_removed": 0, "question_id": "g1-na-cve-2026-41626", "results": [], "top1_score_raw": null}
