@@ -10,6 +10,7 @@ import copy
 import importlib.util
 import json
 import random
+import shutil
 import subprocess
 import sys
 import types
@@ -1162,3 +1163,121 @@ def test_dev_only_entries_are_checked_against_the_current_input_files(root, synt
     write_jsonl(root / data.PUBLIC_QUERIES, rows)
     with pytest.raises(ComparisonError, match="input hashes"):
         harness.compute_outputs(synth, root, OUT)
+
+
+# ------------------------------------------------------------ 변형별 기준선 (#47, 하위 호환)
+
+
+class OracleDense:
+    """가짜 dense 기준선: 정답 문서에 1.0, 나머지에 0.0을 준다(BM25와 다른 저장본). 모델을 부르지 않는다."""
+
+    def __init__(self, texts):
+        self.texts = texts
+        self.meta = {
+            "model": {"name": "fake", "revision": "fake", "n_truncated_docs": 0},
+            "runtime": {"python": "fake"},
+            "doc_encode_seconds": 0.0,
+        }
+
+    def score(self, query):
+        gold = next(set(q["gold"]) for q in QUERIES if q["query"] == query)
+        return {doc_id: 1.0 if doc_id in gold else 0.0 for doc_id in self.texts}
+
+
+def run_dense_baseline(root):
+    runner.run_baseline("public", "dense", root, dense_factory=OracleDense)
+
+
+def per_variant_baselines(synth):
+    """copy 변형은 BM25, 나머지는 dense 기준선과 비교하는 `{변형: 기준}` 형태."""
+    synth.BASELINES = {
+        "public": {"oracle": "dense", "copy": "bm25", "mixed": "dense", "worse": "bm25"}
+    }
+
+
+def test_baselines_may_map_variants_to_different_baselines(root, synth):
+    run_dense_baseline(root)
+    per_variant_baselines(synth)
+    comparison = run_synth(root, synth)
+    expected = synth.BASELINES["public"]
+    assert comparison["primary"]["baseline"] == "dense"
+    for variant, baseline in expected.items():
+        block = comparison["comparisons"][f"public/{variant}"]
+        assert block["baseline"] == baseline
+    secondary = {item["variant"]: item["baseline"] for item in comparison["secondary"]}
+    assert secondary == {"copy": "bm25", "mixed": "dense", "worse": "bm25"}
+    manifest = read_json(exp_dir(root) / "manifest.json")["runs"]
+    for variant, baseline in expected.items():
+        assert manifest[f"public/{variant}"]["baseline"] == {
+            "retriever": baseline,
+            "stored_results": f"results/baselines/public/{baseline}.jsonl",
+        }
+    # 각 변형의 기준 값은 그 변형 기준선의 저장본에서 나온다(유형별 nDCG@10으로 확인)
+    questions = data.load_questions("public", root)
+    base_manifest = read_json(root / "results/baselines/manifest.json")["runs"]
+    per_baseline = {}
+    for baseline in ("dense", "bm25"):
+        records = cmp.read_stored(root / f"results/baselines/public/{baseline}.jsonl")
+        tau = base_manifest[f"public/{baseline}"]["selected"]["tau"]
+        evaluated = scoring.evaluate_split(records, questions, "test", tau)
+        per_baseline[baseline] = {
+            t: v["metrics"]["ndcg@10"] for t, v in evaluated["by_type"].items() if v["n_scored"]
+        }
+    assert per_baseline["dense"] != per_baseline["bm25"]  # 두 기준선이 구별되는 입력이다
+    for variant, baseline in expected.items():
+        by_type = comparison["comparisons"][f"public/{variant}"]["by_type"]
+        got = {t: v["metrics"]["ndcg@10"]["baseline"] for t, v in by_type.items()}
+        assert got == per_baseline[baseline], variant
+    assert harness.verify_outputs(synth, root, OUT) == []  # --compare도 변형별 기준선을 쓴다
+
+
+def test_per_variant_baseline_mapping_equals_the_track_wide_name_when_all_agree(root, synth):
+    track_wide = run_synth(root, synth)
+    mapped_root = root / "mapped"
+    mapped_root.mkdir()
+    shutil.copytree(root / "eval", mapped_root / "eval")
+    shutil.copytree(root / "fixtures", mapped_root / "fixtures")
+    shutil.copytree(root / "results/baselines", mapped_root / "results/baselines")
+    synth.BASELINES = {"public": dict.fromkeys(synth.VARIANTS["public"], "bm25")}
+    mapped = harness.run_experiment(synth.NAME, "public", mapped_root)
+
+    def strip_times(comparison):
+        blocks = json.loads(json.dumps(comparison["comparisons"]))
+        for block in blocks.values():
+            block.pop("timing")
+        return blocks
+
+    assert strip_times(mapped) == strip_times(track_wide)
+
+
+@pytest.mark.parametrize(
+    ("baselines", "message"),
+    [
+        ({"public": {"oracle": "bm25"}}, "no baseline for variant"),
+        (
+            {"public": {"oracle": "bm25", "copy": 3, "mixed": "bm25", "worse": "bm25"}},
+            "no baseline",
+        ),
+        ({"public": 3}, "bad baseline"),
+        ({"public": {}}, "no baseline for variant"),
+    ],
+)
+def test_a_baselines_mapping_must_cover_every_variant_with_names(monkeypatch, baselines, message):
+    module = make_synth("badbase")
+    module.BASELINES = baselines
+    monkeypatch.setitem(sys.modules, "krsec_rag_lab.experiments.badbase", module)
+    with pytest.raises(ContractError, match=message):
+        harness.load_experiment("badbase")
+
+
+def test_a_variant_baseline_that_is_not_stored_fails_before_any_test_run(root, synth):
+    per_variant_baselines(synth)  # dense 기준선 저장본이 없다
+    with pytest.raises(ExperimentError, match="dense"):
+        run_synth(root, synth)
+    assert not exp_dir(root).exists()
+
+
+def test_the_pre_run_baseline_check_covers_only_the_selected_variants(root, synth):
+    per_variant_baselines(synth)  # dense 기준선이 없지만 copy·worse는 bm25만 쓴다
+    comparison = run_synth(root, synth, variants=["copy", "worse"])
+    assert {block["baseline"] for block in comparison["comparisons"].values()} == {"bm25"}

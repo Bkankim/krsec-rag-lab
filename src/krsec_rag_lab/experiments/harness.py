@@ -99,13 +99,24 @@ def validate_module(module: ModuleType, name: str) -> None:
             raise ContractError(f"experiment {name!r}: variant names must match {_NAME_RE.pattern}")
         if track not in module.BASELINES:
             raise ContractError(f"experiment {name!r}: no baseline for track {track}")
+        baselines = module.BASELINES[track]
+        if isinstance(baselines, Mapping):
+            missing = [v for v in variants if not isinstance(baselines.get(v), str)]
+            if missing:
+                raise ContractError(
+                    f"experiment {name!r}: no baseline for variant(s) {missing} of track {track}"
+                )
+        elif not isinstance(baselines, str):
+            raise ContractError(f"experiment {name!r}: bad baseline for track {track}")
     track, variant = module.PRIMARY
     if variant not in module.VARIANTS.get(track, ()):
         raise ContractError(f"experiment {name!r}: PRIMARY {module.PRIMARY} is not a variant")
 
 
-def baseline_of(module: ModuleType, track: str) -> str:
-    return module.BASELINES[track]
+def baseline_of(module: ModuleType, track: str, variant: str) -> str:
+    """변형의 기준선 이름. `BASELINES[track]`은 트랙 공통 이름(str)이거나 `{변형: 이름}` 매핑이다."""
+    baselines = module.BASELINES[track]
+    return baselines[variant] if isinstance(baselines, Mapping) else baselines
 
 
 # ------------------------------------------------------------ 파일 입출력
@@ -361,17 +372,17 @@ def run_experiment(
     name = module.NAME
     questions, corpus = _load_inputs(track, root, load_body)
     baselines_manifest = read_baselines_manifest(root)
-    baseline = baseline_of(module, track)
-    base_entry = cmp.check_baseline_entry(baselines_manifest, track, baseline)
     # 기준선 쪽 비교 전 검사는 실행 전에 한다: test를 돌리고 나서 비교가 안 되는 일을 막는다
-    cmp.check_comparable(
-        exp_entry=base_entry,
-        base_entry=base_entry,
-        current_inputs=data.input_fingerprints(track, root),
-        questions=questions,
-        exp_records=None,
-        base_records=read_baseline_records(root, track, baseline),
-    )
+    for baseline in dict.fromkeys(baseline_of(module, track, v) for v in selected_variants):
+        base_entry = cmp.check_baseline_entry(baselines_manifest, track, baseline)
+        cmp.check_comparable(
+            exp_entry=base_entry,
+            base_entry=base_entry,
+            current_inputs=data.input_fingerprints(track, root),
+            questions=questions,
+            exp_records=None,
+            base_records=read_baseline_records(root, track, baseline),
+        )
     # 모든 변형을 메모리에서 먼저 끝낸다: 뒤쪽 변형이 잠금 위반으로 실패해도 앞쪽 변형의 test가 저장되지 않는다
     pending = [
         _run_variant(
@@ -588,8 +599,8 @@ def _run_variant(
         "n_documents": len(corpus.texts),
         "index_text": data.PUBLIC_INDEX_TEXT if track == "public" else data.KISA_INDEX_TEXT,
         "baseline": {
-            "retriever": baseline_of(module, track),
-            "stored_results": f"{BASELINES_DIR.as_posix()}/{track}/{baseline_of(module, track)}.jsonl",
+            "retriever": baseline_of(module, track, variant),
+            "stored_results": f"{BASELINES_DIR.as_posix()}/{track}/{baseline_of(module, track, variant)}.jsonl",
         },
         "stored_results": {
             "path": _manifest_relative_path(out_dir, name, track, variant),
@@ -640,12 +651,12 @@ def compute_outputs(module: ModuleType, root: Path, out_dir: Path) -> tuple[dict
             continue
         questions = data.load_questions(track, root)
         current_inputs = data.input_fingerprints(track, root)
-        baseline = baseline_of(module, track)
         for variant in module.VARIANTS[track]:
             key = f"{track}/{variant}"
             entry = manifest["runs"].get(key)
             if entry is None:
                 continue
+            baseline = baseline_of(module, track, variant)
             records = cmp.read_stored(_stored_path(root, out_dir, name, track, variant))
             cmp.check_known(key, records, questions)
             tau = entry["selected"]["tau"]
