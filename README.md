@@ -19,14 +19,15 @@ RAG 파이프라인의 각 구성요소(청킹·하이브리드 검색·리랭�
 
 ## 상태
 
-**M3 완료, v0.2** - M3 실험 5개(하이브리드+RRF, 리랭커, 청킹, 한영 교차, 임베딩 교체)를 사전 등록한 가설과 판정 규칙대로
-한 번씩 돌렸고, 다섯 주 판정이 모두 `hypothesis-rejected`다(아래 "M3 실험 결과"). 질문별 원시 결과, 재현 명령, 검사를 v0.2
-릴리스로 묶었다. 릴리스 노트(asset 목록·sha256·한계): [docs/release-v0.2.md](docs/release-v0.2.md), 실험 요약:
-[docs/experiments/summary.md](docs/experiments/summary.md).
+**M4 완료, v0.3** - KISA 보안공지 게시판 전체를 한 번 수집해 누락·중복·파싱 실패를 센 결과와, 그 코퍼스를 Qdrant에
+증분 동기화해 갱신·삭제·재인덱싱 멱등성 1~5단계를 검증한 결과를 v0.3 릴리스로 묶었다(아래 "M4 결과"). 평가 트랙의
+고정 50건과 M2·M3 결과는 바뀌지 않았다. 릴리스 노트(asset 목록·sha256·한계): [docs/release-v0.3.md](docs/release-v0.3.md),
+수집 보고: [docs/m4-collection.md](docs/m4-collection.md), 색인 보고: [docs/m4-idempotency.md](docs/m4-idempotency.md).
 
-이전 릴리스: M2 완료, v0.1(베이스라인 3종 exact CVE lookup / BM25 / dense bge-m3, 두 트랙).
-노트: [docs/release-v0.1.md](docs/release-v0.1.md). M4 이후의 로드맵은 [PLAN.md](PLAN.md)와
-[Milestones](../../milestones)에 있다.
+이전 릴리스: M3 완료, v0.2(M3 실험 5개, 다섯 주 판정이 모두 `hypothesis-rejected`, 아래 "M3 실험 결과").
+노트: [docs/release-v0.2.md](docs/release-v0.2.md), 실험 요약: [docs/experiments/summary.md](docs/experiments/summary.md).
+M2 완료, v0.1(베이스라인 3종 exact CVE lookup / BM25 / dense bge-m3, 두 트랙). 노트: [docs/release-v0.1.md](docs/release-v0.1.md).
+M5 이후의 로드맵은 [PLAN.md](PLAN.md)와 [Milestones](../../milestones)에 있다.
 
 ## 평가 트랙과 재현
 
@@ -65,12 +66,13 @@ OUT=$(mktemp -d)
 uv run --no-sync python scripts/run_baselines.py --track kisa --retriever bm25 --kisa-root <KISA 캐시가 있는 체크아웃> --out-dir "$OUT"
 ```
 
-README 표와 원시 결과의 일치 검증(네트워크·캐시 불필요, 베이스라인 표와 M3 판정 표 모두):
+README 표와 원시 결과의 일치 검증(네트워크·캐시 불필요, 베이스라인 표, M3 판정 표, M4 표 모두):
 
 ```bash
 uv run python scripts/make_readme_tables.py --check
 uv run python scripts/check_release.py                                  # v0.1 asset 검사
 uv run python scripts/check_release.py --note docs/release-v0.2.md      # v0.2 asset 검사
+uv run python scripts/check_release.py --note docs/release-v0.3.md      # v0.3 asset 검사
 ```
 
 **M3 실험** (모델·KISA 캐시 없이 저장본에서 `metrics.json`·`comparison.json`을 다시 계산해 커밋된 파일과 대조한다.
@@ -201,6 +203,66 @@ no_answer (기권):
 
 <!-- END M3 TABLES (scripts/make_readme_tables.py) -->
 
+## M4 결과
+
+KISA 보안공지 게시판(`bbsId=B0000133`) 전체를 한 번 수집한 계측과, 그 스냅샷을 Qdrant 컬렉션에 맞추는 증분 동기화의
+멱등성 검증 결과다. 평가 트랙의 고정 50건(`fixtures/kisa`)은 바꾸지 않았고, 전체 코퍼스는 `fixtures/kisa_full/`(메타데이터와
+manifest)와 로컬 캐시에 따로 둔다. 본문은 커밋하지 않는다. 수집 규칙·재현 명령·해석은
+[docs/m4-collection.md](docs/m4-collection.md), 동기화 규칙·검증 시나리오·`max_seq_length` 근거는
+[docs/m4-idempotency.md](docs/m4-idempotency.md)에 있다. 수집은 KISA 사이트에, 멱등성 검증은 Docker(Qdrant)와 임베딩
+모델에 접근해야 재실행된다. 아래 표와 저장본의 대조는 둘 다 필요 없다.
+
+<!-- BEGIN M4 TABLES (scripts/make_readme_tables.py) -->
+
+이 구간은 `scripts/make_readme_tables.py`가 `results/m4/collection/report.json`, `results/m4/idempotency/report.json`, `fixtures/kisa_full/manifest.json`, `fixtures/kisa_full/metadata.jsonl`에서 다시 만들어 쓴다. 손으로 고치지 않는다. 검증: `uv run python scripts/make_readme_tables.py --check`. 보고서와 manifest의 건수가 서로 맞는지 대조한 뒤에 표를 만든다.
+
+### 전체 수집: 규모, 누락, 중복, 파싱 실패 ([m4-collection.md](docs/m4-collection.md))
+
+| 항목 | 값 |
+|---|---|
+| 발견 ID (고정 대상) | 2592 |
+| 게시판 표시 총수 / 차이 | 2592 / 0 |
+| 상세 성공 | 2590 |
+| 상세 실패 (fetch_failed) | 0 |
+| 파싱 실패 | 2 (`parse_failed:empty_article`: 71467, 71509) |
+| 미처리 | 0 |
+| 누락 (발견했지만 `ok` 아님) | 2 (71467, 71509) |
+| 목록 페이지 / 원시 행 | 262 / 3902 |
+| 목록 중복: 페이지 안 / 페이지 사이 | 5 / 1305 |
+| 목록 중복 ID / 제목·날짜 충돌 ID | 5 (72027, 72132, 72133, 72207, 72230) / 0 |
+| 내용 중복 (본문 sha256이 같은 묶음 / 문서) | 0 / 0 |
+| RSS 항목 / 목록에 없는 RSS 전용 ID | 10 / 0 |
+| 고정 50건 포함 / 본문 sha256 일치 | 50 / 50 (기대 50) |
+| 메타데이터 행 / CVE ID가 있는 행 / 서로 다른 CVE ID | 2590 / 1832 / 21168 |
+| 수집 완료 / 중단 | 예 / 없음 |
+| 요청 수 | 2856 (robots 1, RSS 1, 목록 262, 상세 2592) |
+| 소요 시간 (초) | 4935.4 |
+
+### 멱등성 검증 1~5단계 ([m4-idempotency.md](docs/m4-idempotency.md))
+
+검증 통과 (갱신·삭제·추가 각 5건, 시드 59, 실패 단계 없음, 소요 2598.7초).
+
+| 항목 | 값 |
+|---|---|
+| 스냅샷 | 대상 ID 2592, `ok` 2590, `ok` 아님 2, 기준 스냅샷 2585 |
+| 모델 | `BAAI/bge-m3` revision `5617a9f61b028005a4858fdac845db406aefb181` |
+| pooling / dtype / 차원 | cls / float32 / 1024 |
+| `max_seq_length` / batch_size / 장치 | 8192 / 1 / cpu |
+| Qdrant | 서버 1.19.2, 이미지 `qdrant/qdrant:v1.19.2` |
+| 런타임 | Python 3.13.14, sentence-transformers 6.1.0, torch 2.14.1, numpy 2.5.3, qdrant-client 1.19.1 |
+| 환경 | Darwin arm64, 코어 18, `OMP_NUM_THREADS=8` |
+| 허용오차 | 영향 없는 point 0.0, 벡터 abs 1e-05 |
+
+| 단계 | 동작 | 계획 (추가/갱신/삭제) | point 수 | 인코딩 | 쓰기 (upsert/payload/delete) | 비교 | 통과 | 소요 (초) |
+|---|---|---|---|---|---|---|---|---|
+| 1 | `full_sync_baseline` | 2585/0/0 | 2585 | 2585 | 2585/0/0 | point 수 = 스냅샷 문서 수 | 예 | 1298.6 |
+| 2 | `resync_same_snapshot` | 0/0/0 | 2585 | 0 | 0/0/0 | ID 집합·payload 동일, 벡터 최대 차 0.0 | 예 | 0.8 |
+| 3 | `incremental_variant` | 5/5/5 | 2585 | 10 | 10/0/5 | point 수 = 스냅샷 문서 수, 영향 없는 2575건 중 2575건 동일, 갱신 벡터 변경 5건, 삭제 확인, 추가 확인 | 예 | 9.1 |
+| 4 | `from_scratch_variant` | 2585/0/0 | 2585 | 2585 | 2585/0/0 | ID 집합·payload 동일, 벡터 최대 차 0.0 | 예 | 1283.6 |
+| 5 | `revert_to_baseline` | 5/5/5 | 2585 | 10 | 10/0/5 | ID 집합·payload 동일, 벡터 최대 차 0.0 | 예 | 4.4 |
+
+<!-- END M4 TABLES (scripts/make_readme_tables.py) -->
+
 ## 한계
 
 - 정답은 두 LLM의 교차 판정이고 사람 검수가 아니다. kappa·`unjudged`·`excluded` 건수와 미검증 항목:
@@ -210,12 +272,16 @@ no_answer (기권):
 - M3 판정은 작은 test 표본에서의 질문 단위 paired bootstrap 구간이다. `hypothesis-rejected`는 "이 설정이 이 표본에서 기준을
   이긴다는 증거가 없다"는 뜻이고 효과가 없다는 증명이 아니다. 실험은 한 요소씩만 바꿨고 누적 조합은 판정하지 않았다
   (한계 전체: [docs/experiments/summary.md](docs/experiments/summary.md), 실험별 보고서의 한계 절).
+- M4 수집은 한 시점의 스냅샷이다. 이후 올라온 글은 코퍼스에 들어오지 않고, 이미지뿐인 공지는 텍스트 본문이 없어 파싱 실패로
+  남는다. 멱등성 검증의 벡터 허용오차는 같은 장비·같은 스레드 수·batch_size 1에서의 값이다. 이 단계에서는 검색 품질을
+  평가하지 않았다(한계 전체: [docs/m4-collection.md](docs/m4-collection.md), [docs/m4-idempotency.md](docs/m4-idempotency.md)).
 
 ## 데이터와 라이선스
 
 원본 데이터의 소스별 라이선스와 재배포 범위는 [LICENSES/](LICENSES/) 참조.
 KISA 보안공지 본문은 재배포하지 않는다(수집 스크립트와 메타데이터 인덱스만 제공).
-릴리스 asset에는 질문 ID·문서 ID·순위·점수와 manifest·정답 파일만 있고 본문은 없다.
+릴리스 asset에는 질문 ID·문서 ID·순위·점수와 manifest·정답 파일, 전체 코퍼스의 메타데이터(URL·제목·날짜·nttId·CVE ID)와
+M4 보고서만 있고 본문은 없다.
 
 ## 실행
 

@@ -63,6 +63,12 @@ def built(tmp_path_factory):
         target = root / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / relative, target)
+    # v0.2 범위의 사본은 M4 구간이 없는 README를 쓴다(M4 표는 v0.3 검사 몫이다)
+    text = (root / README).read_text(encoding="utf-8")
+    begin, end = tables.README_M4
+    (root / README).write_text(
+        text[: text.index(begin)] + text[text.index(end) + len(end) :], encoding="utf-8"
+    )
     return root
 
 
@@ -224,10 +230,10 @@ def test_committed_docs_links_resolve():
     assert "](docs/experiments/summary.md)" in readme and "](docs/release-v0.2.md)" in readme
 
 
-def test_readme_status_is_m3_complete_and_keeps_the_baseline_range():
+def test_readme_status_keeps_the_m3_and_baseline_ranges():
     readme = (ROOT / README).read_text(encoding="utf-8")
     status = readme[readme.index("## 상태") : readme.index("## 평가 트랙과 재현")]
-    assert "M3 완료" in status and "v0.2" in status and "M2 완료, v0.1" in status
+    assert "M3 완료, v0.2" in status and "M2 완료, v0.1" in status
     assert readme.count(tables.BEGIN) == 1 and readme.count(tables.README_M3[0]) == 1
     assert readme.index(tables.END) < readme.index(tables.README_M3[0])
 

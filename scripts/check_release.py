@@ -1,9 +1,10 @@
-"""릴리스(v0.1, v0.2) asset 목록 검사와 재현 결과 비교.
+"""릴리스(v0.1, v0.2, v0.3) asset 목록 검사와 재현 결과 비교.
 
     uv run python scripts/check_release.py                        # docs/release-v0.1.md의 asset 목록 검사
     uv run python scripts/check_release.py --note docs/release-v0.2.md   # v0.2 노트의 asset 목록 검사
     uv run python scripts/check_release.py --print-assets         # 리포 파일에서 asset 목록 표를 만들어 출력
     uv run python scripts/check_release.py --print-assets --note docs/release-v0.2.md   # v0.2 목록
+    uv run python scripts/check_release.py --note docs/release-v0.3.md   # v0.3 노트의 asset 목록 검사
     uv run python scripts/check_release.py --assets-dir DIR       # 내려받은 asset 파일(asset 이름)을 검사
     uv run python scripts/check_release.py --compare-results DIR  # run_baselines.py --out-dir DIR 결과와 비교
 
@@ -27,6 +28,15 @@ v0.2 노트(`--note`의 파일 이름이 `release-v0.2.md`)는 같은 검사에 
   파일 중 asset인 것, 그리고 실험 JSON 3종이다. 하나라도 목록에 없으면 실패한다.
 - asset 사본만으로 M3 `metrics.json`·`comparison.json`을 하네스의 비교 함수로 다시 계산해 저장된 파일과 대조하고,
   README의 M3 판정 구간, `docs/experiments/summary.md`의 표 구간, 노트의 판정 구간을 그 값으로 만든 표와 대조한다.
+
+v0.3 노트(`release-v0.3.md`)는 v0.2의 검사를 모두 물려받고(M3 asset 누락·변조도 실패) 아래를 더한다.
+
+- 허용 asset에 `fixtures/kisa_full/{metadata.jsonl,manifest.json}`, `results/m4/collection/report.json`,
+  `results/m4/idempotency/report.json`이 더해지고, 이 넷이 하나라도 목록에 없으면 실패한다.
+- `kisa_full` 메타데이터는 `url`·`title`·`date`·`nttId`·`cve_ids`만 허용한다. manifest·보고서 JSON은 긴 문자열과
+  `/`로 시작하는 모든 문자열(키 포함, POSIX 절대 경로)을 거부한다.
+- asset 사본만으로 보고서·manifest·메타데이터끼리의 대조와 README, 노트의 M4 구간(`make_readme_tables.verify_m4`),
+  README·summary·노트의 M3 구간을 다시 만들어 대조한다. 본문 유출 점검(KISA 캐시 필요)은 이 검사의 일이 아니다.
 
 `--assets-dir DIR`을 주면 1, 3~5를 리포 파일이 아니라 DIR의 파일(노트 표의 asset 이름)에 대해 검사한다. 릴리스를
 발행한 뒤 내려받은 파일을 검증하는 용도다. 목록에 없는 파일이 DIR에 있으면 실패하고, 리포 원본이 있으면 sha256도 대조한다.
@@ -56,7 +66,8 @@ END = "<!-- END ASSETS -->"
 RESULTS_DIR = Path("results/baselines")
 EXPERIMENTS_DIR = Path("results/experiments")
 RELEASE_NOTE = re.compile(r"release-(v\d+\.\d+)\.md")
-PROFILES = ("v0.1", "v0.2")
+PROFILES = ("v0.1", "v0.2", "v0.3")
+M3_PROFILES = ("v0.2", "v0.3")  # M3 실험 asset과 재계산 검사를 갖는 범위
 ATOL = 1e-9
 MAX_STRING_CHARS = 500  # JSON asset의 문자열 한 개 상한. 공지 본문 조각이 들어오면 넘는다
 
@@ -92,6 +103,13 @@ GOLDEN_ANSWER_KEYS = {"doc_id", "doc_sha256", "evidence", "reason"}
 GOLDEN_EVIDENCE_KEYS = {"end", "judge", "parser_version", "start"}
 GOLDEN_REASON = re.compile(r"^[A-Z]:[a-z_]+( [A-Z]:[a-z_]+)*$")
 METADATA_KEYS = {"url", "title", "date", "nttId", "cve_ids"}
+M4_METADATA_PATH = "fixtures/kisa_full/metadata.jsonl"
+M4_JSON_PATHS = (
+    "fixtures/kisa_full/manifest.json",
+    "results/m4/collection/report.json",
+    "results/m4/idempotency/report.json",
+)
+M4_ASSETS = (M4_METADATA_PATH, *M4_JSON_PATHS)
 
 # asset으로 낼 수 있는 파일과 그 허용 필드 검사 종류. 이 밖의 경로는 목록에 있으면 실패다.
 JSON_ASSETS = (
@@ -148,7 +166,12 @@ def asset_kind(path: str, profile: str = "v0.1") -> str | None:
         return "json"
     if kind := OTHER_ASSETS.get(path):
         return kind
-    if profile != "v0.2":
+    if profile == "v0.3":
+        if path == M4_METADATA_PATH:
+            return "metadata"
+        if path in M4_JSON_PATHS:
+            return "m4_json"
+    if profile not in M3_PROFILES:
         return None
     if (match := EXP_RESULT_PATH.fullmatch(path)) and match["exp"] in experiments():
         return "result"
@@ -169,13 +192,13 @@ def required_paths(root: Path, profile: str = "v0.1") -> list[str]:
     """manifest가 요구하는 원시 결과 파일과 질의셋. 이 파일들은 asset 목록에 반드시 있어야 한다.
 
     v0.2는 각 실험 manifest의 저장 결과 경로, 재현 입력(`reproduction_inputs`), 입력 파일 중 asset인 것과
-    실험 JSON 3종을 더한다."""
+    실험 JSON 3종을 더한다. v0.3은 v0.2의 것에 M4 파일 넷(`M4_ASSETS`)을 더한다."""
     manifest = json.loads((root / RESULTS_DIR / "manifest.json").read_text(encoding="utf-8"))
     paths = {(RESULTS_DIR / "manifest.json").as_posix(), (RESULTS_DIR / "metrics.json").as_posix()}
     for entry in manifest["runs"].values():
         paths.add(entry["stored_results"]["path"])
         paths.add(entry["inputs"]["queries"]["path"])
-    if profile == "v0.2":
+    if profile in M3_PROFILES:
         for name in experiments():
             for filename in ("manifest", "metrics", "comparison"):
                 paths.add((EXPERIMENTS_DIR / name / f"{filename}.json").as_posix())
@@ -187,6 +210,8 @@ def required_paths(root: Path, profile: str = "v0.1") -> list[str]:
                     for item in entry["inputs"].values()
                     if asset_kind(item["path"], profile)
                 )
+    if profile == "v0.3":
+        paths.update(M4_ASSETS)
     return sorted(paths)
 
 
@@ -259,11 +284,22 @@ def _bad_keys(value: object) -> int:
     return 0
 
 
+def _slash_strings(value: object) -> int:
+    """`/`로 시작하는 문자열(키 포함, 재귀)의 수. POSIX 절대 경로는 모두 걸린다."""
+    if isinstance(value, str):
+        return int(value.startswith("/"))
+    if isinstance(value, dict):
+        return sum(_slash_strings(k) + _slash_strings(v) for k, v in value.items())
+    if isinstance(value, list):
+        return sum(_slash_strings(v) for v in value)
+    return 0
+
+
 def check_fields(kind: str, path: Path) -> list[str]:
     """한 asset의 허용 필드 위반 목록(비면 통과)."""
     problems: list[str] = []
     try:
-        if kind in ("json", "exp_json"):
+        if kind in ("json", "exp_json", "m4_json"):
             payload = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(payload, dict):
                 problems.append("not a json object")
@@ -275,6 +311,13 @@ def check_fields(kind: str, path: Path) -> list[str]:
                 problems.append(
                     f"{n} key(s) longer than {MAX_STRING_CHARS} chars or shaped like an absolute path"
                 )
+            if kind == "m4_json":
+                if n := _slash_strings(payload):
+                    problems.append(f"{n} string(s) or key(s) starting with '/' (absolute path)")
+                if n := _bad_keys(payload):
+                    problems.append(
+                        f"{n} key(s) longer than {MAX_STRING_CHARS} chars or shaped like an absolute path"
+                    )
             return problems
         rows = _jsonl(path)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -340,7 +383,7 @@ def stage_assets(
 
 
 def experiment_input_problems(root: Path) -> list[str]:
-    """v0.2: 실험 manifest의 입력·재현 입력 sha256이 리포 파일과 같은지(파일이 있는 입력만)."""
+    """v0.2, v0.3: 실험 manifest의 입력·재현 입력 sha256이 리포 파일과 같은지(파일이 있는 입력만)."""
     problems: list[str] = []
     try:
         for name in experiments():
@@ -446,7 +489,7 @@ def check_release(
                         problems.append(f"{key} inputs.{label}: manifest sha256 != repo file")
         except (OSError, KeyError, TypeError, AttributeError, json.JSONDecodeError) as error:
             problems.append(f"manifest inputs unreadable ({type(error).__name__})")
-        if profile == "v0.2":
+        if profile in M3_PROFILES:
             problems += experiment_input_problems(root)
         record("asset sha256 matches the repo files and manifest inputs", problems)
 
@@ -464,7 +507,7 @@ def check_release(
             problems = [f"README vs asset copy: {error}"]
         record("README tables rebuilt from the asset copies match", problems)
 
-        if profile == "v0.2":
+        if profile in M3_PROFILES:
             try:
                 found, _ = tables.verify_m3(
                     tree,
@@ -478,6 +521,14 @@ def check_release(
             record(
                 "M3 metrics, comparison and tables rebuilt from the asset copies match", problems
             )
+
+        if profile == "v0.3":
+            try:
+                found, _ = tables.verify_m4(tree, root / "README.md", note=note_path)
+                problems = [f"M4 vs asset copy: {item}" for item in found]
+            except tables.CheckError as error:
+                problems = [f"M4 vs asset copy: {error}"]
+            record("M4 reports, manifest and tables rebuilt from the asset copies match", problems)
     return results
 
 
@@ -543,7 +594,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--note",
         type=Path,
-        help="릴리스 노트(기본: <root>/docs/release-v0.1.md). 파일 이름 release-v0.2.md는 v0.2 검사 범위다",
+        help="릴리스 노트(기본: <root>/docs/release-v0.1.md). 파일 이름 release-v0.2.md, release-v0.3.md는 그 버전의 검사 범위다",
     )
     parser.add_argument(
         "--assets-dir",
