@@ -1,0 +1,359 @@
+{
+  "schema_version": 1,
+  "parser_version": "kisa-html-v1",
+  "collected_at": "2026-09-19T05:18:29+00:00",
+  "target_ids": [
+    "72193",
+    "72192",
+    "72191",
+    "72189",
+    "72188",
+    "72187",
+    "72186",
+    "72185",
+    "72184",
+    "72181",
+    "72180",
+    "72179",
+    "72178",
+    "72177",
+    "72176",
+    "72175",
+    "72174",
+    "72173",
+    "72172",
+    "72171",
+    "72170",
+    "72168",
+    "72166",
+    "72164",
+    "72163",
+    "72162",
+    "72161",
+    "72160",
+    "72159",
+    "72158",
+    "72157",
+    "72156",
+    "72155",
+    "72154",
+    "72153",
+    "72152",
+    "72151",
+    "72150",
+    "72147",
+    "72146",
+    "72144",
+    "72143",
+    "72141",
+    "72140",
+    "72139",
+    "72137",
+    "72136",
+    "72135",
+    "72134",
+    "72133"
+  ],
+  "documents": [
+    {
+      "nttId": "72193",
+      "collected_at": "2026-09-19T05:18:31+00:00",
+      "sha256": "64ce550fef7fee8d3399629e2ae99c459a8765764d4656996d06ad6135ed06f4",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72192",
+      "collected_at": "2026-09-19T05:18:33+00:00",
+      "sha256": "ded67bb05f276222fc3b737ed56292f5f81f0b416c49333dc4c2829a6c9036a3",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72191",
+      "collected_at": "2026-09-19T05:18:35+00:00",
+      "sha256": "e8ebbca91f5466ca257dac9b28be5ed5841ec65ae376a56e6305fae4ef5a9a6c",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72189",
+      "collected_at": "2026-09-19T05:18:36+00:00",
+      "sha256": "be49d8e58b1826389511b84bc531e1b872ec27f4c142fa1e14b503805930649f",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72188",
+      "collected_at": "2026-09-19T05:18:38+00:00",
+      "sha256": "0da12b0dc270a7b7b2a64f9ef0c127b1c5e9a5edfee08c96625330df99d3bf2f",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72187",
+      "collected_at": "2026-09-19T05:18:40+00:00",
+      "sha256": "bcd006842a70b8485331b0100a228ae52996873405e523efe1c3451a81130060",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72186",
+      "collected_at": "2026-09-19T05:18:41+00:00",
+      "sha256": "7d81026827fbbcab114c49975c543edc5e0703f0cd6d4e9b8f6e5121be4b3c7f",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72185",
+      "collected_at": "2026-09-19T05:18:43+00:00",
+      "sha256": "d401c039309f0a7eca6dcdc094b08c60ea219aeee7e6faf86424183d8aade8c0",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72184",
+      "collected_at": "2026-09-19T05:18:45+00:00",
+      "sha256": "cf26302dca3f3fde0aadd7bdbbb12c50ca30ba4061e27500a4e5343a2ef0d3bf",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72181",
+      "collected_at": "2026-09-19T05:18:46+00:00",
+      "sha256": "3d11c1bdf8d717405bdd99e17e67a7295224a108a0698893d13c5f85e1b1bd20",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72180",
+      "collected_at": "2026-09-19T05:18:48+00:00",
+      "sha256": "477c3b45ae97dc334a001e63a72cf9b1c0afa47475f55cb9eb9259c3df297f30",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72179",
+      "collected_at": "2026-09-19T05:18:50+00:00",
+      "sha256": "dfaaac2d3a713394e3d0bd62a734a450e1cce33284d1733d97bad457404c4db8",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72178",
+      "collected_at": "2026-09-19T05:18:52+00:00",
+      "sha256": "7c4f5e1ca146f585090eb450234093ec414888529ab413b59289e941355cc787",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72177",
+      "collected_at": "2026-09-19T05:18:53+00:00",
+      "sha256": "fc9c8c87aec12e4728c1f3d99ea76425da7aec66a1cfeaa8cbb7d5049b1abc76",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72176",
+      "collected_at": "2026-09-19T05:18:55+00:00",
+      "sha256": "4acd4082edccfbcc1e2741bfacfa9c6306270f546df2c7ba9b2da64ddc26a9ab",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72175",
+      "collected_at": "2026-09-19T05:18:57+00:00",
+      "sha256": "785eda9e2a062535ec9ad5441827614445a881db77410fbea64c4ac83922d909",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72174",
+      "collected_at": "2026-09-19T05:18:58+00:00",
+      "sha256": "333f65f0e12155b8a9fd61d320f67838def70eee1f5ada1f5cfaf5d7b300d683",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72173",
+      "collected_at": "2026-09-19T05:19:00+00:00",
+      "sha256": "c414cebe183ca37cb23c65f920d422df8dbc3e15033d84a7ea00ea13b4ba5000",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72172",
+      "collected_at": "2026-09-19T05:19:02+00:00",
+      "sha256": "1296ac081fbe7655c8bdc1b0f826c7500a063999f366df90b345f2297d20d555",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72171",
+      "collected_at": "2026-09-19T05:19:04+00:00",
+      "sha256": "8c6fa018a6595b2e7d0bd9051fb5f7b338ba51b275fe328461115b1f1a917c66",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72170",
+      "collected_at": "2026-09-19T05:19:05+00:00",
+      "sha256": "c66c2f9d3908d60f8fad1b84a6c8fb0bbc652c875d4c9e9ce8f2338ee05d7f16",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72168",
+      "collected_at": "2026-09-19T05:19:07+00:00",
+      "sha256": "dda36494717ae8e4cdadf3873cae3325ba40f63aeeb0880c6428901c78b2d3c5",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72166",
+      "collected_at": "2026-09-19T05:19:09+00:00",
+      "sha256": "74d1202bfdc00db4af484746068a2e109114a3165e1a8a137ee97bffe776b13b",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72164",
+      "collected_at": "2026-09-19T05:19:10+00:00",
+      "sha256": "5e5a86ca6fdab0c32643406559c2e95c7775bfe13826ec7aa7a71522d06c89a6",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72163",
+      "collected_at": "2026-09-19T05:19:12+00:00",
+      "sha256": "c1ac8424e5b8d3442e981b9a742c0520364be53290e95dbf3362edc3a5edea7b",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72162",
+      "collected_at": "2026-09-19T05:19:14+00:00",
+      "sha256": "d2090a8be241453950b4db35e1bf285397749c175e61b1e6d75d69ddd9d1b8bb",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72161",
+      "collected_at": "2026-09-19T05:19:16+00:00",
+      "sha256": "0afe4eaaa6bfc34a5cb1e8239a6ce8344608b5a45e7582be493c0ef3ebf5d89b",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72160",
+      "collected_at": "2026-09-19T05:19:17+00:00",
+      "sha256": "a7dbdae5d3580f1359d4f3fd6f7930d81bf8bc5332251a92bef41c7cf3a9d467",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72159",
+      "collected_at": "2026-09-19T05:19:19+00:00",
+      "sha256": "e3e4e190157294e44a84092e7acb776165104c96864628b72fe70e1770f02447",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72158",
+      "collected_at": "2026-09-19T05:19:21+00:00",
+      "sha256": "c59f88d2b368c55451c5e99bee63405058c739d1fad7f01912fbf71f669afac7",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72157",
+      "collected_at": "2026-09-19T05:19:22+00:00",
+      "sha256": "0699283fe058d8f1bade8a938241ede749526edf2940a2d6e097ee6422dec3cb",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72156",
+      "collected_at": "2026-09-19T05:19:24+00:00",
+      "sha256": "7d3e43177b5184855dceb682287be99a3fd3a58cc06ce49828595f851006bc15",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72155",
+      "collected_at": "2026-09-19T05:19:26+00:00",
+      "sha256": "2d44a3b561deb58feed05c6809d6e995f813bfbeca3431e3da75bec0b4c3d964",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72154",
+      "collected_at": "2026-09-19T05:19:27+00:00",
+      "sha256": "6ce2bfbf4e25f08ce871564b9413b01f112554ade5d938d324c159778dddedf6",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72153",
+      "collected_at": "2026-09-19T05:19:29+00:00",
+      "sha256": "132d96a594eb765a9f24eb249904f8db413502b2bee3942af048e8c3bfc25eaa",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72152",
+      "collected_at": "2026-09-19T05:19:31+00:00",
+      "sha256": "efd818ed346d83650cde689e5597650940e05d779d8d8e94c8faeffa7fdded49",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72151",
+      "collected_at": "2026-09-19T05:19:33+00:00",
+      "sha256": "5d4fcabe600c294678312b5d8691196e1eb7151d402d96c885a1a3337a1754b9",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72150",
+      "collected_at": "2026-09-19T05:19:34+00:00",
+      "sha256": "d4684fa7a103177cba015d5fa1c4be91de30adfc843669aa5fa3420980e04860",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72147",
+      "collected_at": "2026-09-19T05:19:36+00:00",
+      "sha256": "57744746221a23bdbcb2a9582fcc1a4b43bf01b9acf0c6a1ff7e2dd092b88c09",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72146",
+      "collected_at": "2026-09-19T05:19:38+00:00",
+      "sha256": "3cc1a89f21b9a180869a47aa95ba8f9b8ccdece2b921bed57481a7e5b00dd467",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72144",
+      "collected_at": "2026-09-19T05:19:39+00:00",
+      "sha256": "a34cc993bf1b083d92fcc5a89bdbef5790e138f43601322b4c0e0f02b174f3a0",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72143",
+      "collected_at": "2026-09-19T05:19:41+00:00",
+      "sha256": "6c55e621d97d04226ca330efde315a236af1975d208f6b57c4fc98d9d8858ab6",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72141",
+      "collected_at": "2026-09-19T05:19:43+00:00",
+      "sha256": "21fe876ca692c5caab833848e3459535c7b155911fd2549ae4d7ae4f0dcfca29",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72140",
+      "collected_at": "2026-09-19T05:19:45+00:00",
+      "sha256": "4109243a06543f242f7be8b9e3530448c78c76d6d87e0f2af512165dd4b381d9",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72139",
+      "collected_at": "2026-09-19T05:19:47+00:00",
+      "sha256": "65965031e3e50b912e9268286f81363c0cf83cc29abcc00ee494f4e7cd34124d",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72137",
+      "collected_at": "2026-09-19T05:19:49+00:00",
+      "sha256": "59bab9640bd6b34349c22bb40055bf87f9ba5d0194963df62ffcb0841a2a7eaa",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72136",
+      "collected_at": "2026-09-19T05:19:50+00:00",
+      "sha256": "dfc881c0b18d4b7b126f2933dfaa839cb95325fd8d03015f8d36bd7f700b6d35",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72135",
+      "collected_at": "2026-09-19T05:19:52+00:00",
+      "sha256": "2d628788b3cad14c1c0792d457914d72c3ae79802c4c8ab9e4d934bdc2102bb0",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72134",
+      "collected_at": "2026-09-19T05:19:54+00:00",
+      "sha256": "c27d922bc7b34b084773a3953e55b79500a685996ae6b38fe3f33ced44f18825",
+      "parser_version": "kisa-html-v1"
+    },
+    {
+      "nttId": "72133",
+      "collected_at": "2026-09-19T05:19:55+00:00",
+      "sha256": "652f135e06ddb6aa7c5e4b460933431d587753bfce6d896b83fa3a1feb2817e0",
+      "parser_version": "kisa-html-v1"
+    }
+  ]
+}
