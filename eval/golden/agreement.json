@@ -1,0 +1,107 @@
+{
+  "kappa_basis": "과제별로 A·B 모두 유효한 이진 라벨을 낸 쌍 전체(unjudged 필터 전). 정의 불가면 value null과 사유",
+  "protocol": "cross-judge-v1",
+  "rule": "일치 단위는 관련성 라벨. 둘 다 relevant(근거 있음)면 gold, 둘 다 not_relevant면 비관련, 갈림·no_evidence·무효 응답·잘린 본문의 not_relevant는 unjudged",
+  "tasks": [
+    {
+      "kappa": {
+        "expected_agreement": 0.555556,
+        "n": 36,
+        "null_reason": null,
+        "observed_agreement": 1.0,
+        "value": 1.0
+      },
+      "n_agree": 36,
+      "n_disagree": 0,
+      "n_gold": 24,
+      "n_not_relevant": 12,
+      "n_pairs": 36,
+      "n_unjudged": 0,
+      "n_valid_pairs": 36,
+      "task": "error_rate_sample",
+      "unjudged_reasons": []
+    },
+    {
+      "kappa": {
+        "expected_agreement": 1.0,
+        "n": 21,
+        "null_reason": "both judges used a single label, kappa is undefined",
+        "observed_agreement": 1.0,
+        "value": null
+      },
+      "n_agree": 21,
+      "n_disagree": 0,
+      "n_gold": 21,
+      "n_not_relevant": 0,
+      "n_pairs": 21,
+      "n_unjudged": 0,
+      "n_valid_pairs": 21,
+      "task": "cve_explicit",
+      "unjudged_reasons": []
+    },
+    {
+      "kappa": {
+        "expected_agreement": 0.508507,
+        "n": 23,
+        "null_reason": null,
+        "observed_agreement": 1.0,
+        "value": 1.0
+      },
+      "n_agree": 23,
+      "n_disagree": 0,
+      "n_gold": 13,
+      "n_not_relevant": 10,
+      "n_pairs": 23,
+      "n_unjudged": 0,
+      "n_valid_pairs": 23,
+      "task": "product_symptom",
+      "unjudged_reasons": []
+    },
+    {
+      "kappa": {
+        "expected_agreement": 0.755102,
+        "n": 14,
+        "null_reason": null,
+        "observed_agreement": 0.857143,
+        "value": 0.416667
+      },
+      "n_agree": 12,
+      "n_disagree": 2,
+      "n_gold": 11,
+      "n_not_relevant": 1,
+      "n_pairs": 14,
+      "n_unjudged": 2,
+      "n_valid_pairs": 14,
+      "task": "explanation_comparison",
+      "unjudged_reasons": [
+        {
+          "n": 2,
+          "reason": "disagree"
+        }
+      ]
+    },
+    {
+      "kappa": {
+        "expected_agreement": 1.0,
+        "n": 50,
+        "null_reason": "both judges used a single label, kappa is undefined",
+        "observed_agreement": 1.0,
+        "value": null
+      },
+      "n_agree": 50,
+      "n_disagree": 0,
+      "n_gold": 0,
+      "n_not_relevant": 48,
+      "n_pairs": 50,
+      "n_unjudged": 2,
+      "n_valid_pairs": 50,
+      "task": "no_answer",
+      "unjudged_reasons": [
+        {
+          "n": 2,
+          "reason": "truncated_not_relevant"
+        }
+      ]
+    }
+  ]
+}
