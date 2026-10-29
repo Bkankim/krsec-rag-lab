@@ -21,17 +21,25 @@
 
 ## 3. 재현 명령
 
-모델이 필요한 실행은 `embed` 그룹을 쓴다. 측정은 `OMP_NUM_THREADS=4`로 했다.
+기본 재현은 커밋된 `translations.jsonl`로 검색만 다시 돌리는 것이다. 번역 모델도 `embed` 그룹도 필요 없고, 커밋된 결과를 건드리지 않는 `--out-dir`을 쓴다.
+
+```
+uv sync --locked --dev
+uv run python scripts/run_experiment.py --exp crossling --compare   # 모델·KISA 캐시 없이 저장본에서 metrics·comparison을 다시 계산해 대조(불일치 exit 1)
+uv run python scripts/run_experiment.py --exp crossling --track public --variant bm25_ko2en --out-dir <빈 디렉터리>   # 재현 확인: 번역 모델·embed 그룹 없이 BM25 결과가 커밋된 저장본과 같아야 한다
+OMP_NUM_THREADS=4 uv run --group embed python scripts/run_experiment.py --exp crossling --track public --out-dir <빈 디렉터리>   # dense 변형까지 재현(bge-m3 필요, 번역 모델은 불필요)
+```
+
+최초 측정에 쓴 명령은 아래와 같다(측정은 `OMP_NUM_THREADS=4`). 이미 test 잠금이 있는 이 리포에서 그대로 다시 실행하는 용도가 아니다: 번역 파일이나 설정이 바뀌면 `LockError`다.
 
 ```
 uv sync --locked --group embed
 OMP_NUM_THREADS=4 uv run --no-sync python -m krsec_rag_lab.experiments.crossling                      # 번역 파일 만들기(번역 모델 필요, 결정적)
 OMP_NUM_THREADS=4 uv run --no-sync python scripts/run_experiment.py --exp crossling --track public --split dev   # τ 선택(몇 번 돌려도 됨)
 OMP_NUM_THREADS=4 uv run --no-sync python scripts/run_experiment.py --exp crossling --track public               # dev 선택 뒤 test 1회
-uv sync --locked --dev
-uv run python scripts/run_experiment.py --exp crossling --compare   # 모델·KISA 캐시 없이 저장본에서 metrics·comparison을 다시 계산해 대조(불일치 exit 1)
-uv run python scripts/run_experiment.py --exp crossling --track public --variant bm25_ko2en --out-dir <빈 디렉터리>   # 재현 확인: 번역 모델·embed 그룹 없이 BM25 결과가 커밋된 저장본과 같아야 한다
 ```
+
+번역 재생성(`python -m krsec_rag_lab.experiments.crossling`)은 선택 단계이고, **커밋된 `results/experiments/crossling/translations.jsonl`을 덮어쓴다**(`main()`은 test 잠금을 확인하지 않는다). 번역 결정성 점검은 이 리포 자체가 아니라 리포 사본에서 `--root <사본>`을 주고 하라. 사본의 번역이 커밋된 파일과 바이트까지 같은지 `cmp`로 대조한다. 런타임 버전이나 CPU가 다르면 번역이 달라질 수 있고, 그때 이 리포의 파일을 덮어쓰면 test 잠금(`reproduction_inputs`의 sha256)이 깨져 `--compare`가 실패한다(복구는 `git restore`).
 
 산출물: `results/experiments/crossling/public/{bm25_ko2en,dense_ko2en}.jsonl`, `manifest.json`, `metrics.json`, `comparison.json`, `translations.jsonl`. test 설정 해시는 manifest의 `runs[<track>/<variant>].test.config_hash`다.
 

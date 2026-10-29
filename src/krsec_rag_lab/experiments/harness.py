@@ -494,6 +494,13 @@ def _run_variant(
             f"{key}: test already ran with another config or inputs (config_hash "
             f"{lock['config_hash'][:12]}); a changed setup needs a new hypothesis"
         )
+    # 비교 기준선은 설정 해시에 들어 있지 않으므로 따로 잠근다: test 뒤 기준선을 바꿔 다시 판정하지 못하게 한다
+    recorded = entry["baseline"]["retriever"] if lock else None
+    if lock and recorded != baseline_of(module, track, variant):
+        raise LockError(
+            f"{key}: test already ran against baseline {recorded!r}, "
+            f"not {baseline_of(module, track, variant)!r}"
+        )
     if not run_dev:
         if entry is None:
             raise ExperimentError(
@@ -684,6 +691,11 @@ def compute_outputs(module: ModuleType, root: Path, out_dir: Path) -> tuple[dict
                 current = data.file_sha256(root / fingerprint["path"])
                 if current != fingerprint["sha256"]:
                     raise ComparisonError(f"{key}: reproduction input {label!r} changed")
+            if entry["baseline"]["retriever"] != baseline:
+                raise ComparisonError(
+                    f"{key}: manifest baseline {entry['baseline']['retriever']!r} differs from "
+                    f"the module's {baseline!r}"
+                )
             if lock is None:
                 continue
             if "test" not in run_metrics:

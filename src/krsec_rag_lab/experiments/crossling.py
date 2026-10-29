@@ -113,11 +113,14 @@ def load_translations(path: Path, questions: Sequence[data.Question]) -> dict[st
     rows = data.read_jsonl(path)
     translations: dict[str, str] = {}
     for row in rows:
-        if set(row) != TRANSLATION_FIELDS:
+        if not isinstance(row, dict) or set(row) != TRANSLATION_FIELDS:
+            found = sorted(row) if isinstance(row, dict) else type(row).__name__
             raise ContractError(
-                f"translations row has fields {sorted(row)}, expected {sorted(TRANSLATION_FIELDS)}"
+                f"translations row has fields {found}, expected {sorted(TRANSLATION_FIELDS)}"
             )
         qid = row["question_id"]
+        if not isinstance(qid, str):
+            raise ContractError(f"translations: question_id must be a string, got {qid!r}")
         if qid in translations:
             raise ContractError(f"translations: duplicate question id {qid}")
         if (row["model"], row["revision"]) != (MODEL_NAME, MODEL_REVISION):

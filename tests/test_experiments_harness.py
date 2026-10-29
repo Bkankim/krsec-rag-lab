@@ -1281,3 +1281,22 @@ def test_the_pre_run_baseline_check_covers_only_the_selected_variants(root, synt
     per_variant_baselines(synth)  # dense 기준선이 없지만 copy·worse는 bm25만 쓴다
     comparison = run_synth(root, synth, variants=["copy", "worse"])
     assert {block["baseline"] for block in comparison["comparisons"].values()} == {"bm25"}
+
+
+def test_changing_the_variant_baseline_after_test_is_locked(root, synth):
+    run_dense_baseline(root)
+    per_variant_baselines(synth)
+    run_synth(root, synth)
+    before = snapshot(root)
+    synth.BASELINES = {"public": dict.fromkeys(synth.VARIANTS["public"], "dense")}
+    synth.BASELINES["public"]["copy"] = "bm25"
+    synth.BASELINES["public"]["oracle"] = (
+        "bm25"  # oracle: dense -> bm25로 바꿔 다시 판정하려는 시도
+    )
+    for split in ("all", "test"):
+        with pytest.raises(LockError, match="baseline"):
+            run_synth(root, synth, variants=["oracle"], split=split)
+    assert snapshot(root) == before
+    # --compare도 매니페스트에 적힌 기준선과 모듈의 기준선이 다르면 실패한다
+    with pytest.raises(ComparisonError, match="baseline"):
+        harness.verify_outputs(synth, root, OUT)

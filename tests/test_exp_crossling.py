@@ -177,6 +177,31 @@ def test_load_translations_rejects_a_broken_file(root, name):
         cl.load_translations(root / cl.TRANSLATIONS_PATH, questions_of(root))
 
 
+@pytest.mark.parametrize(
+    ("line", "message"),
+    [
+        ('["pub-cve-0001"]', "fields"),
+        ('"pub-cve-0001"', "fields"),
+        ("3", "fields"),
+        (
+            json.dumps(translation_row(["pub-cve-0001"], "x", "질문"), ensure_ascii=False),
+            "question_id must be a string",
+        ),
+        (
+            json.dumps(translation_row(7, "x", "질문"), ensure_ascii=False),
+            "question_id must be a string",
+        ),
+    ],
+)
+def test_load_translations_rejects_rows_of_the_wrong_json_type_with_a_contract_error(
+    root, line, message
+):
+    path = root / cl.TRANSLATIONS_PATH
+    path.write_text(line + "\n", encoding="utf-8")
+    with pytest.raises(ContractError, match=message):
+        cl.load_translations(path, questions_of(root))
+
+
 def test_load_translations_fails_when_the_file_is_missing(root):
     (root / cl.TRANSLATIONS_PATH).unlink()
     with pytest.raises(ContractError, match="missing"):
