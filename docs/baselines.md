@@ -47,7 +47,8 @@ uv sync --locked --dev
 OUT=$(mktemp -d)
 uv run python scripts/run_baselines.py --track public --retriever exact --out-dir "$OUT"
 uv run python scripts/run_baselines.py --track public --retriever bm25 --out-dir "$OUT"
-# $OUT/public/*.jsonl이 results/baselines/public/*.jsonl과 문서 ID·순위가 같고 점수가 abs 1e-9 안인지 비교한다
+# 커밋된 결과와 문서 ID·순위가 같고 점수가 abs 1e-9 안인지 scripts/check_release.py --compare-results가 비교한다
+uv run python scripts/check_release.py --compare-results "$OUT"
 # --out-dir 없이 돌리면 results/baselines를 새로 쓴다(manifest의 시각·소요 시간이 바뀐다)
 # dense (CI에서는 돌리지 않는다): bge-m3를 HF에서 받는다
 uv sync --locked --group embed

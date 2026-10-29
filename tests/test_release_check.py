@@ -245,6 +245,26 @@ def test_manifest_input_hash_differing_from_repo_file_is_exit_1(repo, capsys):
     assert "asset sha256 matches the repo files and manifest inputs" in failed_checks(out)
 
 
+MALFORMED_MANIFEST = {
+    "stored_results is null": lambda p: p["runs"]["public/bm25"].__setitem__("stored_results", None),
+    "inputs is a list": lambda p: p["runs"]["kisa/exact"].__setitem__("inputs", []),
+    "inputs item is a string": lambda p: p["runs"]["kisa/exact"]["inputs"].__setitem__("corpus_metadata", "x"),
+    "run entry is a string": lambda p: p["runs"].__setitem__("public/bm25", "x"),
+}  # fmt: skip
+
+
+@pytest.mark.parametrize("change", MALFORMED_MANIFEST.values(), ids=MALFORMED_MANIFEST.keys())
+def test_malformed_manifest_is_a_failed_check_not_a_traceback(repo, capsys, change):
+    path = repo / RESULTS / "manifest.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    change(payload)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    code, out, _ = run(capsys, "--root", str(repo))
+    assert code == 1
+    assert out.rstrip().endswith("check_release: FAILED")
+    assert failed_checks(out)
+
+
 # ------------------------------------------------------------ 합성 리포: 허용 필드
 
 
@@ -293,12 +313,24 @@ def long_title(rows):
     rows[0]["title"] = "나" * 600
 
 
+def long_doc_id(rows):
+    rows[0]["results"][0]["doc_id"] = "다" * 600
+
+
+def long_question_id(rows):
+    rows[0]["question_id"] = "라" * 600
+
+
 FIELD_TAMPER = {
     "result record gets a text field": mutate_rows(
         f"{RESULTS}/public/bm25.jsonl", set_key("text", "body")
     ),
     "result record loses a field": mutate_rows(f"{RESULTS}/kisa/exact.jsonl", drop_result_field),
     "result item gets a snippet": mutate_rows(f"{RESULTS}/kisa/bm25.jsonl", add_result_item_field),
+    "result doc id carries a passage": mutate_rows(f"{RESULTS}/public/exact.jsonl", long_doc_id),
+    "result question id carries a passage": mutate_rows(
+        f"{RESULTS}/public/exact.jsonl", long_question_id
+    ),
     "queries get a body field": mutate_rows("eval/public/queries.jsonl", set_key("body", "x")),
     "queries get a very long query": mutate_rows("eval/public/queries.jsonl", long_query),
     "golden gets a body field": mutate_rows("eval/golden/golden_v1.jsonl", set_key("body", "x")),
@@ -359,6 +391,92 @@ def test_metrics_json_not_matching_raw_results_is_exit_1(repo, capsys):
     code, out, _ = run(capsys, "--root", str(repo))
     assert code == 1
     assert failed_checks(out) == {"README tables rebuilt from the asset copies match"}
+
+
+# ------------------------------------------------------------ 내려받은 asset 검사 (--assets-dir)
+
+
+@pytest.fixture
+def downloaded(repo, tmp_path):
+    """릴리스에서 내려받은 것처럼 asset 이름으로 flat하게 둔 디렉터리."""
+    out = tmp_path / "downloaded"
+    out.mkdir()
+    for row in release.parse_asset_table(note_text(repo)):
+        shutil.copyfile(repo / row["path"], out / row["name"])
+    return out
+
+
+def run_assets(capsys, repo, directory):
+    return run(capsys, "--root", str(repo), "--assets-dir", str(directory))
+
+
+def test_downloaded_assets_pass(repo, downloaded, capsys):
+    code, out, _ = run_assets(capsys, repo, downloaded)
+    assert code == 0, out
+    assert out.count("OK  ") == 6
+
+
+def tamper_result_score(directory):
+    path = directory / "results__baselines__public__bm25.jsonl"
+    rows = read_jsonl(path)
+    rows[0]["results"][0]["doc_id"] = "CVE-2026-0002"
+    write_jsonl(path, rows)
+
+
+def tamper_extra_field(directory):
+    path = directory / "eval__public__queries.jsonl"
+    rows = read_jsonl(path)
+    rows[0]["body"] = "x"
+    write_jsonl(path, rows)
+
+
+def tamper_bytes(directory):
+    with (directory / "eval__golden__agreement.json").open("a", encoding="utf-8") as handle:
+        handle.write("\n")
+
+
+ASSET_TAMPER = {
+    "result file content changed": (
+        tamper_result_score,
+        {
+            "asset sha256 matches the repo files and manifest inputs",
+            "README tables rebuilt from the asset copies match",
+        },
+    ),
+    "queries get an extra field": (tamper_extra_field, {"only allowed fields"}),
+    "one byte appended": (
+        tamper_bytes,
+        {"asset sha256 matches the repo files and manifest inputs"},
+    ),
+    "asset file missing": (
+        lambda d: (d / "results__baselines__kisa__exact.jsonl").unlink(),
+        {"listed assets exist and are allowed"},
+    ),
+    "unlisted file uploaded": (
+        lambda d: (d / "notes.txt").write_text("x"),
+        {"listed assets exist and are allowed"},
+    ),
+}
+
+
+@pytest.mark.parametrize(("tamper", "expected"), ASSET_TAMPER.values(), ids=ASSET_TAMPER.keys())
+def test_tampered_downloaded_assets_fail(repo, downloaded, capsys, tamper, expected):
+    tamper(downloaded)
+    code, out, _ = run_assets(capsys, repo, downloaded)
+    assert code == 1
+    assert expected <= failed_checks(out)
+
+
+def test_downloaded_asset_is_checked_even_when_the_repo_file_is_fine(repo, downloaded, capsys):
+    """리포 파일은 멀쩡해도 내려받은 사본이 다르면 실패한다(리포 사본끼리의 비교가 아니다)."""
+    tamper_bytes(downloaded)
+    assert run(capsys, "--root", str(repo))[0] == 0
+    assert run_assets(capsys, repo, downloaded)[0] == 1
+
+
+def test_assets_dir_that_is_not_a_directory_is_exit_1(repo, tmp_path, capsys):
+    code, _, err = run_assets(capsys, repo, tmp_path / "nope")
+    assert code == 1 and err.startswith("error:")
 
 
 # ------------------------------------------------------------ 재현 결과 비교

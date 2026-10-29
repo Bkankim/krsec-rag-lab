@@ -174,9 +174,13 @@ README_TEMPLATE = f"""# synthetic
 """
 
 
-def build_repo(root: Path) -> Path:
-    """합성 리포: 입력, exact·BM25 x 두 트랙 결과, README(표 기록), 릴리스 노트(asset 목록)."""
+def build_repo(root: Path, adjust_inputs=None) -> Path:
+    """합성 리포: 입력, exact·BM25 x 두 트랙 결과, README(표 기록), 릴리스 노트(asset 목록).
+
+    `adjust_inputs(root)`가 있으면 입력을 쓴 직후, 실행기를 돌리기 전에 불러 입력을 바꾼다."""
     write_inputs(root)
+    if adjust_inputs is not None:
+        adjust_inputs(root)
     for track in data.TRACKS:
         for retriever in RETRIEVERS:
             runner.run_baseline(

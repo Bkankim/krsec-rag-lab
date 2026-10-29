@@ -2,6 +2,7 @@
 
     uv run python scripts/check_release.py                        # docs/release-v0.1.md의 asset 목록 검사
     uv run python scripts/check_release.py --print-assets         # 리포 파일에서 asset 목록 표를 만들어 출력
+    uv run python scripts/check_release.py --assets-dir DIR       # 내려받은 asset 파일(asset 이름)을 검사
     uv run python scripts/check_release.py --compare-results DIR  # run_baselines.py --out-dir DIR 결과와 비교
 
 asset 목록 검사는 아래를 전부 확인하고 하나라도 어긋나면 종료 코드 1이다.
@@ -14,6 +15,9 @@ asset 목록 검사는 아래를 전부 확인하고 하나라도 어긋나면 �
 4. 허용 필드만 있다: 결과 파일은 질문 ID·문서 ID·순위·점수(와 지우기 전 1위 점수, 지운 문서 수)만, 질의·정답
    파일은 정해진 키만, 그 밖은 JSON manifest이고 긴 문자열(본문 인용 후보)이 없다.
 5. asset 사본만으로 리포 레이아웃을 복원해 README 표를 다시 계산하면(scripts/make_readme_tables.py) README와 같다.
+
+`--assets-dir DIR`을 주면 1, 3~5를 리포 파일이 아니라 DIR의 파일(노트 표의 asset 이름)에 대해 검사한다. 릴리스를
+발행한 뒤 내려받은 파일을 검증하는 용도다. 목록에 없는 파일이 DIR에 있으면 실패하고, 리포 원본이 있으면 sha256도 대조한다.
 
 `--compare-results`는 같은 입력으로 다시 돌린 결과(exact, BM25)가 커밋된 `results/baselines/<track>/`와 같은지
 본다: 질문 ID 집합 동일, 문서 ID·순위 일치, 점수 abs 1e-9 이내. 실행 시각 같은 메타데이터는 비교하지 않는다.
@@ -212,17 +216,25 @@ def check_fields(kind: str, path: Path) -> list[str]:
                         problems.append(
                             f"{where}: evidence keys {sorted(set(item) ^ GOLDEN_EVIDENCE_KEYS)}"
                         )
-        if kind != "result" and (n := _long_strings(row)):
+        if n := _long_strings(row):  # 결과 파일의 문서 ID·질문 ID에 본문이 실려도 걸린다
             problems.append(f"{where}: {n} string(s) longer than {MAX_STRING_CHARS} chars")
     return problems
 
 
-def stage_assets(root: Path, rows: list[dict], staging: Path) -> tuple[Path, Path]:
-    """asset 이름으로 사본을 만들고(`assets/`), 그 사본만으로 리포 레이아웃을 복원한다(`tree/`)."""
-    assets, tree = staging / "assets", staging / "tree"
-    assets.mkdir(parents=True)
-    for row in rows:
-        shutil.copyfile(root / row["path"], assets / row["name"])
+def stage_assets(
+    root: Path, rows: list[dict], staging: Path, assets_dir: Path | None = None
+) -> tuple[Path, Path]:
+    """asset 이름으로 사본을 만들고(`assets/`), 그 사본만으로 리포 레이아웃을 복원한다(`tree/`).
+
+    `assets_dir`가 있으면 사본을 만들지 않고 그 디렉터리의 파일(업로드 뒤 내려받은 asset)을 쓴다."""
+    tree = staging / "tree"
+    if assets_dir is None:
+        assets = staging / "assets"
+        assets.mkdir(parents=True)
+        for row in rows:
+            shutil.copyfile(root / row["path"], assets / row["name"])
+    else:
+        assets = assets_dir
     for row in rows:
         target = tree / row["path"]
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -230,8 +242,13 @@ def stage_assets(root: Path, rows: list[dict], staging: Path) -> tuple[Path, Pat
     return assets, tree
 
 
-def check_release(root: Path, note_path: Path | None = None) -> list[tuple[str, list[str]]]:
-    """(검사 이름, 실패 목록) 목록. 실패 목록이 비면 그 검사는 통과다."""
+def check_release(
+    root: Path, note_path: Path | None = None, assets_dir: Path | None = None
+) -> list[tuple[str, list[str]]]:
+    """(검사 이름, 실패 목록) 목록. 실패 목록이 비면 그 검사는 통과다.
+
+    `assets_dir`를 주면 존재·sha256·허용 필드·표 재생성을 리포 파일이 아니라 그 디렉터리의
+    asset 파일(노트 표의 asset 이름)에 대해 검사한다. 리포 원본이 있으면 sha256도 대조한다."""
     note_path = note_path or root / NOTE_PATH
     results: list[tuple[str, list[str]]] = []
 
@@ -257,16 +274,25 @@ def check_release(root: Path, note_path: Path | None = None) -> list[tuple[str, 
             problems.append(f"{path}: not an allowed asset")
         if name != asset_name(path):
             problems.append(f"{path}: asset name {name!r} != {asset_name(path)!r}")
-        if not (root / path).is_file():
+        if assets_dir is None and not (root / path).is_file():
             problems.append(f"{path}: file not found")
+        if assets_dir is not None and not (assets_dir / name).is_file():
+            problems.append(f"{name}: asset file not found in the assets dir")
     if len({row["name"] for row in rows}) != len(rows):
         problems.append("duplicate asset names")
+    if assets_dir is not None:
+        listed = {row["name"] for row in rows}
+        problems += [
+            f"{item.name}: file in the assets dir is not listed in the note"
+            for item in sorted(assets_dir.iterdir())
+            if item.name not in listed
+        ]
     if record("listed assets exist and are allowed", problems):
         return results
 
     try:
         needed = required_paths(root)
-    except (OSError, KeyError, json.JSONDecodeError) as error:
+    except (OSError, KeyError, TypeError, AttributeError, json.JSONDecodeError) as error:
         record("manifest-required files are listed", [f"manifest unreadable ({error!r})"])
         return results
     record(
@@ -280,22 +306,27 @@ def check_release(root: Path, note_path: Path | None = None) -> list[tuple[str, 
 
     problems = []
     with tempfile.TemporaryDirectory(prefix="krsec-release-") as tmp:
-        assets, tree = stage_assets(root, rows, Path(tmp))
+        assets, tree = stage_assets(root, rows, Path(tmp), assets_dir)
         for row in rows:
             copy_sha = sha256_of(assets / row["name"])
-            origin_sha = sha256_of(root / row["path"])
             if copy_sha != row["sha"]:
                 problems.append(f"{row['name']}: listed sha256 != asset copy sha256")
-            if copy_sha != origin_sha:
+            origin = root / row["path"]
+            if origin.is_file() and copy_sha != sha256_of(origin):
                 problems.append(f"{row['name']}: asset copy sha256 != repo file sha256")
             if (assets / row["name"]).stat().st_size != row["size"]:
                 problems.append(f"{row['name']}: listed size != asset size")
-        manifest = json.loads((root / RESULTS_DIR / "manifest.json").read_text(encoding="utf-8"))
-        for key, entry in manifest["runs"].items():
-            for label, item in entry["inputs"].items():
-                origin = root / item["path"]
-                if origin.is_file() and sha256_of(origin) != item["sha256"]:
-                    problems.append(f"{key} inputs.{label}: manifest sha256 != repo file")
+        try:
+            manifest = json.loads(
+                (root / RESULTS_DIR / "manifest.json").read_text(encoding="utf-8")
+            )
+            for key, entry in manifest["runs"].items():
+                for label, item in entry["inputs"].items():
+                    origin = root / item["path"]
+                    if origin.is_file() and sha256_of(origin) != item["sha256"]:
+                        problems.append(f"{key} inputs.{label}: manifest sha256 != repo file")
+        except (OSError, KeyError, TypeError, AttributeError, json.JSONDecodeError) as error:
+            problems.append(f"manifest inputs unreadable ({type(error).__name__})")
         record("asset sha256 matches the repo files and manifest inputs", problems)
 
         problems = []
@@ -374,6 +405,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--root", type=Path, default=ROOT, help="리포 루트(기본: 이 스크립트의 리포)"
     )
     parser.add_argument("--note", type=Path, help="릴리스 노트(기본: <root>/docs/release-v0.1.md)")
+    parser.add_argument(
+        "--assets-dir",
+        type=Path,
+        metavar="DIR",
+        help="업로드 뒤 내려받은 asset 파일(노트 표의 asset 이름)이 있는 디렉터리. 주면 이 파일들을 검사한다",
+    )
     parser.add_argument("--print-assets", action="store_true", help="asset 목록 표를 출력한다")
     parser.add_argument("--compare-results", type=Path, metavar="DIR", help="재실행 결과 디렉터리")
     parser.add_argument("--track", choices=("public", "kisa"), default="public")
@@ -401,7 +438,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"OK: {names} match the committed results (atol {args.atol})")
         return 0
     failed = False
-    for name, problems in check_release(root, args.note):
+    assets_dir = args.assets_dir.resolve() if args.assets_dir else None
+    if assets_dir is not None and not assets_dir.is_dir():
+        print(f"error: --assets-dir is not a directory: {args.assets_dir.name}", file=sys.stderr)
+        return 1
+    for name, problems in check_release(root, args.note, assets_dir):
         print(f"{'FAIL' if problems else 'OK  '} {name}")
         for problem in problems:
             print(f"     {problem}")

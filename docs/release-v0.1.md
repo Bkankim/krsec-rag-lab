@@ -40,6 +40,7 @@ dense는 `embed` 그룹(torch, sentence-transformers)과 HF에서 받는 bge-m3 
 모델은 `BAAI/bge-m3` revision `5617a9f61b028005a4858fdac845db406aefb181`, CLS pooling, L2 정규화, float32, CPU다.
 
 ```bash
+OUT=$(mktemp -d)
 uv sync --locked --group embed
 uv run --no-sync python scripts/run_baselines.py --track public --retriever dense --out-dir "$OUT"
 uv run python scripts/check_release.py --compare-results "$OUT" --retrievers dense --atol 1e-4
@@ -54,8 +55,9 @@ KISA 공지 본문은 재배포하지 않으므로 이 트랙은 본문 캐시(`
 (수집·캐시 검사 절차는 [README](../README.md)의 "KISA 소표본"). 캐시가 있는 체크아웃 루트를 `--kisa-root`로 넘긴다.
 
 ```bash
+OUT=$(mktemp -d)
 uv run --no-sync python scripts/run_baselines.py --track kisa --retriever bm25 --kisa-root <KISA 캐시가 있는 체크아웃> --out-dir "$OUT"
-uv run python scripts/check_release.py --compare-results "$OUT" --track kisa
+uv run python scripts/check_release.py --compare-results "$OUT" --track kisa --retrievers bm25
 ```
 
 ### README 표와 원시 결과의 일치 검증
@@ -118,6 +120,17 @@ GitHub 릴리스 `v0.1`에 첨부하는 파일이다. asset 이름은 리포 경
 3. asset 사본의 sha256이 목록, 대응하는 리포 원본 파일, manifest의 입력 해시와 같다.
 4. 허용 필드만 있다(결과 파일은 `scoring.validate_record`, 질의·정답 파일은 키 목록, JSON은 긴 문자열 없음).
 5. asset 사본만으로 리포 레이아웃을 복원해 README 표를 다시 계산하면 README와 같다.
+
+### 발행 뒤 검증 (내려받은 asset)
+
+릴리스를 발행한 뒤 asset을 빈 디렉터리에 내려받아(`gh release download v0.1 --dir "$DL"`) 같은 검사를 그 파일들에 대해 돌린다.
+리포 파일 사본이 아니라 실제로 올라간 파일이 대상이고, 목록에 없는 파일이 섞여 있으면 실패한다:
+
+```bash
+DL=$(mktemp -d)
+gh release download v0.1 --repo Bkankim/krsec-rag-lab --dir "$DL"
+uv run python scripts/check_release.py --assets-dir "$DL"
+```
 
 ## 본문 유출 점검 (LICENSES/README.md 체크리스트 적용)
 
@@ -184,8 +197,8 @@ GitHub 릴리스 `v0.1`에 첨부하는 파일이다. asset 이름은 리포 경
   `explanation_comparison`은 공개 트랙에서 만들지 않았다(메타데이터로 기계적 정답을 정할 수 없고 LLM 판정은 쓰지 않는다).
 - `no_answer`는 이 fixture 코퍼스에 없음을 기계적으로 확인한 CVE ID 질의로 한정한다. NVD 전체에 없다는 뜻이 아니다.
 
-**표본 크기.** 공개 144문항(cve_explicit 60 / product_symptom 60 / no_answer 24), KISA 54문항(채점 52). split·유형별 n이
-5~39이고 n_scored < 10인 칸(†)은 관찰로만 읽는다. dev에서 고른 k1·b·τ는 이 표본에서 잡음에 민감해 KISA 트랙에서는
+**표본 크기.** 공개 144문항(cve_explicit 60 / product_symptom 60 / no_answer 24), KISA 54문항(채점 52). split·유형별 n_scored가
+5~39이고 기권 표의 no_answer는 split당 4~12문항(KISA dev 4, test 6)이다. n_scored < 10인 칸(†)은 관찰로만 읽는다. dev에서 고른 k1·b·τ는 이 표본에서 잡음에 민감해 KISA 트랙에서는
 BM25와 dense의 순서가 dev와 test에서 뒤바뀐다. 자세한 주의점은 [baselines.md 6절](baselines.md#6-해석할-때의-한계)에 있다.
 
 **미검증 항목.**

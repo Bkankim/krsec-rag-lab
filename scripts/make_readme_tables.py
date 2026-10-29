@@ -101,6 +101,8 @@ def _check_inputs(root: Path, key: str, entry: Mapping) -> None:
     if not isinstance(inputs, dict) or "queries" not in inputs:
         raise CheckError(f"{key}: manifest has no inputs.queries")
     for name, item in inputs.items():
+        if not isinstance(item, dict):
+            raise CheckError(f"{key}: manifest inputs.{name} is not an object")
         path = root / _relative_path(item.get("path"), f"{key} inputs.{name}")
         if not path.is_file():
             if name == "queries":
@@ -111,7 +113,10 @@ def _check_inputs(root: Path, key: str, entry: Mapping) -> None:
 
 
 def _load_records(root: Path, key: str, entry: Mapping, questions: list[data.Question]) -> dict:
-    stored = entry.get("stored_results", {}).get("path")
+    stored_results = entry.get("stored_results")
+    if not isinstance(stored_results, dict):
+        raise CheckError(f"{key}: manifest has no stored_results object")
+    stored = stored_results.get("path")
     path = _relative_path(stored, f"{key} stored_results")
     rows = _read_jsonl(root / path, path.as_posix())
     records: dict[str, dict] = {}
@@ -154,6 +159,8 @@ def recompute(root: Path) -> tuple[dict, dict]:
     for key in sorted(runs, key=lambda k: (data.TRACKS.index(k.split("/")[0]), k)):
         track, _, retriever = key.partition("/")
         entry = runs[key]
+        if not isinstance(entry, dict):
+            raise CheckError(f"{key}: manifest run entry is not an object")
         questions = _load_questions(track, root, key)
         _check_inputs(root, key, entry)
         records = _load_records(root, key, entry, questions)
@@ -163,7 +170,9 @@ def recompute(root: Path) -> tuple[dict, dict]:
             raise CheckError(f"{key}: manifest has no selected.tau") from None
         splits = {}
         for split in data.SPLITS:
-            if any(q.split == split for q in questions):
+            if any(
+                q.split == split and not q.excluded for q in questions
+            ):  # compute_run_metrics와 같다
                 splits[split] = scoring.evaluate_split(records, questions, split, tau)
         recomputed[key] = splits
     return manifest, {"protocol_version": scoring.PROTOCOL_VERSION, "runs": recomputed}

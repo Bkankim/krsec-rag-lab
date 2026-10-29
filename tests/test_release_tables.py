@@ -107,6 +107,24 @@ def test_readme_outside_markers_is_untouched_by_write(repo):
     assert path.read_text(encoding="utf-8") == before
 
 
+def exclude_kisa_test_split(root):
+    path = root / "eval/golden/golden_v1.jsonl"
+    rows = read_jsonl(path)
+    for row in rows:
+        if row["split"] == "test":
+            row["excluded"], row["answers"] = True, []
+    write_jsonl(path, rows)
+
+
+def test_split_whose_questions_are_all_excluded_is_not_a_mismatch(tmp_path, capsys):
+    """runner.compute_run_metrics는 채점할 질문이 없는 분할을 metrics.json에 쓰지 않는다. --check도 같은 분할만 본다."""
+    root = build_repo(tmp_path / "repo", exclude_kisa_test_split)
+    metrics = json.loads((root / RESULTS / "metrics.json").read_text(encoding="utf-8"))
+    assert set(metrics["runs"]["kisa/bm25"]) == {"dev"}
+    assert run_check(root, capsys)[0] == 0
+    assert "| bm25 | test | 3 |" not in (root / "README.md").read_text(encoding="utf-8")
+
+
 # ------------------------------------------------------------ 불일치 -> 1
 
 
@@ -345,6 +363,23 @@ def test_result_record_with_extra_field_is_exit_1(repo, capsys):
     edit_rows(repo / RESULTS / "kisa/bm25.jsonl", add_field)
     code, _, err = run_check(repo, capsys)
     assert code == 1 and "invalid record" in err
+
+
+MALFORMED_MANIFEST = {
+    "run entry is a string": lambda p: p["runs"].__setitem__("public/bm25", "x"),
+    "stored_results is null": lambda p: p["runs"]["public/bm25"].__setitem__("stored_results", None),
+    "stored_results is a string": lambda p: p["runs"]["public/bm25"].__setitem__("stored_results", "x"),
+    "inputs item is a string": lambda p: p["runs"]["kisa/exact"]["inputs"].__setitem__("queries", "x"),
+    "inputs is a list": lambda p: p["runs"]["kisa/exact"].__setitem__("inputs", []),
+    "selected is a string": lambda p: p["runs"]["public/exact"].__setitem__("selected", "x"),
+}  # fmt: skip
+
+
+@pytest.mark.parametrize("change", MALFORMED_MANIFEST.values(), ids=MALFORMED_MANIFEST.keys())
+def test_malformed_manifest_is_exit_1_not_a_traceback(repo, capsys, change):
+    edit_json(repo / RESULTS / "manifest.json", change)
+    code, _, err = run_check(repo, capsys)
+    assert code == 1 and err.startswith("error:")
 
 
 def test_unknown_run_key_is_exit_1(repo, capsys):

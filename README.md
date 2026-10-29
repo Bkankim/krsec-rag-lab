@@ -49,6 +49,7 @@ uv run python scripts/check_release.py --compare-results "$OUT"   # 커밋된 �
 dense(bge-m3, 모델 약 2.1GB를 내려받는다)는 별도 단계다. 점수의 소수 자리는 환경에 따라 달라질 수 있다:
 
 ```bash
+OUT=$(mktemp -d)
 uv sync --locked --group embed
 uv run --no-sync python scripts/run_baselines.py --track public --retriever dense --out-dir "$OUT"
 ```
@@ -56,6 +57,7 @@ uv run --no-sync python scripts/run_baselines.py --track public --retriever dens
 **KISA 트랙** (KISA 캐시가 있는 체크아웃 루트를 `--kisa-root`로 넘긴다. 캐시 수집은 아래 "KISA 소표본"):
 
 ```bash
+OUT=$(mktemp -d)
 uv run --no-sync python scripts/run_baselines.py --track kisa --retriever bm25 --kisa-root <KISA 캐시가 있는 체크아웃> --out-dir "$OUT"
 ```
 
