@@ -19,9 +19,13 @@ RAG 파이프라인의 각 구성요소(청킹·하이브리드 검색·리랭�
 
 ## 상태
 
-**M2 완료, v0.1** - 베이스라인 3종(exact CVE lookup / BM25 / dense bge-m3)을 두 트랙에서 측정했고, 질문별 원시 결과와
-재현 명령을 첫 릴리스로 묶었다. 릴리스 노트(asset 목록·sha256·한계): [docs/release-v0.1.md](docs/release-v0.1.md).
-M3(하이브리드·리랭커·청킹·한영 교차·임베딩 교체) 이후의 로드맵은 [PLAN.md](PLAN.md)와
+**M3 완료, v0.2** - M3 실험 5개(하이브리드+RRF, 리랭커, 청킹, 한영 교차, 임베딩 교체)를 사전 등록한 가설과 판정 규칙대로
+한 번씩 돌렸고, 다섯 주 판정이 모두 `hypothesis-rejected`다(아래 "M3 실험 결과"). 질문별 원시 결과, 재현 명령, 검사를 v0.2
+릴리스로 묶었다. 릴리스 노트(asset 목록·sha256·한계): [docs/release-v0.2.md](docs/release-v0.2.md), 실험 요약:
+[docs/experiments/summary.md](docs/experiments/summary.md).
+
+이전 릴리스: M2 완료, v0.1(베이스라인 3종 exact CVE lookup / BM25 / dense bge-m3, 두 트랙).
+노트: [docs/release-v0.1.md](docs/release-v0.1.md). M4 이후의 로드맵은 [PLAN.md](PLAN.md)와
 [Milestones](../../milestones)에 있다.
 
 ## 평가 트랙과 재현
@@ -61,11 +65,22 @@ OUT=$(mktemp -d)
 uv run --no-sync python scripts/run_baselines.py --track kisa --retriever bm25 --kisa-root <KISA 캐시가 있는 체크아웃> --out-dir "$OUT"
 ```
 
-README 표와 원시 결과의 일치 검증(네트워크·캐시 불필요):
+README 표와 원시 결과의 일치 검증(네트워크·캐시 불필요, 베이스라인 표와 M3 판정 표 모두):
 
 ```bash
 uv run python scripts/make_readme_tables.py --check
-uv run python scripts/check_release.py
+uv run python scripts/check_release.py                                  # v0.1 asset 검사
+uv run python scripts/check_release.py --note docs/release-v0.2.md      # v0.2 asset 검사
+```
+
+**M3 실험** (모델·KISA 캐시 없이 저장본에서 `metrics.json`·`comparison.json`을 다시 계산해 커밋된 파일과 대조한다.
+불일치는 종료 코드 1). 모델이 필요한 실험 재실행 명령과 한계는 실험별 보고서와
+[docs/release-v0.2.md](docs/release-v0.2.md)의 재현 절에 있다:
+
+```bash
+for exp in hybrid rerank chunking crossling embedding; do
+  uv run python scripts/run_experiment.py --exp "$exp" --compare
+done
 ```
 
 ## 결과
@@ -163,12 +178,38 @@ no_answer (기권):
 
 <!-- END GENERATED TABLES (scripts/make_readme_tables.py) -->
 
+## M3 실험 결과
+
+실험 5개는 한 번에 한 요소만 바꿔 M2 베이스라인과 같은 입력·같은 채점으로 비교했다. 가설, 주 트랙, 판정 규칙은 test를
+돌리기 전에 고정했고(런 스펙 이슈 #43), test는 dev에서 확정한 설정으로 한 번만 돌았다. 실험 이름은 각 보고서(가설, 구성, 재현
+명령, 질문별 실패 사례, 한계)로 링크된다. 보조 트랙과 `cve_explicit` 회귀 여부까지 한 표에 모은 요약과 다음 실험 후보는
+[docs/experiments/summary.md](docs/experiments/summary.md), 하네스 계약은 [docs/experiments/README.md](docs/experiments/README.md)에 있다.
+
+<!-- BEGIN M3 TABLES (scripts/make_readme_tables.py) -->
+
+이 구간은 `scripts/make_readme_tables.py`가 `results/experiments/`의 질문별 원시 결과와 질의셋 라벨에서 하네스의 비교 함수(`krsec_rag_lab.experiments.compare`)로 다시 계산해 쓴다. 손으로 고치지 않는다. 검증: `uv run python scripts/make_readme_tables.py --check`. 지표는 test macro nDCG@10(condensed list, 정답이 있는 유형의 단순 평균)이고 delta = 실험 - 기준이다. 95% 구간은 test 질문을 유형별로 층화 복원추출한 paired bootstrap(10000회, 시드 20261029)의 2.5/97.5 백분위이며, delta > 0 이고 구간 하한 > 0 일 때만 `hypothesis-confirmed`다.
+
+주 판정 5건: hypothesis-confirmed 0, hypothesis-rejected 5.
+
+| 실험 | 주 트랙 (변형) | 기준 | test n | 기준 macro nDCG@10 | 실험 macro nDCG@10 | delta | 95% 구간 | 판정 |
+|---|---|---|---|---|---|---|---|---|
+| [hybrid](docs/experiments/hybrid.md) | public (rrf) | bm25 | 74 | 0.8551 | 0.8775 | +0.0223 | [-0.0117, +0.0616] | `hypothesis-rejected` |
+| [rerank](docs/experiments/rerank.md) | public (rerank) | bm25 | 74 | 0.8551 | 0.8581 | +0.0030 | [-0.0206, +0.0244] | `hypothesis-rejected` |
+| [chunking](docs/experiments/chunking.md) | kisa (chunk_max) | dense | 23 | 0.8131 | 0.8785 | +0.0654 | [-0.0082, +0.1510] | `hypothesis-rejected` |
+| [crossling](docs/experiments/crossling.md) | public (bm25_ko2en) | bm25 | 74 | 0.8551 | 0.2771 | -0.5780 | [-0.6723, -0.4832] | `hypothesis-rejected` |
+| [embedding](docs/experiments/embedding.md) | public (swap) | dense | 74 | 0.4353 | 0.4393 | +0.0040 | [-0.0637, +0.0726] | `hypothesis-rejected` |
+
+<!-- END M3 TABLES (scripts/make_readme_tables.py) -->
+
 ## 한계
 
 - 정답은 두 LLM의 교차 판정이고 사람 검수가 아니다. kappa·`unjudged`·`excluded` 건수와 미검증 항목:
   [docs/release-v0.1.md 한계 절](docs/release-v0.1.md#한계), 판정 설정과 한계: [eval/golden/judge_manifest.json](eval/golden/judge_manifest.json).
 - 표본이 작다(KISA 트랙은 채점 대상 52문항이고 split·유형별 n은 더 작다). 지표 해석의 주의점은 [docs/baselines.md 6절](docs/baselines.md#6-해석할-때의-한계)에 있다.
 - KISA 트랙은 로컬 캐시가 있어야 재현된다. 공개 트랙은 질문이 한국어, 문서가 영어인 교차 언어 설정이다.
+- M3 판정은 작은 test 표본에서의 질문 단위 paired bootstrap 구간이다. `hypothesis-rejected`는 "이 설정이 이 표본에서 기준을
+  이긴다는 증거가 없다"는 뜻이고 효과가 없다는 증명이 아니다. 실험은 한 요소씩만 바꿨고 누적 조합은 판정하지 않았다
+  (한계 전체: [docs/experiments/summary.md](docs/experiments/summary.md), 실험별 보고서의 한계 절).
 
 ## 데이터와 라이선스
 

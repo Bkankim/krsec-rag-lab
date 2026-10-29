@@ -1,7 +1,9 @@
-"""릴리스 v0.1 asset 목록 검사와 재현 결과 비교.
+"""릴리스(v0.1, v0.2) asset 목록 검사와 재현 결과 비교.
 
     uv run python scripts/check_release.py                        # docs/release-v0.1.md의 asset 목록 검사
+    uv run python scripts/check_release.py --note docs/release-v0.2.md   # v0.2 노트의 asset 목록 검사
     uv run python scripts/check_release.py --print-assets         # 리포 파일에서 asset 목록 표를 만들어 출력
+    uv run python scripts/check_release.py --print-assets --note docs/release-v0.2.md   # v0.2 목록
     uv run python scripts/check_release.py --assets-dir DIR       # 내려받은 asset 파일(asset 이름)을 검사
     uv run python scripts/check_release.py --compare-results DIR  # run_baselines.py --out-dir DIR 결과와 비교
 
@@ -15,6 +17,16 @@ asset 목록 검사는 아래를 전부 확인하고 하나라도 어긋나면 �
 4. 허용 필드만 있다: 결과 파일은 질문 ID·문서 ID·순위·점수(와 지우기 전 1위 점수, 지운 문서 수)만, 질의·정답
    파일은 정해진 키만, 그 밖은 JSON manifest이고 긴 문자열(본문 인용 후보)이 없다.
 5. asset 사본만으로 리포 레이아웃을 복원해 README 표를 다시 계산하면(scripts/make_readme_tables.py) README와 같다.
+
+v0.2 노트(`--note`의 파일 이름이 `release-v0.2.md`)는 같은 검사에 아래를 더한다. v0.1 노트는 아래 항목을 허용하지 않는다.
+
+- 허용 asset에 `results/experiments/<exp>/`의 원시 결과(`<track>/<variant>.jsonl`, `scoring.validate_record`),
+  `manifest.json`·`metrics.json`·`comparison.json`(JSON, 긴 문자열 없음, 절대 경로 모양의 문자열 없음),
+  한영 교차 `translations.jsonl`(정해진 키만)이 더해진다. 실험은 `make_readme_tables.EXPERIMENTS` 5개다.
+- 필수 asset은 각 실험 manifest의 저장 결과 경로(`stored_results.path`), 재현 입력(`reproduction_inputs`), 입력
+  파일 중 asset인 것, 그리고 실험 JSON 3종이다. 하나라도 목록에 없으면 실패한다.
+- asset 사본만으로 M3 `metrics.json`·`comparison.json`을 하네스의 비교 함수로 다시 계산해 저장된 파일과 대조하고,
+  README의 M3 판정 구간, `docs/experiments/summary.md`의 표 구간, 노트의 판정 구간을 그 값으로 만든 표와 대조한다.
 
 `--assets-dir DIR`을 주면 1, 3~5를 리포 파일이 아니라 DIR의 파일(노트 표의 asset 이름)에 대해 검사한다. 릴리스를
 발행한 뒤 내려받은 파일을 검증하는 용도다. 목록에 없는 파일이 DIR에 있으면 실패하고, 리포 원본이 있으면 sha256도 대조한다.
@@ -42,10 +54,23 @@ NOTE_PATH = Path("docs/release-v0.1.md")
 BEGIN = "<!-- BEGIN ASSETS (scripts/check_release.py --print-assets) -->"
 END = "<!-- END ASSETS -->"
 RESULTS_DIR = Path("results/baselines")
+EXPERIMENTS_DIR = Path("results/experiments")
+RELEASE_NOTE = re.compile(r"release-(v\d+\.\d+)\.md")
+PROFILES = ("v0.1", "v0.2")
 ATOL = 1e-9
 MAX_STRING_CHARS = 500  # JSON asset의 문자열 한 개 상한. 공지 본문 조각이 들어오면 넘는다
 
 RESULT_PATH = re.compile(r"results/baselines/(public|kisa)/(exact|bm25|dense)\.jsonl")
+EXP_NAME = r"[a-z][a-z0-9_]*"
+EXP_RESULT_PATH = re.compile(
+    rf"results/experiments/(?P<exp>{EXP_NAME})/(public|kisa)/{EXP_NAME}\.jsonl"
+)
+EXP_JSON_PATH = re.compile(
+    rf"results/experiments/(?P<exp>{EXP_NAME})/(manifest|metrics|comparison)\.json"
+)
+TRANSLATIONS_PATH = "results/experiments/crossling/translations.jsonl"
+TRANSLATION_KEYS = {"model", "question_id", "revision", "source_sha256", "translation"}
+ABSOLUTE_PATH = re.compile(r"^(/Users/|/home/|/private/|/var/folders/)")
 ROW = re.compile(
     r"^\| `(?P<name>[^`]+)` \| `(?P<path>[^`]+)` \| (?P<size>\d+) \| `(?P<sha>[0-9a-f]{64})` \|$"
 )
@@ -102,32 +127,73 @@ def asset_name(path: str) -> str:
     return path.replace("/", "__")
 
 
-def asset_kind(path: str) -> str | None:
+def experiments() -> tuple[str, ...]:
+    """v0.2 릴리스가 담는 M3 실험(판정 표의 행 순서)."""
+    return load_sibling("make_readme_tables").EXPERIMENTS
+
+
+def profile_of(note_path: Path) -> str:
+    """노트 파일 이름(`release-vX.Y.md`)이 정하는 검사 범위. 이름이 그 모양이 아니면 v0.1이다."""
+    match = RELEASE_NOTE.fullmatch(note_path.name)
+    profile = match[1] if match else "v0.1"
+    if profile not in PROFILES:
+        raise ValueError(f"unknown release profile {profile!r} (known: {', '.join(PROFILES)})")
+    return profile
+
+
+def asset_kind(path: str, profile: str = "v0.1") -> str | None:
     if RESULT_PATH.fullmatch(path):
         return "result"
     if path in JSON_ASSETS:
         return "json"
-    return OTHER_ASSETS.get(path)
+    if kind := OTHER_ASSETS.get(path):
+        return kind
+    if profile != "v0.2":
+        return None
+    if (match := EXP_RESULT_PATH.fullmatch(path)) and match["exp"] in experiments():
+        return "result"
+    if (match := EXP_JSON_PATH.fullmatch(path)) and match["exp"] in experiments():
+        return "exp_json"
+    return "translations" if path == TRANSLATIONS_PATH else None
 
 
 def sha256_of(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def required_paths(root: Path) -> list[str]:
-    """manifest가 요구하는 원시 결과 파일과 질의셋. 이 파일들은 asset 목록에 반드시 있어야 한다."""
+def experiment_manifest(root: Path, name: str) -> dict:
+    return json.loads((root / EXPERIMENTS_DIR / name / "manifest.json").read_text(encoding="utf-8"))
+
+
+def required_paths(root: Path, profile: str = "v0.1") -> list[str]:
+    """manifest가 요구하는 원시 결과 파일과 질의셋. 이 파일들은 asset 목록에 반드시 있어야 한다.
+
+    v0.2는 각 실험 manifest의 저장 결과 경로, 재현 입력(`reproduction_inputs`), 입력 파일 중 asset인 것과
+    실험 JSON 3종을 더한다."""
     manifest = json.loads((root / RESULTS_DIR / "manifest.json").read_text(encoding="utf-8"))
     paths = {(RESULTS_DIR / "manifest.json").as_posix(), (RESULTS_DIR / "metrics.json").as_posix()}
     for entry in manifest["runs"].values():
         paths.add(entry["stored_results"]["path"])
         paths.add(entry["inputs"]["queries"]["path"])
+    if profile == "v0.2":
+        for name in experiments():
+            for filename in ("manifest", "metrics", "comparison"):
+                paths.add((EXPERIMENTS_DIR / name / f"{filename}.json").as_posix())
+            for entry in experiment_manifest(root, name)["runs"].values():
+                paths.add(entry["stored_results"]["path"])
+                paths.update(item["path"] for item in entry["reproduction_inputs"].values())
+                paths.update(
+                    item["path"]
+                    for item in entry["inputs"].values()
+                    if asset_kind(item["path"], profile)
+                )
     return sorted(paths)
 
 
-def default_assets(root: Path) -> list[str]:
+def default_assets(root: Path, profile: str = "v0.1") -> list[str]:
     """리포에 있는 허용 asset 전부(필수 파일 포함), 목록에 낼 순서."""
-    allowed = {*JSON_ASSETS, *OTHER_ASSETS, *required_paths(root)}
-    return sorted(p for p in allowed if asset_kind(p) and (root / p).is_file())
+    allowed = {*JSON_ASSETS, *OTHER_ASSETS, *required_paths(root, profile)}
+    return sorted(p for p in allowed if asset_kind(p, profile) and (root / p).is_file())
 
 
 def render_asset_table(root: Path, paths: Iterable[str]) -> str:
@@ -171,16 +237,44 @@ def _jsonl(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
 
 
+def _absolute_paths(value: object) -> int:
+    if isinstance(value, str):
+        return int(ABSOLUTE_PATH.match(value) is not None)
+    if isinstance(value, dict):
+        return sum(_absolute_paths(v) for v in value.values())
+    if isinstance(value, list):
+        return sum(_absolute_paths(v) for v in value)
+    return 0
+
+
+def _bad_keys(value: object) -> int:
+    """긴 문자열이거나 절대 경로 모양인 JSON 객체 키의 수(값 검사는 키를 보지 않는다)."""
+    if isinstance(value, dict):
+        own = sum(
+            len(key) > MAX_STRING_CHARS or ABSOLUTE_PATH.match(key) is not None for key in value
+        )
+        return own + sum(_bad_keys(v) for v in value.values())
+    if isinstance(value, list):
+        return sum(_bad_keys(v) for v in value)
+    return 0
+
+
 def check_fields(kind: str, path: Path) -> list[str]:
     """한 asset의 허용 필드 위반 목록(비면 통과)."""
     problems: list[str] = []
     try:
-        if kind == "json":
+        if kind in ("json", "exp_json"):
             payload = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(payload, dict):
                 problems.append("not a json object")
             if n := _long_strings(payload):
                 problems.append(f"{n} string(s) longer than {MAX_STRING_CHARS} chars")
+            if kind == "exp_json" and (n := _absolute_paths(payload)):
+                problems.append(f"{n} string(s) shaped like an absolute path")
+            if kind == "exp_json" and (n := _bad_keys(payload)):
+                problems.append(
+                    f"{n} key(s) longer than {MAX_STRING_CHARS} chars or shaped like an absolute path"
+                )
             return problems
         rows = _jsonl(path)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -197,6 +291,9 @@ def check_fields(kind: str, path: Path) -> list[str]:
         elif kind == "queries":
             if set(row) != QUERY_KEYS:
                 problems.append(f"{where}: keys {sorted(set(row) ^ QUERY_KEYS)}")
+        elif kind == "translations":
+            if set(row) != TRANSLATION_KEYS:
+                problems.append(f"{where}: keys {sorted(set(row) ^ TRANSLATION_KEYS)}")
         elif kind == "metadata":
             if set(row) != METADATA_KEYS:
                 problems.append(f"{where}: keys {sorted(set(row) ^ METADATA_KEYS)}")
@@ -242,6 +339,24 @@ def stage_assets(
     return assets, tree
 
 
+def experiment_input_problems(root: Path) -> list[str]:
+    """v0.2: 실험 manifest의 입력·재현 입력 sha256이 리포 파일과 같은지(파일이 있는 입력만)."""
+    problems: list[str] = []
+    try:
+        for name in experiments():
+            for key, entry in experiment_manifest(root, name)["runs"].items():
+                for group in ("inputs", "reproduction_inputs"):
+                    for label, item in entry[group].items():
+                        origin = root / item["path"]
+                        if origin.is_file() and sha256_of(origin) != item["sha256"]:
+                            problems.append(
+                                f"{name} {key} {group}.{label}: manifest sha256 != repo file"
+                            )
+    except (OSError, KeyError, TypeError, AttributeError, json.JSONDecodeError) as error:
+        problems.append(f"experiment manifest unreadable ({type(error).__name__})")
+    return problems
+
+
 def check_release(
     root: Path, note_path: Path | None = None, assets_dir: Path | None = None
 ) -> list[tuple[str, list[str]]]:
@@ -251,6 +366,10 @@ def check_release(
     asset 파일(노트 표의 asset 이름)에 대해 검사한다. 리포 원본이 있으면 sha256도 대조한다."""
     note_path = note_path or root / NOTE_PATH
     results: list[tuple[str, list[str]]] = []
+    try:
+        profile = profile_of(note_path)
+    except ValueError as error:
+        return [("release profile", [str(error)])]
 
     def record(name: str, problems: list[str]) -> list[str]:
         results.append((name, problems))
@@ -270,7 +389,7 @@ def check_release(
         if path in seen_paths:
             problems.append(f"duplicate asset path {path}")
         seen_paths.add(path)
-        if asset_kind(path) is None:
+        if asset_kind(path, profile) is None:
             problems.append(f"{path}: not an allowed asset")
         if name != asset_name(path):
             problems.append(f"{path}: asset name {name!r} != {asset_name(path)!r}")
@@ -291,7 +410,7 @@ def check_release(
         return results
 
     try:
-        needed = required_paths(root)
+        needed = required_paths(root, profile)
     except (OSError, KeyError, TypeError, AttributeError, json.JSONDecodeError) as error:
         record("manifest-required files are listed", [f"manifest unreadable ({error!r})"])
         return results
@@ -327,11 +446,13 @@ def check_release(
                         problems.append(f"{key} inputs.{label}: manifest sha256 != repo file")
         except (OSError, KeyError, TypeError, AttributeError, json.JSONDecodeError) as error:
             problems.append(f"manifest inputs unreadable ({type(error).__name__})")
+        if profile == "v0.2":
+            problems += experiment_input_problems(root)
         record("asset sha256 matches the repo files and manifest inputs", problems)
 
         problems = []
         for row in rows:
-            for issue in check_fields(asset_kind(row["path"]) or "", assets / row["name"]):
+            for issue in check_fields(asset_kind(row["path"], profile) or "", assets / row["name"]):
                 problems.append(f"{row['name']}: {issue}")
         record("only allowed fields", problems)
 
@@ -342,6 +463,21 @@ def check_release(
         except tables.CheckError as error:
             problems = [f"README vs asset copy: {error}"]
         record("README tables rebuilt from the asset copies match", problems)
+
+        if profile == "v0.2":
+            try:
+                found, _ = tables.verify_m3(
+                    tree,
+                    root / "README.md",
+                    summary=root / tables.SUMMARY_PATH,
+                    note=note_path,
+                )
+                problems = [f"M3 vs asset copy: {item}" for item in found]
+            except tables.CheckError as error:
+                problems = [f"M3 vs asset copy: {error}"]
+            record(
+                "M3 metrics, comparison and tables rebuilt from the asset copies match", problems
+            )
     return results
 
 
@@ -404,7 +540,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--root", type=Path, default=ROOT, help="리포 루트(기본: 이 스크립트의 리포)"
     )
-    parser.add_argument("--note", type=Path, help="릴리스 노트(기본: <root>/docs/release-v0.1.md)")
+    parser.add_argument(
+        "--note",
+        type=Path,
+        help="릴리스 노트(기본: <root>/docs/release-v0.1.md). 파일 이름 release-v0.2.md는 v0.2 검사 범위다",
+    )
     parser.add_argument(
         "--assets-dir",
         type=Path,
@@ -423,7 +563,12 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     root = args.root.resolve()
     if args.print_assets:
-        print(render_asset_table(root, default_assets(root)), end="")
+        try:
+            profile = profile_of(args.note or Path(NOTE_PATH))
+        except ValueError as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 1
+        print(render_asset_table(root, default_assets(root, profile)), end="")
         return 0
     if args.compare_results is not None:
         retrievers = [name for name in args.retrievers.split(",") if name]
