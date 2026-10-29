@@ -13,10 +13,10 @@ RAG 평가에서 KISA 공지의 CVE ID를 NVD 설명·CVSS·영향 제품(CPE)�
 |---|---|
 | `cves.jsonl` | CVE당 1줄(JSON, 키 정렬, `id` 오름차순). 아래 "레코드 스키마" |
 | `kev.json` | CISA KEV 카탈로그 중 KISA 인용 CVE와 겹치는 항목만 + 카탈로그 버전·공개 시각 |
-| `manifest.json` | 수집 UTC 시각, 소스 URL·버전, 대상 CVE 목록, 레코드별 sha256, 파일 sha256 |
+| `manifest.json` | 수집 UTC 시각, 소스 URL·버전, 기존 수집 원천(`base_sources`), 대상 CVE 목록, 레코드별 sha256, 파일 sha256, `vendor_products_status` 상태별 개수와 drifted ID |
 | `NOTICE.md` | MITRE(CVE)·NVD·CISA KEV 고지 문구 |
 
-합계는 약 1.5MB(상한 2MB). 원 응답(NVD 연도별 피드 42MB 등)은 리포 밖 캐시 `data/nvd/`(gitignore)에만 둔다.
+합계는 약 2.0MB(상한 3MB). 원 응답(NVD 연도별 피드 42MB 등)은 리포 밖 캐시 `data/nvd/`(gitignore)에만 둔다.
 
 ## 서브셋 구성 판정 (열린 결정 #26)
 
@@ -36,7 +36,7 @@ RAG 평가에서 KISA 공지의 CVE ID를 NVD 설명·CVSS·영향 제품(CPE)�
    설명은 0.24MB(중앙값 116자)에 불과하다. 그래서 필드를 줄이는 대신 CPE만 비-KEV 3건으로 줄였다(1.3MB).
 4. KEV는 "실제 악용"이라 질의 가치가 높은 소수(26개)이므로 CPE를 25건까지 남긴다. KEV 중 `cpe_total`이 25를 넘는 레코드는 목록이
    잘려 있으니 `cpe_total`과 `len(cpe)`를 비교해 절단 여부를 본다.
-5. 재검토 트리거: KISA 소표본이 커지면(공지 수 증가) 먼저 비-KEV CPE 상한을 줄이고, 그래도 2MB를 넘으면 KEV 교집합 우선으로 좁힌다.
+5. 재검토 트리거: KISA 소표본이 커지면(공지 수 증가) 먼저 비-KEV CPE 상한을 줄이고, 그래도 3MB를 넘으면 KEV 교집합 우선으로 좁힌다. 상한은 처음 2MB였고 `vendor_products` 추가(#36)로 3MB로 올렸다.
 
 ## 커버리지 (수집 시점 2026-10-29 UTC)
 
@@ -78,6 +78,21 @@ uv run python scripts/fetch_nvd.py --report   # report kisa_unique_cves=1560 fou
 | `cpe_total` | int | 취약(`vulnerable: true`)으로 표시된 CPE 매치 수(중복 제거) |
 | `cpe` | array | 위 매치 중 `criteria` 정렬 순 앞 N건(비-KEV 3, KEV 25). 각 `{criteria, version_start_including?, version_start_excluding?, version_end_including?, version_end_excluding?}`(범위 키는 값이 있을 때만) |
 | `kev` | bool | CISA KEV에 있으면 `true`. 항목은 `kev.json` |
+| `vendor_products` | array of string | 취약(`vulnerable: true`) CPE 매치의 `vendor:product` 고유 집합, 정렬, **절단 없음**(`cpe`와 같은 필터, CPE 2.3의 vendor·product 필드를 원문 그대로). `drifted`는 아래 규칙 |
+| `vendor_products_status` | string | `ok`, `no_configurations`, `drifted` (아래) |
+
+`vendor_products_status`:
+
+| 값 | 뜻 |
+|---|---|
+| `ok` | 새 원천의 취약 매치가 1건 이상이고, 기존 필드와 새 원천이 같다 |
+| `no_configurations` | 새 원천에 취약 매치가 0건(`vendor_products: []`)이고 기존 필드도 새 원천과 같다(기존 `cpe`도 비어 있다) |
+| `drifted` | 기존 필드 중 하나라도 새 원천과 다르거나, 새 원천에 레코드가 없다. `drifted`가 `no_configurations`보다 우선한다 |
+
+`drifted` 레코드는 기존 필드를 그대로 두고, `vendor_products`는 새 원천 집합과 기존 `cpe`의 `vendor:product`의 합집합이다
+(새 원천에 레코드가 없으면 기존 `cpe`의 것만). 어느 상태든 기존 `cpe`의 모든 `vendor:product`는 `vendor_products`에 들어 있다.
+`drifted` ID 목록과 상태별 개수는 `manifest.json`의 `vendor_products_drifted_ids`·`vendor_products_status_counts`에 있다.
+`vendor_products`가 절단되지 않았으니 레코드가 어떤 제품을 갖는지는 `cpe`가 아니라 이 필드로 본다(`cpe`는 여전히 절단 목록이다).
 
 `kev.json`: `{source_url, catalog_version, date_released, catalog_count, license, selection, entries: [...]}`.
 `entries[]`는 `{cve_id, vendor_project, product, vulnerability_name, date_added, due_date, known_ransomware_campaign_use}`.
@@ -89,6 +104,7 @@ uv run python scripts/fetch_nvd.py --report   # report kisa_unique_cves=1560 fou
 - **cvss(4.0, 3.1, 3.0)**: 심각도·벡터는 "이 취약점이 얼마나 위험한가" 질의의 근거. 2.0은 구식이라 제외.
   Primary(NVD)와 Secondary(CNA) 값이 다를 수 있어 둘 다 `source`·`type`과 함께 둔다.
 - **cwe**: 약점 유형 질의와 KISA 공지의 유형 서술 대조용.
+- **vendor_products**: 영향 제품 질의의 정답 후보(#35). `cpe`가 절단돼 있어 제품 목록은 이 필드로만 완전하다.
 - **cpe, cpe_total**: 영향 제품·버전 범위 질의용. `vulnerable: true`만 둔다(실행 환경 조건 CPE는 영향 제품이 아니다).
   CPE가 레코드 크기를 지배하므로 상한을 두고, 절단 여부를 `cpe_total`로 알린다. CPE 매칭 로직 고도화는 범위 밖이다.
 - **published, last_modified, vuln_status**: 시점 질의와 분석 대기 레코드를 걸러내는 데 쓴다.
@@ -118,6 +134,12 @@ KISA 1,560개를 API로 하나씩 부르면 키 없는 한도(6.5초 간격)로 
   없거나 공백이면 키 없는 한도로 동작한다.
 - 원 응답은 `data/nvd/`에 저장하고(`cache.json`에 응답 시각 `Date` 헤더·sha256 기록) 다시 실행하면 재사용한다. `--refresh`로 강제 재수집.
 - `manifest.json`의 `collected_at`은 캐시한 원 응답의 `Date` 헤더 중 가장 늦은 값이다(재실행 시각이 아니다).
+- **기존 fixture가 있으면 그것이 기존 필드의 출처다**(#36). `fetch_nvd.py`는 커밋된 `cves.jsonl`의 기존 필드(`id`부터 `kev`까지)를 그대로 두고
+  `vendor_products`·`vendor_products_status`만 새로 받은 원천(캐시)에서 만든다. 새 원천과 다른 레코드는 `drifted`로 표시하고 기존 필드는 바꾸지 않는다.
+  `kev.json`과 `manifest.json`의 `coverage`·`not_found`도 커밋된 값을 바이트 그대로 둔다(새 KEV 카탈로그로 다시 쓰지 않는다). 새 카탈로그와
+  레코드의 `kev` 플래그가 다르면 그 레코드가 `drifted`다. 기존 수집 원천(`sources`)은 `base_sources`로 보존하고, `sources`·`collected_at`·`files`·`records`는 이번 수집 기준이다.
+  fixture가 없으면(최초 수집) 모든 필드를 원천에서 만든다. **기존 필드를 원천에서 다시 만들려면 `fixtures/nvd/`를 지운 뒤 실행한다.**
+- `--refresh`는 `data/nvd/` 캐시를 무시하고 원천을 다시 받는다. fixture를 지우는 것과는 별개다.
 - NVD 피드는 수집 시점의 스냅샷이다. 이후 NVD가 레코드를 고치면 새로 받은 결과와 달라진다(`manifest.json`의 소스별 `version`에 피드 시각).
 
 재현:
@@ -125,10 +147,16 @@ KISA 1,560개를 API로 하나씩 부르면 키 없는 한도(6.5초 간격)로 
 ```sh
 # 처음에는 피드 42MB 다운로드(수 분)와 API 4회(키 없이 약 30초)가 든다.
 uv run python scripts/fetch_nvd.py
-# 캐시가 있으면 요청 0회, fixtures/nvd 전 파일 sha256이 그대로다.
+# 캐시가 있으면 요청 0회, fixtures/nvd 전 파일 sha256이 그대로다(기존 fixture가 있는 상태에서도 같다).
 find fixtures/nvd -type f -print0 | sort -z | xargs -0 shasum -a 256 > /tmp/before.txt
 uv run python scripts/fetch_nvd.py
 find fixtures/nvd -type f -print0 | sort -z | xargs -0 shasum -a 256 | diff /tmp/before.txt -
 ```
 
-테스트는 합성 응답으로 요청 간격, 403/429 즉시 중단, 키 미설정 경로를 검증한다(`tests/test_fetch_nvd.py`, 네트워크 없음).
+테스트는 합성 응답으로 요청 간격, 403/429 즉시 중단, 키 미설정 경로, `vendor_products` 병합(`drifted`·`no_configurations`)을 검증한다(`tests/test_fetch_nvd.py`, 네트워크 없음).
+
+기존 필드가 바뀌지 않았는지는 커밋 이력이 있는 체크아웃에서 확인한다(CI는 shallow clone이라 pytest에 넣지 않았다):
+
+```sh
+uv run python scripts/check_nvd_fields.py 1646a84   # base 커밋의 cves.jsonl과 레코드마다 비교, kev.json·coverage·not_found 동일 확인
+```
