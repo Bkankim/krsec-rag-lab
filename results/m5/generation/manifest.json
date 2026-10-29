@@ -1,0 +1,205 @@
+{
+  "schema": "m5-generation-v1",
+  "run_id": "8a7c1c6b2f8bf06b",
+  "created_at": "2026-10-29T23:08:29+00:00",
+  "environment": {
+    "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "cpu": "Apple M5 Pro",
+    "cpu_count": 18,
+    "python": "3.13.14"
+  },
+  "model": {
+    "name": "qwen3:8b",
+    "digest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+    "weights_sha256": "a3de86cd1c132c822487ededd47a324c50491393e6565cd14bafa40d0b8e686f",
+    "family": "qwen3",
+    "parameter_size": "8.2B",
+    "quantization": "Q4_K_M",
+    "license": "Apache-2.0",
+    "license_text_sha256": "d18a5cc71b84bc4af394a31116bd3932b42241de70c77d2b76d69a314ec8aa12",
+    "context_length": 40960,
+    "capabilities": [
+      "completion",
+      "tools",
+      "thinking"
+    ],
+    "ollama_version": "0.32.15"
+  },
+  "request": {
+    "model": "qwen3:8b",
+    "stream": false,
+    "format": "json",
+    "think": false,
+    "options": {
+      "temperature": 0,
+      "seed": 42,
+      "num_ctx": 16384,
+      "num_predict": 512
+    }
+  },
+  "prompt": {
+    "sha256": "48c60b10def29cd43a76f3c74f3fef51cada5af483d61b0df28029c4fae4bbc7",
+    "function": "krsec_rag_lab.generation.pipeline.build_prompt",
+    "retry": "파싱 실패 시 1회: 첫 질의 + 직전 응답 + 고정 교정 문구(RETRY_TEMPLATE)"
+  },
+  "context_rules": {
+    "doc_header": "[문서 ID]",
+    "doc_separator": "\n\n",
+    "per_doc_char_cap": 3000,
+    "index_text": {
+      "public": "'{id} {description_en}' (레코드 id + 공백 + 영문 설명, CPE·CWE·CVSS 미색인)",
+      "kisa": "'{title}\\n{body}' (공지 제목 + 줄바꿈 + 정규화 본문)"
+    },
+    "empty_context": "(검색된 문서 없음)"
+  },
+  "output_contract": {
+    "json": "{\"answer\": str, \"abstain\": bool, \"citations\": [문서 ID]}",
+    "parse_reasons": [
+      "empty",
+      "not_json",
+      "not_object",
+      "missing_answer",
+      "missing_abstain",
+      "missing_citations",
+      "bad_answer",
+      "bad_abstain",
+      "bad_citations"
+    ],
+    "statuses": [
+      "ok",
+      "parse_failed:<reason>",
+      "context_overflow"
+    ],
+    "success_floor": 0.8
+  },
+  "token_counting": {
+    "method": "Ollama 응답의 prompt_eval_count를 그대로 기록한다(없으면 null). 재질의가 있어도 입력 토큰은 첫 시도 값, 출력 토큰·지연은 모든 시도의 합",
+    "overflow_rule": "보내기 전에 셀 수 없다(Ollama에 tokenize 엔드포인트가 없고 토크나이저 파일을 따로 받지 않는다). 응답의 prompt_eval_count가 num_ctx - num_predict 이상이면 context_overflow로 바꿔 기록한다",
+    "max_prompt_tokens": 15872,
+    "latency": "(total_duration - load_duration)를 밀리초로 바꾼 값(모델 적재 시간 제외)",
+    "repro_check": {
+      "k": 5,
+      "n_pairs": 3,
+      "n_identical": 3,
+      "identical": true
+    }
+  },
+  "retrieval": {
+    "source": "results/baselines/manifest.json의 트랙별 BM25 선택 값(k1·b), 토큰화 bm25-tok-v1",
+    "baselines_manifest_sha256": "5d539b6a98c2d379c9584e37ccbe474a699bdd08c19e4c06eca84074ab0e63e7",
+    "rank": "unjudged를 지우기 전 BM25 점수를 (-점수, 문서 ID)로 정렬한 상위 k개"
+  },
+  "tracks": {
+    "public": {
+      "created_at": "2026-10-29T23:03:51+00:00",
+      "environment": {
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "machine": "arm64",
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "python": "3.13.14"
+      },
+      "inputs": {
+        "queries": {
+          "path": "eval/public/queries.jsonl",
+          "sha256": "1d8ab42360e3cee23e8d67bc933e5af7ec6a8365eb32d315105233016d294a99"
+        },
+        "corpus": {
+          "path": "fixtures/nvd/cves.jsonl",
+          "sha256": "96ce6757d724ab85593357a1806698bfe9026854b2f9823b6da4cbf01ce83ffa"
+        }
+      },
+      "n_documents": 1560,
+      "n_questions": 144,
+      "n_expected_questions": 144,
+      "retrieval": {
+        "k1": 1.2,
+        "b": 0.75,
+        "tokenizer": "bm25-tok-v1"
+      },
+      "docs_over_char_cap": 0,
+      "local_cache": "data/m5/generation/public_k<k>.jsonl (gitignore, 이어 돌리기용)",
+      "outputs": {
+        "k1": {
+          "file": "public_k1.jsonl",
+          "sha256": "5658c324122d58a42041d9dcf7047d66e1eefa528e6d8f2dca889fe48e1a1c30",
+          "n_rows": 144,
+          "parse_success_rate": 1.0,
+          "wall_seconds_this_invocation": 192.6
+        },
+        "k3": {
+          "file": "public_k3.jsonl",
+          "sha256": "5c1bf0ec3bb66b996c6ac51ef0b298a424c36361efca00e35e2f30155b8b440e",
+          "n_rows": 144,
+          "parse_success_rate": 1.0,
+          "wall_seconds_this_invocation": 229.3
+        },
+        "k5": {
+          "file": "public_k5.jsonl",
+          "sha256": "f8772343745934fb80c3bf183fc9c4facc4809ceb49d0ee350e763a938d4f086",
+          "n_rows": 144,
+          "parse_success_rate": 1.0,
+          "wall_seconds_this_invocation": 252.1
+        }
+      }
+    },
+    "kisa": {
+      "created_at": "2026-10-29T23:14:02+00:00",
+      "environment": {
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "machine": "arm64",
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "python": "3.13.14"
+      },
+      "inputs": {
+        "queries": {
+          "path": "eval/golden/golden_v1.jsonl",
+          "sha256": "2f94253c6c0551c536973c95b830dcf123e7acb858304fa8678812a19360d3dc"
+        },
+        "corpus_manifest": {
+          "path": "fixtures/kisa/manifest.json",
+          "sha256": "bf670ecd666e77139ae0c53a7be0badb5bdd82e8ff54d4876d59290b68c8b0c4"
+        },
+        "corpus_metadata": {
+          "path": "fixtures/kisa/metadata.jsonl",
+          "sha256": "c1512e8d234e0dbe4d32430877e61775612dd2248046122f74e227d446737eaf"
+        }
+      },
+      "n_documents": 50,
+      "n_questions": 52,
+      "n_expected_questions": 52,
+      "retrieval": {
+        "k1": 3.0,
+        "b": 0.9,
+        "tokenizer": "bm25-tok-v1"
+      },
+      "docs_over_char_cap": 10,
+      "local_cache": "<KISA-ROOT>/data/m5/generation/kisa_k<k>.jsonl (gitignore, 답변 원문 포함)",
+      "outputs": {
+        "k1": {
+          "file": "kisa_k1.jsonl",
+          "sha256": "de1946338426a844d347606709e2cd579cc7ca5e7bf568498e4c75258098dae2",
+          "n_rows": 52,
+          "parse_success_rate": 1.0,
+          "wall_seconds_this_invocation": 100.4
+        },
+        "k3": {
+          "file": "kisa_k3.jsonl",
+          "sha256": "0ea59aca3f46841e6098e99ec0bb98aeda2fa7961c2086437758e878b876e941",
+          "n_rows": 52,
+          "parse_success_rate": 1.0,
+          "wall_seconds_this_invocation": 232.2
+        },
+        "k5": {
+          "file": "kisa_k5.jsonl",
+          "sha256": "474466f59a55c1c58ca2bb8d1762c2f442224a01a0bacd153504a5274530ee33",
+          "n_rows": 52,
+          "parse_success_rate": 1.0,
+          "wall_seconds_this_invocation": 376.4
+        }
+      }
+    }
+  }
+}
