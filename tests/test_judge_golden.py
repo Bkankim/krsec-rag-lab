@@ -674,3 +674,28 @@ def test_run_parallel_keeps_the_input_order_and_the_first_error_otherwise():
     assert jg.run_parallel(lambda x: x * 2, [3, 1, 2], jobs=3) == [6, 2, 4]
     with pytest.raises(ValueError, match="first"):
         jg.run_parallel(lambda x: (_ for _ in ()).throw(ValueError("first")), [1, 2], jobs=2)
+
+
+def test_manifest_keeps_the_judged_input_hashes_when_an_input_file_changes_later(tmp_path):
+    ctx = make_context(tmp_path)
+    assert jg.main(["sample"], context=ctx) == 0
+    first = json.loads((ctx.root / golden.JUDGE_MANIFEST_FILE).read_text(encoding="utf-8"))
+    assert first["inputs"] == first["judged_inputs"]
+    assert "같다" in first["inputs_note"]
+
+    # 판정 뒤에 다른 티켓이 NVD fixture에 필드만 더한 상황
+    nvd = ctx.root / golden.NVD_CVES
+    nvd.write_text(
+        nvd.read_text(encoding="utf-8").replace("}\n", ', "vendor_products": []}\n'),
+        encoding="utf-8",
+    )
+    calls_before = len(ctx.cache.entries())
+    assert jg.main(["sample"], context=ctx) == 0
+    second = json.loads((ctx.root / golden.JUDGE_MANIFEST_FILE).read_text(encoding="utf-8"))
+    by_path = {r["path"]: r["sha256"] for r in second["inputs"]}
+    judged = {r["path"]: r["sha256"] for r in second["judged_inputs"]}
+    assert second["judged_inputs"] == first["judged_inputs"]
+    assert by_path[golden.NVD_CVES] == golden.file_sha256(nvd) != judged[golden.NVD_CVES]
+    assert all(by_path[p] == judged[p] for p in by_path if p != golden.NVD_CVES)
+    assert golden.NVD_CVES in second["inputs_note"] and "#36" in second["inputs_note"]
+    assert len(ctx.cache.entries()) == calls_before  # 재생성은 모델을 부르지 않는다

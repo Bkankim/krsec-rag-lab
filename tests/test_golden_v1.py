@@ -448,5 +448,7 @@ def test_manifest_counts_match_the_judgment_rows_and_records():
     assert [j["model"] for j in manifest["judges"]] == ["claude-opus-5-5", "gpt-6.1-sol"]
     assert manifest["prompts"]["judge_sha256"] == judge.JUDGE_PROMPT_SHA256
     assert all("<KISA 캐시가 있는 체크아웃>" in c for c in manifest["reproduce"])
+    assert [i["path"] for i in manifest["judged_inputs"]] == [i["path"] for i in manifest["inputs"]]
+    assert manifest["inputs_note"]
     for item in manifest["inputs"]:
         assert item["sha256"] == golden.file_sha256(ROOT / item["path"]), item["path"]

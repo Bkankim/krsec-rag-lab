@@ -290,6 +290,8 @@ JUDGE_MANIFEST_FIELDS = frozenset(
         "retry_hint",
         "resumed_at",
         "inputs",
+        "judged_inputs",
+        "inputs_note",
         "path",
         "sha256",
         "corpus",

@@ -725,6 +725,42 @@ def agreement_output(sample: Mapping | None, build: Mapping | None) -> dict:
     }
 
 
+def judged_input_hashes(ctx: Context, current: Mapping[str, str]) -> dict[str, str]:
+    """판정 시점의 입력 해시. 이미 쓴 manifest가 있으면 그 judged_inputs(없던 옛 판본은 inputs)를 보존한다.
+
+    입력 파일이 판정 뒤에 바뀌어도(다른 티켓이 필드를 더하는 등) 판정에 쓴 해시를 잃지 않으려는 것이다.
+    manifest가 없거나 새 경로면 현재 해시가 판정 시점 해시다.
+    """
+    path = ctx.root / golden.JUDGE_MANIFEST_FILE
+    previous: dict[str, str] = {}
+    if path.is_file():
+        old = json.loads(path.read_text(encoding="utf-8"))
+        for row in old.get("judged_inputs") or old.get("inputs") or []:
+            previous[row["path"]] = row["sha256"]
+    return {rel: previous.get(rel, sha) for rel, sha in current.items()}
+
+
+def inputs_note(changed: Sequence[str]) -> str:
+    if not changed:
+        return "inputs는 판정 시점의 해시와 같다"
+    note = (
+        "inputs는 현재 파일의 해시이고 judged_inputs가 판정 시점의 해시다. 달라진 파일: "
+        + ", ".join(changed)
+        + "."
+    )
+    if golden.NVD_CVES in changed:
+        note += (
+            f" {golden.NVD_CVES}는 판정 뒤 #36에서 vendor_products 필드만 추가됐고 판정에 쓴 기존 필드는 같다"
+            "(scripts/check_nvd_fields.py 1646a84 OK)."
+        )
+    if golden.MANIFEST_FILE in changed:
+        note += (
+            f" {golden.MANIFEST_FILE}는 위 NVD 입력 해시가 바뀌어 후보 빌더가 다시 만든 것이고"
+            "(질문·표본 쌍 파일은 같다) 판정은 표본 쌍 파일을 입력으로 썼다."
+        )
+    return note
+
+
 def manifest_output(ctx: Context, sample: Mapping | None, build: Mapping | None) -> dict:
     states = [s for s in (sample, build) if s]
     # 이번 산출물을 만든 호출만 센다(캐시 디렉터리에 남은 이전 실행의 항목 제외). 키 기록이 없는 상태면 전부 센다
@@ -744,6 +780,9 @@ def manifest_output(ctx: Context, sample: Mapping | None, build: Mapping | None)
         golden.PAIRS_FILE,
         golden.MANIFEST_FILE,
     ]
+    current = {rel: golden.file_sha256(ctx.root / rel) for rel in inputs}
+    judged = judged_input_hashes(ctx, current)
+    changed = [rel for rel in inputs if judged[rel] != current[rel]]
     manifest = {
         "protocol": PROTOCOL,
         "status": STATUS,
@@ -780,7 +819,9 @@ def manifest_output(ctx: Context, sample: Mapping | None, build: Mapping | None)
             "stops": len(events),
             "events": events,
         },
-        "inputs": [{"path": rel, "sha256": golden.file_sha256(ctx.root / rel)} for rel in inputs],
+        "inputs": [{"path": rel, "sha256": current[rel]} for rel in inputs],
+        "judged_inputs": [{"path": rel, "sha256": judged[rel]} for rel in inputs],
+        "inputs_note": inputs_note(changed),
         "calls": {
             "total": calls["total"],
             "by_kind": calls["by_kind"],

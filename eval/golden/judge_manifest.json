@@ -144,6 +144,43 @@
     },
     {
       "path": "fixtures/nvd/cves.jsonl",
+      "sha256": "96ce6757d724ab85593357a1806698bfe9026854b2f9823b6da4cbf01ce83ffa"
+    },
+    {
+      "path": "eval/golden/candidates/weak_label_candidates.jsonl",
+      "sha256": "4826818b48f23c5c234108aa9c5ab8b909d528fff145b12adb0f2373e2de1519"
+    },
+    {
+      "path": "eval/golden/candidates/weak_label_sample_pairs.jsonl",
+      "sha256": "a9dd9b73608466ec0734f95e74594d158c51e5f0d71c6bc3585aa9905be626c9"
+    },
+    {
+      "path": "eval/golden/candidates/candidate_manifest.json",
+      "sha256": "f3f01b729aec20806d9f01f60c5c4ef68881b867696a555a1400245bcc2ddc67"
+    }
+  ],
+  "inputs_note": "inputs는 현재 파일의 해시이고 judged_inputs가 판정 시점의 해시다. 달라진 파일: fixtures/nvd/cves.jsonl, eval/golden/candidates/candidate_manifest.json. fixtures/nvd/cves.jsonl는 판정 뒤 #36에서 vendor_products 필드만 추가됐고 판정에 쓴 기존 필드는 같다(scripts/check_nvd_fields.py 1646a84 OK). eval/golden/candidates/candidate_manifest.json는 위 NVD 입력 해시가 바뀌어 후보 빌더가 다시 만든 것이고(질문·표본 쌍 파일은 같다) 판정은 표본 쌍 파일을 입력으로 썼다.",
+  "isolation": {
+    "cwd": "호출마다 빈 임시 디렉터리",
+    "flags_checked_with": "claude --help, codex exec --help (2026-10-29 실행 시점)",
+    "input": "stdin으로만 질문·공지 묶음을 전달. 지시문은 인자",
+    "other_judge_output": "판정자 입력에 다른 판정자의 출력을 넣지 않는다"
+  },
+  "judged_at": {
+    "first": "2026-10-29T10:55:30Z",
+    "last": "2026-10-29T11:42:21Z"
+  },
+  "judged_inputs": [
+    {
+      "path": "fixtures/kisa/metadata.jsonl",
+      "sha256": "c1512e8d234e0dbe4d32430877e61775612dd2248046122f74e227d446737eaf"
+    },
+    {
+      "path": "fixtures/kisa/manifest.json",
+      "sha256": "bf670ecd666e77139ae0c53a7be0badb5bdd82e8ff54d4876d59290b68c8b0c4"
+    },
+    {
+      "path": "fixtures/nvd/cves.jsonl",
       "sha256": "0413970c3dee50cb239656c899fb9feb79150317c89172d12f41ad1f78e40e69"
     },
     {
@@ -159,16 +196,6 @@
       "sha256": "a69da5fea3c1fbb89ae3726a3b1b1b940fa77fee9f6d9a95911b1d917e2c795a"
     }
   ],
-  "isolation": {
-    "cwd": "호출마다 빈 임시 디렉터리",
-    "flags_checked_with": "claude --help, codex exec --help (2026-10-29 실행 시점)",
-    "input": "stdin으로만 질문·공지 묶음을 전달. 지시문은 인자",
-    "other_judge_output": "판정자 입력에 다른 판정자의 출력을 넣지 않는다"
-  },
-  "judged_at": {
-    "first": "2026-10-29T10:55:30Z",
-    "last": "2026-10-29T11:42:21Z"
-  },
   "judges": [
     {
       "cli": "claude",
