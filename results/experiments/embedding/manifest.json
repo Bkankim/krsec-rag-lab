@@ -1,0 +1,385 @@
+{
+  "experiment": "embedding",
+  "protocol_version": "eval-protocol-v2",
+  "runs": {
+    "kisa/swap": {
+      "baseline": {
+        "retriever": "dense",
+        "stored_results": "results/baselines/kisa/dense.jsonl"
+      },
+      "created_at": "2026-10-29T15:48:43+00:00",
+      "description": {
+        "candidates": "코퍼스 전체",
+        "excluded_candidates": [
+          {
+            "name": "google/embeddinggemma-2",
+            "reason": "지금 lock의 transformers 5.17.0이 모델 유형 embedding_gemma2를 인식하지 못해 로드에 실패했다(체크포인트는 transformers 5.18.0.dev0 기준). pyproject.toml·uv.lock을 바꾸지 않으므로 제외",
+            "revision": "914f7f89142e33e77833254d9c9b90c3cef7303b"
+          }
+        ],
+        "models_loaded": [
+          {
+            "batch_size": 8,
+            "device": "cpu",
+            "dimension": 1024,
+            "doc_encode_seconds": 25.50040258300578,
+            "document_prefix": "passage: ",
+            "dtype": "float32",
+            "max_doc_tokens": 22751,
+            "max_norm_deviation": 1.9199354095444932e-07,
+            "max_seq_length": 512,
+            "model_max_seq_length": 512,
+            "n_truncated_docs": 27,
+            "name": "intfloat/multilingual-e5-large",
+            "normalized": true,
+            "parameters": 559890432,
+            "pooling": "mean",
+            "query_prefix": "query: ",
+            "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3"
+          }
+        ],
+        "runtime": {
+          "numpy": "2.5.3",
+          "python": "3.13.14",
+          "sentence_transformers": "6.1.0",
+          "torch": "2.14.1"
+        },
+        "scoring": "정규화 벡터의 내적(= 코사인), 코퍼스 전체에 점수를 매김(전수 검색)",
+        "selected_model": "intfloat/multilingual-e5-large",
+        "tie_break": "점수가 같으면 문서 ID 오름차순(공통 채점 코드)"
+      },
+      "environment": {
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "machine": "arm64",
+        "omp_num_threads": "4",
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.14"
+      },
+      "experiment": "embedding",
+      "fixed": {
+        "baseline_dense": {
+          "name": "BAAI/bge-m3",
+          "revision": "5617a9f61b028005a4858fdac845db406aefb181"
+        },
+        "candidates": [
+          {
+            "document_prefix": "passage: ",
+            "model_max_seq_length": 512,
+            "name": "intfloat/multilingual-e5-large",
+            "parameters": 559890432,
+            "pooling": "mean",
+            "query_prefix": "query: ",
+            "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3"
+          },
+          {
+            "document_prefix": "",
+            "model_max_seq_length": 32768,
+            "name": "Qwen/Qwen3-Embedding-0.6B",
+            "parameters": 595776512,
+            "pooling": "lasttoken",
+            "query_prefix": "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery:",
+            "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+          }
+        ],
+        "encoding": {
+          "device": "cpu",
+          "dtype": "float32",
+          "index_text": "코퍼스 색인 텍스트 그대로(문서 접두사만 앞에 붙임)",
+          "max_seq_length": "min(모델 최대, 8192)",
+          "normalized": true,
+          "query": "질의 문자열 그대로(질의 접두사만 앞에 붙임)",
+          "score": "정규화 벡터의 내적(= 코사인), 코퍼스 전체에 점수를 매김(전수 검색)",
+          "truncation": "최대 길이 초과분은 절단(청킹 없음)"
+        }
+      },
+      "grid": {
+        "rows": [
+          {
+            "config": {
+              "model": "intfloat/multilingual-e5-large",
+              "parameters": 559890432,
+              "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3"
+            },
+            "dev_macro_ndcg@10": 0.8368869680334153
+          }
+        ],
+        "selection_rule": "공개 트랙 dev macro nDCG@10 최대인 후보. 최댓값이 여럿(abs 1e-12 이내)이면 파라미터 수가 적은 쪽, 그것도 같으면 모델 ID 사전순. KISA 트랙은 공개 트랙 dev에서 고른 모델 하나에 고정(τ만 KISA dev에서 선택)"
+      },
+      "index_text": "'{title}\\n{body}' (공지 제목 + 줄바꿈 + 정규화 본문)",
+      "inputs": {
+        "corpus_manifest": {
+          "path": "fixtures/kisa/manifest.json",
+          "sha256": "bf670ecd666e77139ae0c53a7be0badb5bdd82e8ff54d4876d59290b68c8b0c4"
+        },
+        "corpus_metadata": {
+          "path": "fixtures/kisa/metadata.jsonl",
+          "sha256": "c1512e8d234e0dbe4d32430877e61775612dd2248046122f74e227d446737eaf"
+        },
+        "queries": {
+          "path": "eval/golden/golden_v1.jsonl",
+          "sha256": "2f94253c6c0551c536973c95b830dcf123e7acb858304fa8678812a19360d3dc"
+        }
+      },
+      "n_documents": 50,
+      "protocol_version": "eval-protocol-v2",
+      "reproduction_inputs": {},
+      "selected": {
+        "config": {
+          "model": "intfloat/multilingual-e5-large",
+          "parameters": 559890432,
+          "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3"
+        },
+        "dev_macro_ndcg@10": 0.8368869680334153,
+        "selected_on": "dev",
+        "tau": 0.8677201271057129,
+        "tau_selection": {
+          "dev_abstain_rate": 0.75,
+          "dev_false_abstain_rate": 0.2631578947368421,
+          "dev_j": 0.4868421052631579,
+          "n_candidates": 23,
+          "rule": "dev에서 abstain_rate - false_abstain_rate 최대, 같으면 가장 낮은 tau",
+          "tau": 0.8677201271057129
+        }
+      },
+      "splits_stored": [
+        "dev",
+        "test"
+      ],
+      "stored_results": {
+        "fields": [
+          "n_unjudged_removed",
+          "question_id",
+          "results",
+          "top1_score_raw"
+        ],
+        "path": "results/experiments/embedding/kisa/swap.jsonl",
+        "ranking": "(점수 내림차순, 문서 ID 오름차순) 정렬 뒤 질문의 unjudged를 지운 condensed list",
+        "result_fields": [
+          "doc_id",
+          "rank",
+          "score"
+        ],
+        "top_n": 100
+      },
+      "test": {
+        "config": {
+          "model": "intfloat/multilingual-e5-large",
+          "parameters": 559890432,
+          "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3"
+        },
+        "config_hash": "30bbfa1a0deeaff0a30a233e846f728e7550934b235659ae0e79a9848412803d",
+        "executed_at": "2026-10-29T15:48:43+00:00",
+        "tau": 0.8677201271057129
+      },
+      "timing": {
+        "index_seconds": 29.181365083000856,
+        "n_queries_timed": 52,
+        "query_latency_median_seconds": 0.07517772949722712
+      },
+      "track": "kisa",
+      "variant": "swap"
+    },
+    "public/swap": {
+      "baseline": {
+        "retriever": "dense",
+        "stored_results": "results/baselines/public/dense.jsonl"
+      },
+      "created_at": "2026-10-29T15:47:53+00:00",
+      "description": {
+        "candidates": "코퍼스 전체",
+        "excluded_candidates": [
+          {
+            "name": "google/embeddinggemma-2",
+            "reason": "지금 lock의 transformers 5.17.0이 모델 유형 embedding_gemma2를 인식하지 못해 로드에 실패했다(체크포인트는 transformers 5.18.0.dev0 기준). pyproject.toml·uv.lock을 바꾸지 않으므로 제외",
+            "revision": "914f7f89142e33e77833254d9c9b90c3cef7303b"
+          }
+        ],
+        "models_loaded": [
+          {
+            "batch_size": 8,
+            "device": "cpu",
+            "dimension": 1024,
+            "doc_encode_seconds": 92.03283091600315,
+            "document_prefix": "passage: ",
+            "dtype": "float32",
+            "max_doc_tokens": 519,
+            "max_norm_deviation": 2.270008159221959e-07,
+            "max_seq_length": 512,
+            "model_max_seq_length": 512,
+            "n_truncated_docs": 1,
+            "name": "intfloat/multilingual-e5-large",
+            "normalized": true,
+            "parameters": 559890432,
+            "pooling": "mean",
+            "query_prefix": "query: ",
+            "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3"
+          },
+          {
+            "batch_size": 8,
+            "device": "cpu",
+            "dimension": 1024,
+            "doc_encode_seconds": 134.06003387500095,
+            "document_prefix": "",
+            "dtype": "float32",
+            "max_doc_tokens": 445,
+            "max_norm_deviation": 2.2257493936805872e-07,
+            "max_seq_length": 8192,
+            "model_max_seq_length": 32768,
+            "n_truncated_docs": 0,
+            "name": "Qwen/Qwen3-Embedding-0.6B",
+            "normalized": true,
+            "parameters": 595776512,
+            "pooling": "lasttoken",
+            "query_prefix": "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery:",
+            "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+          }
+        ],
+        "runtime": {
+          "numpy": "2.5.3",
+          "python": "3.13.14",
+          "sentence_transformers": "6.1.0",
+          "torch": "2.14.1"
+        },
+        "scoring": "정규화 벡터의 내적(= 코사인), 코퍼스 전체에 점수를 매김(전수 검색)",
+        "selected_model": "intfloat/multilingual-e5-large",
+        "tie_break": "점수가 같으면 문서 ID 오름차순(공통 채점 코드)"
+      },
+      "environment": {
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "machine": "arm64",
+        "omp_num_threads": "4",
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.14"
+      },
+      "experiment": "embedding",
+      "fixed": {
+        "baseline_dense": {
+          "name": "BAAI/bge-m3",
+          "revision": "5617a9f61b028005a4858fdac845db406aefb181"
+        },
+        "candidates": [
+          {
+            "document_prefix": "passage: ",
+            "model_max_seq_length": 512,
+            "name": "intfloat/multilingual-e5-large",
+            "parameters": 559890432,
+            "pooling": "mean",
+            "query_prefix": "query: ",
+            "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3"
+          },
+          {
+            "document_prefix": "",
+            "model_max_seq_length": 32768,
+            "name": "Qwen/Qwen3-Embedding-0.6B",
+            "parameters": 595776512,
+            "pooling": "lasttoken",
+            "query_prefix": "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery:",
+            "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+          }
+        ],
+        "encoding": {
+          "device": "cpu",
+          "dtype": "float32",
+          "index_text": "코퍼스 색인 텍스트 그대로(문서 접두사만 앞에 붙임)",
+          "max_seq_length": "min(모델 최대, 8192)",
+          "normalized": true,
+          "query": "질의 문자열 그대로(질의 접두사만 앞에 붙임)",
+          "score": "정규화 벡터의 내적(= 코사인), 코퍼스 전체에 점수를 매김(전수 검색)",
+          "truncation": "최대 길이 초과분은 절단(청킹 없음)"
+        }
+      },
+      "grid": {
+        "rows": [
+          {
+            "config": {
+              "model": "intfloat/multilingual-e5-large",
+              "parameters": 559890432,
+              "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3"
+            },
+            "dev_macro_ndcg@10": 0.48900609263094075
+          },
+          {
+            "config": {
+              "model": "Qwen/Qwen3-Embedding-0.6B",
+              "parameters": 595776512,
+              "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+            },
+            "dev_macro_ndcg@10": 0.3917822637235808
+          }
+        ],
+        "selection_rule": "공개 트랙 dev macro nDCG@10 최대인 후보. 최댓값이 여럿(abs 1e-12 이내)이면 파라미터 수가 적은 쪽, 그것도 같으면 모델 ID 사전순. KISA 트랙은 공개 트랙 dev에서 고른 모델 하나에 고정(τ만 KISA dev에서 선택)"
+      },
+      "index_text": "'{id} {description_en}' (레코드 id + 공백 + 영문 설명, CPE·CWE·CVSS 미색인)",
+      "inputs": {
+        "corpus": {
+          "path": "fixtures/nvd/cves.jsonl",
+          "sha256": "96ce6757d724ab85593357a1806698bfe9026854b2f9823b6da4cbf01ce83ffa"
+        },
+        "queries": {
+          "path": "eval/public/queries.jsonl",
+          "sha256": "1d8ab42360e3cee23e8d67bc933e5af7ec6a8365eb32d315105233016d294a99"
+        }
+      },
+      "n_documents": 1560,
+      "protocol_version": "eval-protocol-v2",
+      "reproduction_inputs": {},
+      "selected": {
+        "config": {
+          "model": "intfloat/multilingual-e5-large",
+          "parameters": 559890432,
+          "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3"
+        },
+        "dev_macro_ndcg@10": 0.48900609263094075,
+        "selected_on": "dev",
+        "tau": 0.8439792394638062,
+        "tau_selection": {
+          "dev_abstain_rate": 0.75,
+          "dev_false_abstain_rate": 0.5,
+          "dev_j": 0.25,
+          "n_candidates": 58,
+          "rule": "dev에서 abstain_rate - false_abstain_rate 최대, 같으면 가장 낮은 tau",
+          "tau": 0.8439792394638062
+        }
+      },
+      "splits_stored": [
+        "dev",
+        "test"
+      ],
+      "stored_results": {
+        "fields": [
+          "n_unjudged_removed",
+          "question_id",
+          "results",
+          "top1_score_raw"
+        ],
+        "path": "results/experiments/embedding/public/swap.jsonl",
+        "ranking": "(점수 내림차순, 문서 ID 오름차순) 정렬 뒤 질문의 unjudged를 지운 condensed list",
+        "result_fields": [
+          "doc_id",
+          "rank",
+          "score"
+        ],
+        "top_n": 100
+      },
+      "test": {
+        "config": {
+          "model": "intfloat/multilingual-e5-large",
+          "parameters": 559890432,
+          "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3"
+        },
+        "config_hash": "102b2590723901be5045f70f532ad17f52829729cc862e083a7f8031d0fee094",
+        "executed_at": "2026-10-29T15:47:53+00:00",
+        "tau": 0.8439792394638062
+      },
+      "timing": {
+        "index_seconds": 231.29862283300463,
+        "n_queries_timed": 86,
+        "query_latency_median_seconds": 0.07322429150372045
+      },
+      "track": "public",
+      "variant": "swap"
+    }
+  }
+}

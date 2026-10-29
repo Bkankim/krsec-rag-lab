@@ -1,0 +1,573 @@
+{
+  "comparisons": {
+    "kisa/swap": {
+      "baseline": "dense",
+      "baseline_macro": 0.8131313131313131,
+      "bootstrap": {
+        "n_per_type": {
+          "cve_explicit": 11,
+          "explanation_comparison": 5,
+          "product_symptom": 7
+        },
+        "resamples": 10000,
+        "seed": 20261029,
+        "stratified_by": "query_type"
+      },
+      "by_type": {
+        "cve_explicit": {
+          "metrics": {
+            "hit@10": {
+              "baseline": 0.5454545454545454,
+              "delta": -0.18181818181818177,
+              "experiment": 0.36363636363636365
+            },
+            "mrr@10": {
+              "baseline": 0.4069264069264069,
+              "delta": -0.3097041847041847,
+              "experiment": 0.09722222222222222
+            },
+            "ndcg@10": {
+              "baseline": 0.4393939393939394,
+              "delta": -0.2805371552101969,
+              "experiment": 0.1588567841837425
+            }
+          },
+          "n_scored": 11,
+          "observation_only": false
+        },
+        "explanation_comparison": {
+          "metrics": {
+            "hit@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            },
+            "mrr@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            },
+            "ndcg@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            }
+          },
+          "n_scored": 5,
+          "observation_only": true
+        },
+        "product_symptom": {
+          "metrics": {
+            "hit@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            },
+            "mrr@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            },
+            "ndcg@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            }
+          },
+          "n_scored": 7,
+          "observation_only": true
+        }
+      },
+      "ci95": {
+        "high": -0.02345083048340285,
+        "low": -0.16573981317765019
+      },
+      "cve_explicit": {
+        "delta_ndcg@10": -0.2805371552101969,
+        "regression": true
+      },
+      "degraded": [
+        {
+          "delta": -1.0,
+          "ndcg_after": 0.0,
+          "ndcg_before": 1.0,
+          "query_type": "cve_explicit",
+          "question_id": "g1-cve-2026-15410",
+          "rank_after": 32,
+          "rank_before": 1
+        },
+        {
+          "delta": -0.6989700043360187,
+          "ndcg_after": 0.3010299956639812,
+          "ndcg_before": 1.0,
+          "query_type": "cve_explicit",
+          "question_id": "g1-cve-2026-76461",
+          "rank_after": 9,
+          "rank_before": 1
+        },
+        {
+          "delta": -0.5,
+          "ndcg_after": 0.0,
+          "ndcg_before": 0.5,
+          "query_type": "cve_explicit",
+          "question_id": "g1-cve-2026-14669",
+          "rank_after": 11,
+          "rank_before": 3
+        },
+        {
+          "delta": -0.5,
+          "ndcg_after": 0.5,
+          "ndcg_before": 1.0,
+          "query_type": "cve_explicit",
+          "question_id": "g1-cve-2026-75650",
+          "rank_after": 3,
+          "rank_before": 1
+        },
+        {
+          "delta": -0.36907024642854247,
+          "ndcg_after": 0.6309297535714575,
+          "ndcg_before": 1.0,
+          "query_type": "cve_explicit",
+          "question_id": "g1-cve-2026-9198",
+          "rank_after": 2,
+          "rank_before": 1
+        },
+        {
+          "delta": -0.3333333333333333,
+          "ndcg_after": 0.0,
+          "ndcg_before": 0.3333333333333333,
+          "query_type": "cve_explicit",
+          "question_id": "g1-cve-2026-53873",
+          "rank_after": 15,
+          "rank_before": 7
+        }
+      ],
+      "delta": -0.09351238507006565,
+      "experiment_macro": 0.7196189280612475,
+      "improved_top10": [
+        {
+          "delta": 0.31546487678572877,
+          "ndcg_after": 0.31546487678572877,
+          "ndcg_before": 0.0,
+          "query_type": "cve_explicit",
+          "question_id": "g1-cve-2026-63030",
+          "rank_after": 8,
+          "rank_before": 33
+        }
+      ],
+      "metric": "test macro nDCG@10 (condensed, 정답이 있는 유형의 단순 평균)",
+      "n_degraded": 6,
+      "n_improved": 1,
+      "n_test_questions": 23,
+      "n_unchanged": 16,
+      "no_answer": {
+        "baseline": {
+          "abstain_rate": 0.5,
+          "false_abstain_rate": 0.21739130434782608,
+          "n_answerable": 23,
+          "n_no_answer": 6,
+          "tau": 0.6149108409881592
+        },
+        "experiment": {
+          "abstain_rate": 0.5,
+          "false_abstain_rate": 0.2608695652173913,
+          "n_answerable": 23,
+          "n_no_answer": 6,
+          "tau": 0.8677201271057129
+        }
+      },
+      "rank_note": "rank_*는 저장된 condensed 상위 100건 안의 첫 정답 순위이고 null은 저장 범위 밖이다",
+      "secondary_metrics": {
+        "hit@10": {
+          "baseline": 0.8484848484848485,
+          "delta": -0.06060606060606055,
+          "experiment": 0.787878787878788
+        },
+        "mrr@10": {
+          "baseline": 0.8023088023088022,
+          "delta": -0.10323472823472812,
+          "experiment": 0.6990740740740741
+        }
+      },
+      "timing": {
+        "baseline": {
+          "index_seconds": 56.58103983299952,
+          "query_latency_median_seconds": 0.04520214600051986
+        },
+        "experiment": {
+          "index_seconds": 29.181365083000856,
+          "query_latency_median_seconds": 0.07517772949722712
+        },
+        "note": "참고값: 2단계 실험은 같은 맥에서 병렬로 돌아 시간이 서로 간섭할 수 있다"
+      },
+      "track": "kisa",
+      "variant": "swap",
+      "verdict": "hypothesis-rejected"
+    },
+    "public/swap": {
+      "baseline": "dense",
+      "baseline_macro": 0.43532782977478957,
+      "bootstrap": {
+        "n_per_type": {
+          "cve_explicit": 35,
+          "product_symptom": 39
+        },
+        "resamples": 10000,
+        "seed": 20261029,
+        "stratified_by": "query_type"
+      },
+      "by_type": {
+        "cve_explicit": {
+          "metrics": {
+            "hit@10": {
+              "baseline": 0.2857142857142857,
+              "delta": -0.08571428571428569,
+              "experiment": 0.2
+            },
+            "mrr@10": {
+              "baseline": 0.20809523809523808,
+              "delta": -0.09238095238095237,
+              "experiment": 0.11571428571428571
+            },
+            "ndcg@10": {
+              "baseline": 0.22709883196798264,
+              "delta": -0.09174100496234608,
+              "experiment": 0.13535782700563656
+            }
+          },
+          "n_scored": 35,
+          "observation_only": false
+        },
+        "product_symptom": {
+          "metrics": {
+            "hit@10": {
+              "baseline": 0.8205128205128205,
+              "delta": 0.02564102564102566,
+              "experiment": 0.8461538461538461
+            },
+            "mrr@10": {
+              "baseline": 0.6952991452991453,
+              "delta": 0.05754985754985753,
+              "experiment": 0.7528490028490028
+            },
+            "ndcg@10": {
+              "baseline": 0.6435568275815965,
+              "delta": 0.09978344557439589,
+              "experiment": 0.7433402731559924
+            }
+          },
+          "n_scored": 39,
+          "observation_only": false
+        }
+      },
+      "ci95": {
+        "high": 0.07259207330322107,
+        "low": -0.06373432214146785
+      },
+      "cve_explicit": {
+        "delta_ndcg@10": -0.09174100496234608,
+        "regression": true
+      },
+      "degraded": [
+        {
+          "delta": -1.0,
+          "ndcg_after": 0.0,
+          "ndcg_before": 1.0,
+          "query_type": "cve_explicit",
+          "question_id": "pub-cve-0018",
+          "rank_after": null,
+          "rank_before": 1
+        },
+        {
+          "delta": -1.0,
+          "ndcg_after": 0.0,
+          "ndcg_before": 1.0,
+          "query_type": "cve_explicit",
+          "question_id": "pub-cve-0048",
+          "rank_after": 17,
+          "rank_before": 1
+        },
+        {
+          "delta": -0.6131471927654584,
+          "ndcg_after": 0.38685280723454163,
+          "ndcg_before": 1.0,
+          "query_type": "cve_explicit",
+          "question_id": "pub-cve-0010",
+          "rank_after": 5,
+          "rank_before": 1
+        },
+        {
+          "delta": -0.5693234419266069,
+          "ndcg_after": 0.43067655807339306,
+          "ndcg_before": 1.0,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0051",
+          "rank_after": 4,
+          "rank_before": 1
+        },
+        {
+          "delta": -0.43067655807339306,
+          "ndcg_after": 0.0,
+          "ndcg_before": 0.43067655807339306,
+          "query_type": "cve_explicit",
+          "question_id": "pub-cve-0015",
+          "rank_after": 20,
+          "rank_before": 4
+        },
+        {
+          "delta": -0.38685280723454163,
+          "ndcg_after": 0.0,
+          "ndcg_before": 0.38685280723454163,
+          "query_type": "cve_explicit",
+          "question_id": "pub-cve-0058",
+          "rank_after": 64,
+          "rank_before": 5
+        },
+        {
+          "delta": -0.36907024642854247,
+          "ndcg_after": 0.6309297535714575,
+          "ndcg_before": 1.0,
+          "query_type": "cve_explicit",
+          "question_id": "pub-cve-0036",
+          "rank_after": 2,
+          "rank_before": 1
+        },
+        {
+          "delta": -0.36907024642854247,
+          "ndcg_after": 0.6309297535714575,
+          "ndcg_before": 1.0,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0036",
+          "rank_after": 2,
+          "rank_before": 1
+        },
+        {
+          "delta": -0.21093517368211212,
+          "ndcg_after": 0.2890648263178879,
+          "ndcg_before": 0.5,
+          "query_type": "cve_explicit",
+          "question_id": "pub-cve-0012",
+          "rank_after": 10,
+          "rank_before": 3
+        },
+        {
+          "delta": -0.20025319549806447,
+          "ndcg_after": 0.43067655807339306,
+          "ndcg_before": 0.6309297535714575,
+          "query_type": "cve_explicit",
+          "question_id": "pub-cve-0001",
+          "rank_after": 4,
+          "rank_before": 2
+        },
+        {
+          "delta": -0.19315293914880843,
+          "ndcg_after": 0.3510684246681534,
+          "ndcg_before": 0.5442213638169618,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0015",
+          "rank_after": 6,
+          "rank_before": 1
+        },
+        {
+          "delta": -0.15850703974098113,
+          "ndcg_after": 0.8414929602590189,
+          "ndcg_before": 1.0,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0058",
+          "rank_after": 1,
+          "rank_before": 1
+        },
+        {
+          "delta": -0.13886244387355454,
+          "ndcg_after": 0.0,
+          "ndcg_before": 0.13886244387355454,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0047",
+          "rank_after": 13,
+          "rank_before": 2
+        },
+        {
+          "delta": -0.13092975357145753,
+          "ndcg_after": 0.5,
+          "ndcg_before": 0.6309297535714575,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0009",
+          "rank_after": 3,
+          "rank_before": 2
+        },
+        {
+          "delta": -0.08027921085181244,
+          "ndcg_after": 0.9197207891481876,
+          "ndcg_before": 1.0,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0052",
+          "rank_after": 1,
+          "rank_before": 1
+        }
+      ],
+      "delta": 0.00402122030602492,
+      "experiment_macro": 0.4393490500808145,
+      "improved_top10": [
+        {
+          "delta": 1.0,
+          "ndcg_after": 1.0,
+          "ndcg_before": 0.0,
+          "query_type": "cve_explicit",
+          "question_id": "pub-cve-0014",
+          "rank_after": 1,
+          "rank_before": null
+        },
+        {
+          "delta": 1.0,
+          "ndcg_after": 1.0,
+          "ndcg_before": 0.0,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0034",
+          "rank_after": 1,
+          "rank_before": 39
+        },
+        {
+          "delta": 0.5693234419266069,
+          "ndcg_after": 1.0,
+          "ndcg_before": 0.43067655807339306,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0017",
+          "rank_after": 1,
+          "rank_before": 4
+        },
+        {
+          "delta": 0.5584198896422177,
+          "ndcg_after": 1.0,
+          "ndcg_before": 0.4415801103577823,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0019",
+          "rank_after": 1,
+          "rank_before": 5
+        },
+        {
+          "delta": 0.5548989126424904,
+          "ndcg_after": 0.8357804136936718,
+          "ndcg_before": 0.28088150105118154,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0030",
+          "rank_after": 1,
+          "rank_before": 2
+        },
+        {
+          "delta": 0.5,
+          "ndcg_after": 1.0,
+          "ndcg_before": 0.5,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0055",
+          "rank_after": 1,
+          "rank_before": 3
+        },
+        {
+          "delta": 0.45186484096594276,
+          "ndcg_after": 0.933745776545611,
+          "ndcg_before": 0.4818809355796682,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0045",
+          "rank_after": 1,
+          "rank_before": 2
+        },
+        {
+          "delta": 0.36204202235242644,
+          "ndcg_after": 0.8579809428223729,
+          "ndcg_before": 0.4959389204699465,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0005",
+          "rank_after": 1,
+          "rank_before": 1
+        },
+        {
+          "delta": 0.3157992960756648,
+          "ndcg_after": 0.9669850519151656,
+          "ndcg_before": 0.6511857558395008,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0048",
+          "rank_after": 1,
+          "rank_before": 1
+        },
+        {
+          "delta": 0.3065735963827292,
+          "ndcg_after": 0.9197207891481876,
+          "ndcg_before": 0.6131471927654584,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0004",
+          "rank_after": 1,
+          "rank_before": 1
+        }
+      ],
+      "metric": "test macro nDCG@10 (condensed, 정답이 있는 유형의 단순 평균)",
+      "n_degraded": 15,
+      "n_improved": 16,
+      "n_test_questions": 74,
+      "n_unchanged": 43,
+      "no_answer": {
+        "baseline": {
+          "abstain_rate": 0.6666666666666666,
+          "false_abstain_rate": 0.527027027027027,
+          "n_answerable": 74,
+          "n_no_answer": 12,
+          "tau": 0.6073137521743774
+        },
+        "experiment": {
+          "abstain_rate": 0.6666666666666666,
+          "false_abstain_rate": 0.5,
+          "n_answerable": 74,
+          "n_no_answer": 12,
+          "tau": 0.8439792394638062
+        }
+      },
+      "rank_note": "rank_*는 저장된 condensed 상위 100건 안의 첫 정답 순위이고 null은 저장 범위 밖이다",
+      "secondary_metrics": {
+        "hit@10": {
+          "baseline": 0.5531135531135531,
+          "delta": -0.03003663003663004,
+          "experiment": 0.5230769230769231
+        },
+        "mrr@10": {
+          "baseline": 0.4516971916971917,
+          "delta": -0.017415547415547405,
+          "experiment": 0.4342816442816443
+        }
+      },
+      "timing": {
+        "baseline": {
+          "index_seconds": 62.8373495420019,
+          "query_latency_median_seconds": 0.044773583500500536
+        },
+        "experiment": {
+          "index_seconds": 231.29862283300463,
+          "query_latency_median_seconds": 0.07322429150372045
+        },
+        "note": "참고값: 2단계 실험은 같은 맥에서 병렬로 돌아 시간이 서로 간섭할 수 있다"
+      },
+      "track": "public",
+      "variant": "swap",
+      "verdict": "hypothesis-rejected"
+    }
+  },
+  "experiment": "embedding",
+  "hypothesis": "bge-m3 대신 다른 다국어 임베딩 모델 하나로 바꾸면(다른 조건은 같게: 색인 텍스트, 질의 문자열, 전수 내적 검색, 청킹 없음) dense 베이스라인보다 test macro nDCG@10이 높다.",
+  "primary": {
+    "baseline": "dense",
+    "track": "public",
+    "variant": "swap",
+    "verdict": "hypothesis-rejected"
+  },
+  "protocol_version": "eval-protocol-v2",
+  "rule": {
+    "bootstrap": "test 질문을 유형별 층화 복원추출 10000회, random.Random(20261029) 하나를 공유, 매 회 macro nDCG@10 차이 재계산, 2.5/97.5 백분위",
+    "verdict": "delta > 0 이고 ci95.low > 0 이면 hypothesis-confirmed, 그 밖은 hypothesis-rejected"
+  },
+  "secondary": [
+    {
+      "baseline": "dense",
+      "track": "kisa",
+      "variant": "swap",
+      "verdict": "hypothesis-rejected"
+    }
+  ]
+}
