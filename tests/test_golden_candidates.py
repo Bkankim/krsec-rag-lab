@@ -396,3 +396,34 @@ def test_check_no_nvd_text_detects_a_copied_description(tmp_path):
     assert golden.check_no_nvd_text([leaked], cves) == [
         "leak.jsonl: contains NVD text of CVE-2026-0001"
     ]
+
+
+# ------------------------------------------------------------ 0건 층은 항상 사유를 가진다
+
+
+STATS_ZERO = {"n_notices": 5, "n_notices_with_cve_in_title": 0, "n_notices_with_product_title": 0}
+STATS_SOME = {"n_notices": 5, "n_notices_with_cve_in_title": 2, "n_notices_with_product_title": 3}
+
+
+@pytest.mark.parametrize("stratum", [STRATUM_JOIN, STRATUM_A, STRATUM_B])
+@pytest.mark.parametrize("stats", [STATS_ZERO, STATS_SOME])
+@pytest.mark.parametrize("pool_pairs", [0, 4])
+def test_zero_reason_is_always_a_non_empty_sentence(stratum, stats, pool_pairs):
+    reason = golden.zero_reason(stratum, stats, pool_pairs)
+    assert reason.strip()
+    assert ("앞 층에서 이미 뽑" in reason) == bool(pool_pairs)
+
+
+def test_zero_reason_mentions_the_title_counts_when_titles_exist_but_all_are_cited():
+    assert "2건" in golden.zero_reason(STRATUM_A, STATS_SOME, 0)
+
+
+def test_manifest_gives_a_reason_when_title_cves_are_all_cited(tmp_path):
+    notices = synthetic_catalog()
+    notices.append(
+        notice("90502", "Prod1 CVE-2026-1002 권고", ["CVE-2026-1002"])
+    )  # 제목 CVE도 인용됨
+    manifest = json.loads(golden.build_outputs(make_root(tmp_path, notices))[MANIFEST_FILE])
+    stratum_a = next(s for s in manifest["sampling"]["strata"] if s["stratum"] == STRATUM_A)
+    assert stratum_a["selected"] == 0
+    assert "그 CVE가 모두 같은 공지의 cve_ids에도 있어" in stratum_a["zero_reason"]

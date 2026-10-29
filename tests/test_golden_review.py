@@ -2,6 +2,7 @@
 
 import copy
 import csv
+import itertools
 import json
 from pathlib import Path
 
@@ -28,11 +29,14 @@ ROOT = Path(__file__).resolve().parents[1]
 # ------------------------------------------------------------ 오류율
 
 
+_ROW_IDS = itertools.count(1)  # 행마다 doc_id가 달라야 중복 행 검사에 걸리지 않는다
+
+
 def review_row(in_set, relevance="", error_class="", reason="synthetic reason", **overrides):
     row = dict.fromkeys(REVIEW_COLUMNS, "")
     row.update(
         question_id="cq-synthetic",
-        doc_id="1",
+        doc_id=str(next(_ROW_IDS)),
         in_candidate_set="true" if in_set else "false",
         relevance=relevance,
         error_class=error_class,
@@ -454,3 +458,171 @@ def test_validate_command_rejects_a_body_text_field(tmp_path, capsys):
     path.write_text(json.dumps(real_golden_line(body="synthetic")) + "\n", encoding="utf-8")
     assert golden.main(["validate", str(path), "--root", str(ROOT)]) == 1
     assert "body text field not allowed: body" in capsys.readouterr().err
+
+
+# ------------------------------------------------------------ surface_cve (eval-protocol 5절 1항)
+
+
+def test_no_answer_about_an_unknown_cve_keeps_surface_cve():
+    bad_target = dict(
+        VALID_RECORDS["no_answer"],
+        query="CVE-2099-0001은 어느 공지에서 다루나요?",
+        surface_cve=True,
+    )
+    assert validate([bad_target]) == []
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"surface_cve": "true"}, "surface_cve must be a bool"),
+        ({"surface_cve": 1}, "surface_cve must be a bool"),
+        ({"surface_cve": False}, "contradicts the query text"),
+    ],
+)
+def test_surface_cve_must_be_a_bool_matching_the_query(changes, message):
+    errors = validate([record(**changes)])  # query에 CVE ID가 있다
+    assert any(message in e for e in errors), errors
+
+
+def test_surface_cve_false_matches_a_query_without_cve():
+    ok = record(query_type="product_symptom", query="Alpha 제품의 인증 우회는?", surface_cve=False)
+    assert validate([ok]) == []
+
+
+# ------------------------------------------------------------ evidence.nttId (eval-protocol 8절 2단계)
+
+
+def evidence_with(**span):
+    base = {"parser_version": "synthetic-v1", "start": 10, "end": 40}
+    return record(answers=[{**answer(), "evidence": [{**base, **span}]}])
+
+
+@pytest.mark.parametrize("ntt_id", ["72", 72])
+def test_evidence_may_carry_the_protocol_nttid(ntt_id):
+    assert validate([evidence_with(nttId=ntt_id)]) == []
+
+
+def test_evidence_nttid_must_match_the_answer_doc_id():
+    errors = validate([evidence_with(nttId="73")])
+    assert any("nttId '73' != doc_id '72'" in e for e in errors), errors
+
+
+# ------------------------------------------------------------ 형식이 틀린 ID는 예외가 아니라 오류 목록으로
+
+
+@pytest.mark.parametrize("bad_id", [["q1"], {"id": "q1"}, 7, None])
+def test_unhashable_or_non_string_question_id_is_reported_not_raised(bad_id):
+    errors = validate([record(question_id=bad_id), record(question_id=bad_id)])
+    assert any("question_id must be a non-empty string" in e for e in errors), errors
+
+
+@pytest.mark.parametrize("bad_id", [["72"], {"id": "72"}, 72])
+def test_unhashable_or_non_string_doc_id_is_reported_not_raised(bad_id):
+    bad = record(answers=[{**answer(), "doc_id": bad_id}, answer()])
+    errors = validate([bad])
+    assert any("doc_id is required" in e for e in errors), errors
+
+
+def test_read_review_rows_rejects_a_row_with_extra_fields(tmp_path):
+    sheet = tmp_path / "review_synthetic_extra.csv"
+    write_sheet(sheet, rows_of(C_OK))
+    with sheet.open("a", encoding="utf-8") as handle:
+        handle.write(",".join(["x"] * (len(REVIEW_COLUMNS) + 1)) + "\n")
+    with pytest.raises(ReviewSheetError, match="row 3: more fields than the header"):
+        read_review_rows(sheet)
+
+
+# ------------------------------------------------------------ 검수 CSV 입력 오류와 Excel 저장본
+
+
+@pytest.mark.parametrize("encoding", ["utf-8", "utf-8-sig"])
+@pytest.mark.parametrize(
+    ("true_text", "false_text"), [("true", "false"), ("TRUE", "FALSE"), ("True", "False")]
+)
+def test_read_review_rows_accepts_excel_bom_and_uppercase_booleans(
+    tmp_path, encoding, true_text, false_text
+):
+    rows = rows_of(C_OK, C_MIS, O_OK, O_OMIT)
+    for row in rows:
+        row["in_candidate_set"] = true_text if row["in_candidate_set"] == "true" else false_text
+    sheet = tmp_path / "review_synthetic_excel.csv"
+    with sheet.open("w", encoding=encoding, newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=REVIEW_COLUMNS, lineterminator="\r\n")
+        writer.writeheader()
+        writer.writerows(rows)
+    result = error_rates(read_review_rows(sheet))
+    assert result["mislabel"] == {"n_reviewed": 2, "n_error": 1, "rate": 0.5}
+    assert result["omission"] == {"n_reviewed": 2, "n_error": 1, "rate": 0.5}
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"stratum": "b_outside_join_same_product"}, "contradicts stratum"),
+        ({"stratum": "a_title_cve_not_in_cube"}, "unknown stratum"),
+        ({"weak_label": "weak_unlabeled"}, "contradicts weak_label"),
+        ({"weak_label": "positive"}, "unknown weak_label"),
+        ({"question_id": ""}, "question_id and doc_id are required"),
+        ({"doc_id": ""}, "question_id and doc_id are required"),
+    ],
+)
+def test_error_rates_rejects_sheet_rows_that_contradict_the_prefilled_columns(overrides, message):
+    # in_candidate_set=true인 후보 행에 후보 밖 stratum/weak_label 등을 섞는다
+    row = review_row(True, "relevant", "ok", **overrides)
+    with pytest.raises(ReviewSheetError, match=message):
+        error_rates([row])
+
+
+@pytest.mark.parametrize(
+    ("in_set", "stratum", "weak_label"),
+    [
+        (True, "join_candidate", "weak_positive"),
+        (False, "a_title_cve_not_in_cve_ids", "weak_unlabeled"),
+        (False, "b_outside_join_same_product", "weak_unlabeled"),
+        (True, "", ""),
+        (False, "", "weak_unlabeled"),
+    ],
+)
+def test_error_rates_accepts_consistent_prefilled_columns(in_set, stratum, weak_label):
+    row = review_row(in_set, "", "", stratum=stratum, weak_label=weak_label)
+    assert error_rates([row])["n_pending"] == 1
+
+
+def test_error_rates_rejects_a_duplicated_question_doc_row_even_when_pending():
+    first = review_row(True, "", "", question_id="cq-x", doc_id="9")
+    second = review_row(True, "relevant", "ok", question_id="cq-x", doc_id="9")
+    with pytest.raises(ReviewSheetError, match="duplicate"):
+        error_rates([first, second])
+
+
+def test_error_rates_allows_the_same_question_with_different_documents():
+    rows = [
+        review_row(True, "", "", question_id="cq-x", doc_id="9"),
+        review_row(False, "", "", question_id="cq-x", doc_id="10"),
+    ]
+    assert error_rates(rows)["n_rows"] == 2
+
+
+def test_cli_reports_review_sheet_errors_as_one_line_and_exit_1(tmp_path, capsys):
+    sheet = tmp_path / "review_synthetic_extra.csv"
+    write_sheet(sheet, rows_of(C_OK))
+    with sheet.open("a", encoding="utf-8") as handle:
+        handle.write(",".join(["x"] * (len(REVIEW_COLUMNS) + 1)) + "\n")
+    assert golden.main(["error-rates", str(sheet)]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == "error: row 3: more fields than the header\n"
+
+
+@pytest.mark.parametrize("target", ["missing.csv", "golden_synthetic_broken.jsonl"])
+def test_cli_reports_unreadable_inputs_without_a_traceback(tmp_path, capsys, target):
+    path = tmp_path / target
+    if target.endswith(".jsonl"):
+        path.write_text("{not json}\n", encoding="utf-8")
+        argv = ["validate", str(path), "--root", str(ROOT)]
+    else:
+        argv = ["error-rates", str(path)]
+    assert golden.main(argv) == 1
+    lines = capsys.readouterr().err.splitlines()
+    assert len(lines) == 1 and lines[0].startswith("error: ")

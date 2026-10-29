@@ -38,7 +38,7 @@ uv run python -m krsec_rag_lab.golden error-rates <채운 검수 CSV>
 ```
 
 오라벨률은 후보 집합 안 쌍 중 `mislabel` 비율, 누락률은 후보 밖 점검 표본 중 `omission` 비율이다. 누락률은 후보 밖 표본에서
-잰 값이라 코퍼스 전체의 누락률이 아니다. `relevance`가 빈 행은 미검수로 세고 분모에서 뺀다.
+잰 값이라 코퍼스 전체의 누락률이 아니다. `relevance`가 빈 행은 미검수로 세고 분모에서 뺀다. Excel로 저장한 CSV(UTF-8 BOM, `TRUE`/`FALSE`)도 읽는다. (question_id, doc_id)가 겹치거나 `in_candidate_set`이 `stratum`·`weak_label`과 모순되는 행, 칸 수가 헤더와 다른 행은 한 줄 사유와 exit 1로 거부한다.
 
 ## 골든셋 레코드 스키마
 
@@ -47,8 +47,9 @@ uv run python -m krsec_rag_lab.golden error-rates <채운 검수 CSV>
 ```
 {"question_id": str, "query": str, "query_type": "cve_explicit"|"product_symptom"|"explanation_comparison"|"no_answer",
  "split": "dev"|"test" (선택, 쓰면 모든 레코드에 필요), "cve_ids": [CVE...] (선택),
+ "surface_cve": bool (선택, 질의 문장에 CVE ID가 있었는지. 쓰면 문장과 일치해야 한다),
  "answers": [{"doc_id": nttId, "doc_sha256": 64자 hex,
-              "evidence": [{"parser_version": str, "start": int, "end": int}], "reason": str}],
+              "evidence": [{"parser_version": str, "start": int, "end": int, "nttId": doc_id와 같은 값(선택)}], "reason": str}],
  "no_answer_reason": str (no_answer만, 이때 answers는 빈 목록)}
 ```
 

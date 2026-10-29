@@ -167,10 +167,20 @@ OUTPUT_FIELDS = {
 
 # 골든셋 레코드(#10 산출물) 스키마. 본문 텍스트 필드는 이름으로도 거부한다.
 GOLDEN_RECORD_FIELDS = frozenset(
-    {"question_id", "query", "query_type", "split", "cve_ids", "answers", "no_answer_reason"}
+    {
+        "question_id",
+        "query",
+        "query_type",
+        "split",
+        "cve_ids",
+        "surface_cve",
+        "answers",
+        "no_answer_reason",
+    }
 )
 GOLDEN_ANSWER_FIELDS = frozenset({"doc_id", "doc_sha256", "evidence", "reason"})
-GOLDEN_EVIDENCE_FIELDS = frozenset({"parser_version", "start", "end"})
+# eval-protocol 8절 2단계: evidence = {nttId, parser_version, start, end}. nttId는 answers[].doc_id와 같으므로 생략할 수 있다
+GOLDEN_EVIDENCE_FIELDS = frozenset({"nttId", "parser_version", "start", "end"})
 FORBIDDEN_TEXT_FIELDS = frozenset(
     {
         "abstract",
@@ -383,16 +393,28 @@ def sample_balanced(pairs: Iterable[Mapping], quota: int, seed: int) -> list[dic
     return picked
 
 
-def zero_reason(stratum: str, stats: Mapping[str, int]) -> str | None:
-    """층이 0건일 때만 사유 문장. 사유는 입력 수치에서 만들어서 입력이 바뀌면 같이 바뀐다."""
-    if stratum == STRATUM_A and stats["n_notices_with_cve_in_title"] == 0:
+def zero_reason(stratum: str, stats: Mapping[str, int], pool_pairs: int) -> str:
+    """층에서 0건을 뽑았을 때의 사유 문장. 사유는 입력 수치에서 만들어서 입력이 바뀌면 같이 바뀐다."""
+    if pool_pairs:
+        return f"풀 {pool_pairs}쌍이 모두 앞 층에서 이미 뽑혀 이 층에 남은 쌍이 없다."
+    if stratum == STRATUM_A:
+        if stats["n_notices_with_cve_in_title"] == 0:
+            return (
+                f"공지 {stats['n_notices']}건 중 제목에 CVE ID가 든 공지가 0건이다. 제목은 '<제품명> 제품 보안 "
+                "업데이트 권고' 같은 형식이라, 제목에는 있는데 cve_ids(본문 추출)에는 없는 공지가 생기지 않는다."
+            )
         return (
-            f"공지 {stats['n_notices']}건 중 제목에 CVE ID가 든 공지가 0건이다. 제목은 '<제품명> 제품 보안 업데이트 "
-            "권고' 같은 형식이라, 제목에는 있는데 cve_ids(본문 추출)에는 없는 공지가 생기지 않는다."
+            f"제목에 CVE ID가 든 공지 {stats['n_notices_with_cve_in_title']}건이 있지만 "
+            "그 CVE가 모두 같은 공지의 cve_ids에도 있어 어긋나는 사례가 없다."
         )
-    if stratum == STRATUM_B and stats["n_notices_with_product_title"] == 0:
-        return "제목에서 제품명을 뽑을 수 있는 공지가 0건이라 같은 제품명 공지 쌍이 없다."
-    return None
+    if stratum == STRATUM_B:
+        if stats["n_notices_with_product_title"] == 0:
+            return "제목에서 제품명을 뽑을 수 있는 공지가 0건이라 같은 제품명 공지 쌍이 없다."
+        return (
+            f"제품명 제목 공지 {stats['n_notices_with_product_title']}건이 있지만 후보 문서와 같은 제품명을 "
+            "가진 다른 공지가 없다."
+        )
+    return "조인 후보 쌍이 없다(cve_ids를 가진 공지가 없다)."
 
 
 def build_outputs(root: Path, seed: int = SEED) -> dict[str, str]:
@@ -433,7 +455,9 @@ def build_outputs(root: Path, seed: int = SEED) -> dict[str, str]:
                 "pool_pairs": len(pool),
                 "pool_docs": len({p["doc_id"] for p in pool}),
                 "selected": len(selected[stratum]),
-                "zero_reason": zero_reason(stratum, stats) if not pool else None,
+                "zero_reason": (
+                    zero_reason(stratum, stats, len(pool)) if not selected[stratum] else None
+                ),
             }
         )
     manifest = {
@@ -576,18 +600,53 @@ def check_no_nvd_text(paths: Iterable[Path], cves_path: Path, min_len: int = 20)
 
 
 def read_review_rows(path: Path) -> list[dict[str, str]]:
-    with path.open(encoding="utf-8", newline="") as handle:
+    # utf-8-sig: Excel이 "CSV UTF-8"로 저장하면 붙는 BOM을 헤더에서 걷어낸다
+    with path.open(encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         missing = [c for c in REVIEW_COLUMNS if c not in (reader.fieldnames or ())]
         if missing:
             raise ReviewSheetError(f"missing columns: {missing}")
-        return [{k: (v or "").strip() for k, v in row.items()} for row in reader]
+        rows = []
+        for number, row in enumerate(reader, start=2):  # 헤더가 1행
+            if None in row:  # 헤더보다 칸이 많다(따옴표 없는 쉼표 등)
+                raise ReviewSheetError(f"row {number}: more fields than the header")
+            rows.append({k: (v or "").strip() for k, v in row.items()})
+        return rows
 
 
 def _parse_bool(value: str, where: str) -> bool:
-    if value not in ("true", "false"):
+    """true/false를 대소문자 무시로 받는다(Excel은 TRUE/FALSE로 바꿔 저장한다)."""
+    lowered = value.lower()
+    if lowered not in ("true", "false"):
         raise ReviewSheetError(f"{where}: in_candidate_set must be true/false, got {value!r}")
-    return value == "true"
+    return lowered == "true"
+
+
+def _check_sheet_consistency(
+    row: Mapping[str, str], in_set: bool, seen: set[tuple[str, str]], where: str
+) -> None:
+    """(question_id, doc_id) 중복과 in_candidate_set이 stratum·weak_label과 모순되는 행을 거부한다."""
+    key = (row["question_id"], row["doc_id"])
+    if not all(key):
+        raise ReviewSheetError(f"{where}: question_id and doc_id are required")
+    if key in seen:
+        raise ReviewSheetError(f"{where}: duplicate (question_id, doc_id) row")
+    seen.add(key)
+    stratum, weak_label = row["stratum"], row["weak_label"]
+    if stratum:
+        if stratum not in SOURCES:
+            raise ReviewSheetError(f"{where}: unknown stratum {stratum!r}")
+        if in_set != (stratum == STRATUM_JOIN):
+            raise ReviewSheetError(
+                f"{where}: in_candidate_set={str(in_set).lower()} contradicts stratum {stratum!r}"
+            )
+    if weak_label:
+        if weak_label not in (WEAK_POSITIVE, WEAK_UNLABELED):
+            raise ReviewSheetError(f"{where}: unknown weak_label {weak_label!r}")
+        if in_set != (weak_label == WEAK_POSITIVE):
+            raise ReviewSheetError(
+                f"{where}: in_candidate_set={str(in_set).lower()} contradicts weak_label {weak_label!r}"
+            )
 
 
 def _expected_error_class(in_candidate_set: bool, relevant: bool) -> str:
@@ -611,15 +670,18 @@ def error_rates(rows: Iterable[Mapping[str, str]]) -> dict:
     - 누락률 = 후보 집합 밖 쌍(false, 층 a/b 점검 표본) 중 사람이 관련(relevant)으로 판정한 비율.
       후보 밖 표본에서 잰 값이라 코퍼스 전체 누락률이 아니다.
     판정(relevance)이 빈 행은 미검수(n_pending)로 센다. 분모가 0이면 rate는 None이다.
-    판정 이유가 없거나, 관련인데 근거 위치가 없거나, 오류 구분이 판정과 모순되면 ReviewSheetError.
+    판정 이유가 없거나, 관련인데 근거 위치가 없거나, 오류 구분이 판정과 모순되거나, (question_id, doc_id)가
+    중복되거나, in_candidate_set이 stratum·weak_label과 모순되면 ReviewSheetError.
     """
     n_rows = n_pending = 0
     reviewed = {True: 0, False: 0}
     errors = {True: 0, False: 0}
+    seen: set[tuple[str, str]] = set()
     for number, row in enumerate(rows, start=2):  # 헤더가 1행
         n_rows += 1
         where = f"row {number} ({row.get('question_id')}/{row.get('doc_id')})"
         in_set = _parse_bool(row["in_candidate_set"], where)
+        _check_sheet_consistency(row, in_set, seen, where)
         relevance = row["relevance"]
         if not relevance:
             if row["error_class"]:
@@ -713,6 +775,8 @@ def _check_answer(
             errors.append(f"{span_where}: must be an object")
             continue
         errors.extend(_check_fields(span, GOLDEN_EVIDENCE_FIELDS, span_where))
+        if "nttId" in span and str(span["nttId"]) != str(doc_id):
+            errors.append(f"{span_where}: nttId {span['nttId']!r} != doc_id {doc_id!r}")
         start, end = span.get("start"), span.get("end")
         if not (_is_int(start) and _is_int(end) and 0 <= start < end):
             errors.append(f"{span_where}: start/end must be ints with 0 <= start < end")
@@ -757,12 +821,22 @@ def _check_record(
                 answer, f"{where}.answers[{index}]", catalog, doc_versions, parser_version
             )
         )
-    doc_ids = [a.get("doc_id") for a in answers if isinstance(a, Mapping)]
+    # 형식 오류(배열·객체 등)인 ID는 위에서 이미 보고했다. 중복 검사는 문자열 ID만 본다(unhashable 방지)
+    doc_ids = [
+        a["doc_id"] for a in answers if isinstance(a, Mapping) and isinstance(a.get("doc_id"), str)
+    ]
     if len(set(doc_ids)) != len(doc_ids):
         errors.append(f"{where}: duplicate doc_id in answers")
 
     # 질의 유형 규칙(eval-protocol 5절): G가 비면 no_answer, 문장에 CVE가 있으면 cve_explicit
     surface_cve = isinstance(query, str) and bool(extract_cve_ids(query))
+    # 5절 1항: 표면에 CVE가 있었는지는 별도 속성 surface_cve(bool)로 남긴다. 있으면 질의 문장과 일치해야 한다
+    if "surface_cve" in record:
+        declared = record["surface_cve"]
+        if not isinstance(declared, bool):
+            errors.append(f"{where}: surface_cve must be a bool")
+        elif isinstance(query, str) and declared != surface_cve:
+            errors.append(f"{where}: surface_cve {declared} contradicts the query text")
     if query_type == "no_answer":
         if answers:
             errors.append(f"{where}: no_answer must have empty answers")
@@ -795,14 +869,15 @@ def validate_golden(
     """
     catalog = {str(n["nttId"]): n for n in notices} if notices is not None else None
     errors: list[str] = []
-    seen: set[object] = set()
+    seen: set[str] = set()
     for record in records:
         errors.extend(_check_record(record, catalog, doc_versions, parser_version))
         if isinstance(record, Mapping):
             qid = record.get("question_id")
-            if qid in seen:
+            if isinstance(qid, str) and qid in seen:
                 errors.append(f"duplicate question_id: {qid!r}")
-            seen.add(qid)
+            if isinstance(qid, str):
+                seen.add(qid)
     if errors:
         return errors
 
@@ -868,19 +943,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"wrote {len(outputs)} files; questions={manifest['join']['n_questions']} sample_pairs={pairs}"
         )
         return 0
-    if args.command == "error-rates":
-        print(
-            json.dumps(error_rates(read_review_rows(args.review_csv)), ensure_ascii=False, indent=2)
+    try:
+        if args.command == "error-rates":
+            rates_result = error_rates(read_review_rows(args.review_csv))
+            print(json.dumps(rates_result, ensure_ascii=False, indent=2))
+            return 0
+        notices = load_notices(args.root / KISA_METADATA)
+        parser_version, doc_versions = load_doc_versions(args.root / KISA_MANIFEST)
+        errors = validate_golden(
+            _read_jsonl(args.golden_jsonl),
+            notices=notices,
+            doc_versions=doc_versions,
+            parser_version=parser_version,
         )
-        return 0
-    notices = load_notices(args.root / KISA_METADATA)
-    parser_version, doc_versions = load_doc_versions(args.root / KISA_MANIFEST)
-    errors = validate_golden(
-        _read_jsonl(args.golden_jsonl),
-        notices=notices,
-        doc_versions=doc_versions,
-        parser_version=parser_version,
-    )
+    except (ValueError, OSError) as exc:
+        # 사람이 채운 검수 입력의 오류는 traceback 대신 한 줄 사유와 exit 1로 알린다
+        # (ReviewSheetError, 깨진 JSONL, 없는 파일 등)
+        print(f"error: {' '.join(str(exc).split())}", file=sys.stderr)
+        return 1
     for error in errors:
         print(error, file=sys.stderr)
     return 1 if errors else 0
