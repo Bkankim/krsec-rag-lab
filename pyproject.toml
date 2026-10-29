@@ -30,6 +30,12 @@ embed = [
     "nbconvert>=7",
     "nbformat>=5",
 ]
+# 이슈 #6(Qdrant 대조) 전용. CI(uv sync --locked --dev)에는 들어가지 않는다.
+# 로컬에서 대조를 돌릴 때만 `uv sync --group qdrant`.
+qdrant = [
+    "qdrant-client>=1.19,<1.20",
+    "numpy>=1.26",
+]
 
 [tool.ruff]
 line-length = 100
