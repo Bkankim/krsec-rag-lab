@@ -564,3 +564,67 @@ def test_committed_docs_tables_match_committed_metrics():
     text = (ROOT / report.DOC_PATH).read_text("utf-8")
     block = text[text.index(report.BEGIN) + len(report.BEGIN) : text.index(report.END)]
     assert block.strip() == report.render_tables(metrics, manifest).strip()
+
+
+# ------------------------------------------------------------ --out-dir
+
+
+def snapshot(directory):
+    return {
+        str(path.relative_to(directory)): (
+            hashlib.sha256(path.read_bytes()).hexdigest(),
+            path.stat().st_mtime_ns,
+        )
+        for path in sorted(directory.rglob("*"))
+        if path.is_file()
+    }
+
+
+@pytest.mark.parametrize("retriever", ["exact", "bm25", "dense"])
+def test_out_dir_writes_only_there_and_leaves_the_baseline_untouched(
+    public_root, tmp_path, retriever
+):
+    run_public(public_root, retriever)  # 기준 디렉터리(OUT)를 만든다
+    before = snapshot(public_root / OUT)
+    custom = tmp_path / "elsewhere"
+    runner.run_baseline("public", retriever, public_root, out_dir=custom, dense_factory=FakeDense)
+    assert snapshot(public_root / OUT) == before  # sha256·mtime 그대로
+    written = {p.relative_to(custom).as_posix() for p in custom.rglob("*") if p.is_file()}
+    assert written == {"manifest.json", "metrics.json", f"public/{retriever}.jsonl"}
+    # 같은 입력이라 순위와 점수는 기준 디렉터리의 결과와 같다
+    assert (custom / "public" / f"{retriever}.jsonl").read_text("utf-8") == (
+        public_root / OUT / "public" / f"{retriever}.jsonl"
+    ).read_text("utf-8")
+    manifest = json.loads((custom / "manifest.json").read_text("utf-8"))
+    assert str(tmp_path) not in json.dumps(manifest)  # 리포 밖 경로는 manifest에 적지 않는다
+    # 이어서 --split test도 그 디렉터리의 manifest로 돈다
+    runner.run_baseline(
+        "public", retriever, public_root, split="test", out_dir=custom, dense_factory=FakeDense
+    )
+    assert snapshot(public_root / OUT) == before
+
+
+def test_script_out_dir_leaves_committed_results_untouched(tmp_path, capsys):
+    committed = ROOT / OUT
+    before = snapshot(committed)
+    custom = tmp_path / "repro"
+    code = run_baselines.main(
+        ["--track", "public", "--retriever", "exact", "--out-dir", str(custom)]
+    )
+    assert code == 0
+    assert snapshot(committed) == before
+    assert (custom / "manifest.json").exists() and (custom / "metrics.json").exists()
+    assert (custom / "public" / "exact.jsonl").read_text("utf-8") == (
+        committed / "public" / "exact.jsonl"
+    ).read_text("utf-8")
+    assert "dev" in capsys.readouterr().out
+
+
+def test_script_relative_out_dir_is_relative_to_the_cwd(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    before = snapshot(ROOT / OUT)
+    assert (
+        run_baselines.main(["--track", "public", "--retriever", "exact", "--out-dir", "rel"]) == 0
+    )
+    assert (tmp_path / "rel" / "public" / "exact.jsonl").exists()
+    assert snapshot(ROOT / OUT) == before

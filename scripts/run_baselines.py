@@ -4,6 +4,7 @@
     uv run python scripts/run_baselines.py --track public --retriever bm25
     uv run python scripts/run_baselines.py --track kisa --retriever bm25 --kisa-root <KISA 캐시가 있는 체크아웃>
     uv run --group embed python scripts/run_baselines.py --track public --retriever dense   # CI에서는 돌리지 않는다
+    uv run python scripts/run_baselines.py --track public --retriever bm25 --out-dir <빈 디렉터리>   # 재현 확인: 커밋된 결과를 덮어쓰지 않는다
     uv run python scripts/run_baselines.py --render-docs      # results/baselines/metrics.json -> docs/baselines.md 표
 
 `--split`은 dev(설정 선택 + dev 결과), test(manifest에 확정된 설정으로 test만), all(기본: dev 선택 뒤 test 1회).
@@ -51,6 +52,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--kisa-root", type=Path, help="KISA 캐시(data/kisa)가 있는 체크아웃 루트(kisa 트랙 필수)"
     )
     parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=runner.RESULTS_DIR,
+        help="결과 jsonl·manifest·metrics를 쓸 디렉터리(기본값: results/baselines, 리포 기준). "
+        "다른 경로를 주면 커밋된 results/baselines를 건드리지 않는다(재현 확인용)",
+    )
+    parser.add_argument(
         "--render-docs",
         action="store_true",
         help="metrics.json의 표를 docs/baselines.md의 표시 구간에 옮긴다(실행 없음)",
@@ -67,6 +75,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.track is None or args.retriever is None:
         parser.error("--track and --retriever are required")
+    out_dir = args.out_dir if args.out_dir == runner.RESULTS_DIR else args.out_dir.resolve()
     load_body = None
     kisa = None
     if args.track == "kisa":
@@ -76,7 +85,12 @@ def main(argv: list[str] | None = None) -> int:
         load_body = kisa_body_loader(args.kisa_root, kisa)
     try:
         metrics = runner.run_baseline(
-            args.track, args.retriever, ROOT, split=args.split, load_body=load_body
+            args.track,
+            args.retriever,
+            ROOT,
+            split=args.split,
+            out_dir=out_dir,
+            load_body=load_body,
         )
     except Exception as error:
         # KisaError 메시지는 본문·경로를 담지 않는다(cache_missing, cache_hash_mismatch 등)

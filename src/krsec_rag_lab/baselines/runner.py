@@ -306,7 +306,10 @@ def run_baseline(
         "n_documents": len(corpus.texts),
         "index_text": data.PUBLIC_INDEX_TEXT if track == "public" else data.KISA_INDEX_TEXT,
         "stored_results": {
-            "path": (out_dir / track / f"{retriever}.jsonl").as_posix(),
+            # 리포 밖 --out-dir의 절대 경로는 적지 않는다
+            "path": (RESULTS_DIR if out_dir.is_absolute() else out_dir)
+            .joinpath(track, f"{retriever}.jsonl")
+            .as_posix(),
             "top_n": scoring.RESULT_TOP_N,
             "fields": sorted(scoring.RECORD_FIELDS),
             "result_fields": sorted(scoring.RESULT_FIELDS),
