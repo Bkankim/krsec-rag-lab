@@ -150,8 +150,10 @@ def model_info(model: str = DEFAULT_MODEL, host: str = DEFAULT_HOST, timeout: fl
     show = _request_json(f"{host}/api/show", {"model": model}, timeout)
     tags = _request_json(f"{host}/api/tags", None, timeout)
     version = _request_json(f"{host}/api/version", None, timeout)
+    # 태그 없는 이름은 Ollama가 `:latest`로 해석한다
+    names = {model, f"{model}:latest"} if ":" not in model else {model}
     digest = next(
-        (item.get("digest") for item in tags.get("models", []) if item.get("name") == model), None
+        (item.get("digest") for item in tags.get("models", []) if item.get("name") in names), None
     )
     blob = re.search(
         r"^FROM\s+\S*sha256-([0-9a-f]{64})\s*$", show.get("modelfile", ""), re.MULTILINE

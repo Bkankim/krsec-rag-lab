@@ -130,7 +130,8 @@ user (`{context}` = `[문서 ID]` 머리 + 색인 텍스트들, 비면 `(검색�
 
 KISA 로컬 캐시 행 = 위 키 + `answer` + `run_id`(manifest의 실행 ID). 실행 ID는 모델 digest·옵션·프롬프트·문서 상한·검색
 설정이 같으면 같은 값이라, #66이 로컬 캐시와 커밋 행이 같은 실행인지 확인한다(`context_sha256`도 같아야 한다).
-같은 `run_id`의 로컬 행이 있으면 다시 호출하지 않고 이어서 돌린다.
+같은 `run_id`의 로컬 행이 있으면 다시 호출하지 않고 이어서 돌린다. `--keep-alive`를 바꾸면 요청이 달라져 `run_id`가 바뀌므로 새 실행이 된다.
+다른 `run_id`의 행이 든 로컬 캐시는 덮어쓰지 않고 `CacheConflict`(exit 1)로 멈춘다(직접 치운 뒤 다시 돌린다).
 
 문맥을 다시 만들려면: `retrieved`의 ID 순서대로 `build_context(track, retrieved, index.text)`를 부르면 `context_sha256`과
 같은 문자열이 나온다.

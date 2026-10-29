@@ -273,8 +273,9 @@ def generate(
 ) -> GenerationResult:
     """LLM을 부르고 계약대로 파싱한다. 파싱 실패면 재질의를 1회 한다(최대 2회 호출).
 
-    첫 응답의 `prompt_eval_count`가 `llm.max_prompt_tokens`(= num_ctx - num_predict) 이상이면 입력이 창을
-    넘은 것이라 파싱하지 않고 `context_overflow`로 기록한다(재질의 없음).
+        첫 응답의 `prompt_eval_count`가 `llm.max_prompt_tokens`(= num_ctx - num_predict) 이상이면 입력이 창을
+        넘은 것이라 파싱하지 않고 `context_overflow`로 기록한다(재질의 없음). 재질의 응답의 `prompt_eval_count`도
+    같은 상한으로 검사한다(재질의 입력은 첫 프롬프트보다 길다).
     """
     messages = build_prompt(question, context_text)
     first = llm(messages)
@@ -289,7 +290,22 @@ def generate(
             reason = status.removeprefix(PARSE_FAILED_PREFIX)
             second = llm(retry_messages(messages, first.content, reason))
             responses.append(second)
-            answer, abstain, citations, invalid, status = parse_answer(second.content, allowed_ids)
+            retry_tokens = second.prompt_eval_count
+            over_limit = limit is not None and retry_tokens is not None and retry_tokens >= limit
+            # 재질의 입력은 첫 프롬프트에 메시지를 더한 것이라 항상 더 길다. 오히려 줄었으면 Ollama가
+            # 창을 넘은 오래된 메시지(문맥)를 버린 것이다
+            dropped = (
+                prompt_tokens is not None
+                and retry_tokens is not None
+                and retry_tokens < prompt_tokens
+            )
+            if over_limit or dropped:
+                # 재질의 입력(첫 프롬프트 + 직전 응답 + 교정 문구)이 창을 넘으면 문맥이 밀려났을 수 있다
+                answer, abstain, citations, invalid, status = "", False, [], [], STATUS_OVERFLOW
+            else:
+                answer, abstain, citations, invalid, status = parse_answer(
+                    second.content, allowed_ids
+                )
     return GenerationResult(
         answer=answer,
         abstain=abstain,
@@ -448,6 +464,10 @@ class GateFailure(RuntimeError):
     """계약 파싱 성공률이 하한 미만이 되어 실행을 중단한다."""
 
 
+class CacheConflict(RuntimeError):
+    """로컬 캐시에 다른 실행(run_id)의 행이 있어 이어 쓸 수도 덮어쓸 수도 없다."""
+
+
 def read_jsonl_rows(path: Path) -> list[dict]:
     if not path.is_file():
         return []
@@ -485,10 +505,13 @@ def run_track_k(
     """
     done: dict[str, dict] = {}
     for row in read_jsonl_rows(local_path):
-        if row.get("run_id") == run_id and row.get("k") == k:
-            done[row["question_id"]] = row
-    if not done and local_path.exists():
-        local_path.unlink()
+        if row.get("run_id") != run_id or row.get("k") != k:
+            # 다른 실행의 답변 원문(예: 커밋한 실행)을 덮어쓰지 않는다
+            raise CacheConflict(
+                f"{local_path.name} holds rows of another run (run_id {row.get('run_id')}); "
+                "move it aside or choose another cache directory"
+            )
+        done[row["question_id"]] = row
     local_path.parent.mkdir(parents=True, exist_ok=True)
     rows: list[dict] = []
     failures = 0
@@ -844,6 +867,8 @@ def check_stored(root: Path, out_dir: Path) -> list[str]:
 
 def sample_questions(questions: Sequence[data.Question], limit: int | None) -> list[data.Question]:
     """`limit`개를 질문 유형을 돌려 가며(유형마다 질문 순서대로) 뽑는 소표본. None이면 전부."""
+    if limit is not None and limit < 1:
+        raise ValueError(f"limit must be positive, got {limit}")
     if limit is None or limit >= len(questions):
         return list(questions)
     by_type = [
@@ -874,7 +899,7 @@ def run_track(
     """
     expected = expected_questions(track, root)
     questions = sample_questions(expected, limit)
-    failure_limit = None if limit else max_failures(len(expected))
+    failure_limit = None if limit is not None else max_failures(len(expected))
     block = manifest["tracks"].setdefault(track, {})
     block.update(
         {

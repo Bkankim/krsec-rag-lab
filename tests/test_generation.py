@@ -364,6 +364,30 @@ def test_generate_context_overflow_boundary(prompt_tokens, status):
         assert result.prompt_tokens == prompt_tokens
 
 
+@pytest.mark.parametrize(
+    ("retry_tokens", "status", "attempts"),
+    [
+        (999, "ok", 2),
+        (1000, "context_overflow", 2),
+        (1200, "context_overflow", 2),
+        (901, "ok", 2),  # 첫 프롬프트(900)보다 길면 정상
+        (900, "ok", 2),
+        (500, "context_overflow", 2),  # 오히려 줄었으면 Ollama가 오래된 메시지(문맥)를 버린 것
+    ],
+)
+def test_generate_flags_a_retry_that_hit_the_limit_or_lost_context(retry_tokens, status, attempts):
+    llm = FakeLLM(
+        ["not json", reply("고친 답", False, ["A"])],
+        max_prompt_tokens=1000,
+        prompt_tokens=[900, retry_tokens],
+    )
+    result = pl.generate("질문", "ctx", {"A"}, llm)
+    assert (result.status, result.n_attempts) == (status, attempts)
+    assert result.prompt_tokens == 900  # 입력 토큰은 계속 첫 시도 값
+    if status == "context_overflow":
+        assert (result.abstain, result.citations, result.answer) == (False, [], "")
+
+
 def test_generate_without_a_limit_never_reports_overflow():
     llm = FakeLLM([reply()], prompt_tokens=10**6)
     assert pl.generate("질문", "ctx", set(), llm).status == "ok"
@@ -787,9 +811,13 @@ def test_run_track_k_resumes_without_calling_the_llm_again(root, tmp_path):
     assert len(second.calls) == len(questions) - 3  # 이미 한 3건은 다시 부르지 않는다
     assert [r["question_id"] for r in rows] == [q.question_id for q in questions]
     assert all(r["run_id"] == "run-1" for r in rows)
+    # 다른 실행 ID의 캐시는 쓰지도 지우지도 않는다(커밋한 실행의 답변 원문을 보존)
+    before = local.read_bytes()
     other = FakeLLM([reply("x", False, [])])
-    pl.run_track_k(questions, index, 3, other, "run-2", local)
-    assert len(other.calls) == len(questions)  # 다른 실행 ID의 캐시는 쓰지 않는다
+    with pytest.raises(pl.CacheConflict, match="another run"):
+        pl.run_track_k(questions, index, 3, other, "run-2", local)
+    assert other.calls == []
+    assert local.read_bytes() == before
 
 
 def test_run_track_k_aborts_when_the_floor_cannot_be_met(root, tmp_path):
@@ -1107,6 +1135,8 @@ def test_cli_metrics_only_passes_on_synthetic_results(root, stored, monkeypatch,
         ["--track", "kisa"],  # --kisa-root 없음
         ["--track", "public", "--limit", "3"],  # --limit은 --out-dir 필수
         ["--track", "public", "--k", "2"],  # k는 1, 3, 5만
+        ["--track", "public", "--limit", "0", "--out-dir", "x"],  # limit은 양수
+        ["--track", "public", "--limit", "-1", "--out-dir", "x"],
         ["--track", "other"],
     ],
 )
@@ -1234,3 +1264,59 @@ def test_doc_lists_every_row_key_and_reason_code():
 def test_doc_tables_match_the_committed_topk():
     topk = json.loads((COMMITTED / "topk.json").read_text(encoding="utf-8"))
     assert pl.render_tables(topk) in DOC
+
+
+@pytest.mark.parametrize(
+    ("track", "limit", "expected"),
+    [
+        ("kisa", None, "kisa-root/data/m5/generation"),
+        ("kisa", 5, "kisa-root/data/m5/generation/_sample"),
+        ("public", None, "ROOT/data/m5/generation"),
+        ("public", 5, "ROOT/data/m5/generation/_sample"),
+    ],
+)
+def test_local_cache_dir_is_always_under_a_gitignored_data_dir(tmp_path, track, limit, expected):
+    kisa_root = tmp_path / "kisa-root"
+    found = run_generation.local_cache_dir(track, kisa_root, limit)
+    assert found == Path(expected.replace("kisa-root", str(kisa_root)).replace("ROOT", str(ROOT)))
+    # --out-dir 어디를 주든 답변 원문은 결과 디렉터리 안으로 오지 않는다
+    assert "results" not in found.parts
+
+
+@pytest.mark.parametrize(
+    ("requested", "listed", "found"),
+    [
+        ("qwen3:8b", "qwen3:8b", True),
+        ("qwen3", "qwen3:latest", True),
+        ("qwen3:latest", "qwen3:latest", True),
+        ("qwen3", "qwen3:8b", False),  # 다른 태그를 대신 집지 않는다
+        ("qwen3:8b", "qwen3:latest", False),
+    ],
+)
+def test_model_info_digest_lookup_resolves_untagged_names(monkeypatch, requested, listed, found):
+    answers = {
+        "/api/show": {"modelfile": "", "license": "", "details": {}, "model_info": {}},
+        "/api/tags": {"models": [{"name": listed, "digest": "d" * 64}]},
+        "/api/version": {"version": "0.0.0"},
+    }
+    patch_urlopen(
+        monkeypatch,
+        lambda r: FakeHTTPResponse(json.dumps(answers[r.full_url.rsplit("11434", 1)[1]]).encode()),
+    )
+    assert (llm_module.model_info(requested)["digest"] == "d" * 64) is found
+
+
+def test_keep_alive_changes_the_run_id_and_stays_in_the_manifest_request(root):
+    model = {"name": "m", "digest": "d", "weights_sha256": "w"}
+    plain_llm, no_cache_llm = llm_module.OllamaLLM(), llm_module.OllamaLLM(keep_alive=0)
+    plain = pl.new_manifest(model, plain_llm, root, None)
+    no_cache = pl.new_manifest(model, no_cache_llm, root, None)
+    assert plain["run_id"] != no_cache["run_id"]  # keep_alive를 바꾸면 새 실행이다
+    assert "keep_alive" not in plain["request"]
+    assert no_cache["request"]["keep_alive"] == 0  # 방식을 manifest에 남긴다
+
+
+@pytest.mark.parametrize("limit", [0, -1, -5])
+def test_sample_questions_rejects_non_positive_limits(root, limit):
+    with pytest.raises(ValueError, match="limit must be positive"):
+        pl.sample_questions(pl.expected_questions("public", root), limit)

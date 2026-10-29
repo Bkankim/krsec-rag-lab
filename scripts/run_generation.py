@@ -41,6 +41,12 @@ def load_kisa_module():
     return module
 
 
+def local_cache_dir(track: str, kisa_root: Path | None, limit: int | None) -> Path:
+    """답변 원문이 든 로컬 캐시 디렉터리. 항상 gitignore된 `data/` 아래이고 소표본은 `_sample`로 따로 둔다."""
+    base = (kisa_root if track == "kisa" and kisa_root is not None else ROOT) / "data/m5/generation"
+    return base / "_sample" if limit is not None else base
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--track", choices=data.TRACKS)
@@ -132,6 +138,8 @@ def main(argv: list[str] | None = None) -> int:
         return metrics_only(out_dir)
     if args.track is None:
         parser.error("--track is required unless --metrics-only")
+    if args.limit is not None and args.limit < 1:
+        parser.error("--limit must be a positive integer")
     if args.limit is not None and out_dir == ROOT / pipeline.RESULTS_DIR:
         parser.error("--limit needs --out-dir (a sample must not overwrite the committed results)")
     load_body = None
@@ -145,11 +153,7 @@ def main(argv: list[str] | None = None) -> int:
         def load_body(ntt_id: str, document: Mapping[str, str]) -> str:
             return kisa.load_cached_body(kisa_root, ntt_id, document)
 
-        local_dir = kisa_root / "data/m5/generation"
-    else:
-        local_dir = ROOT / "data/m5/generation"
-    if args.limit is not None:
-        local_dir = out_dir / "_local"
+    local_dir = local_cache_dir(args.track, args.kisa_root, args.limit)
 
     llm = llm_module.OllamaLLM(model=args.model, host=args.host, keep_alive=args.keep_alive)
     try:
@@ -194,7 +198,12 @@ def main(argv: list[str] | None = None) -> int:
             pipeline.write_json(
                 out_dir / "topk.json", pipeline.recompute_topk(ROOT, out_dir, manifest)
             )
-    except (llm_module.LLMError, pipeline.GateFailure, pipeline.TokenReproError) as error:
+    except (
+        llm_module.LLMError,
+        pipeline.GateFailure,
+        pipeline.TokenReproError,
+        pipeline.CacheConflict,
+    ) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
     except Exception as error:
