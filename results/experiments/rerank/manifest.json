@@ -1,0 +1,318 @@
+{
+  "experiment": "rerank",
+  "protocol_version": "eval-protocol-v2",
+  "runs": {
+    "kisa/rerank": {
+      "baseline": {
+        "retriever": "bm25",
+        "stored_results": "results/baselines/kisa/bm25.jsonl"
+      },
+      "created_at": "2026-10-29T15:59:36+00:00",
+      "description": {
+        "bm25": {
+          "b": 0.9,
+          "k1": 3.0,
+          "tokenizer": "bm25-tok-v1"
+        },
+        "candidates": "기준선 BM25 설정으로 다시 계산한 전체 순위(질의 토큰이 하나라도 든 문서만)의 상위 N건. 저장본 상위 100건으로 후보를 만들지 않는다",
+        "reranker": {
+          "activation": "none (로짓 원점수)",
+          "batch_size": 16,
+          "device": "cpu",
+          "max_doc_tokens": 22747,
+          "max_length": 512,
+          "n_docs": 50,
+          "n_docs_truncated_even_with_empty_query": 27,
+          "name": "BAAI/bge-reranker-v2-m3",
+          "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+          "runtime": {
+            "numpy": "2.5.3",
+            "python": "3.13.14",
+            "sentence_transformers": "6.1.0",
+            "torch": "2.14.1",
+            "transformers": "5.17.0"
+          }
+        },
+        "score": "후보 N건: 리랭커 원점수(로짓). N 밖: min(후보 점수) - 1 - BM25 순위 * 1e-6 (BM25 순서 유지, 모든 후보보다 엄격히 작다)",
+        "selected_n_usage": {
+          "pairs": 1028,
+          "questions": 52,
+          "scope": "이 실행이 선택한 N으로 채점한 질문 전체(--split all이면 dev 격자 단계와 test를 합산)",
+          "truncated_pairs": 368
+        },
+        "tie_break": "점수가 같으면 문서 ID 오름차순(공통 채점 코드)"
+      },
+      "environment": {
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "machine": "arm64",
+        "omp_num_threads": "4",
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.14"
+      },
+      "experiment": "rerank",
+      "fixed": {
+        "bm25": {
+          "b": 0.9,
+          "k1": 3.0,
+          "tokenizer": "bm25-tok-v1"
+        },
+        "candidates": "BM25 전체 순위(unjudged 제거 전)의 상위 N건",
+        "reranker": {
+          "activation": "none (로짓 원점수)",
+          "max_length": 512,
+          "name": "BAAI/bge-reranker-v2-m3",
+          "pair_format": "(질의 문자열 그대로, 색인 텍스트 그대로) 쌍, 지시문 접두사 없음, 512 토큰 초과분은 절단",
+          "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e"
+        },
+        "score": "후보 N건: 리랭커 원점수(로짓). N 밖: min(후보 점수) - 1 - BM25 순위 * 1e-6 (BM25 순서 유지, 모든 후보보다 엄격히 작다)"
+      },
+      "grid": {
+        "rows": [
+          {
+            "config": {
+              "n": 20
+            },
+            "dev_macro_ndcg@10": 0.9616393735890663
+          },
+          {
+            "config": {
+              "n": 50
+            },
+            "dev_macro_ndcg@10": 0.9492936945767206
+          },
+          {
+            "config": {
+              "n": 100
+            },
+            "dev_macro_ndcg@10": 0.9492936945767206
+          }
+        ],
+        "selection_rule": "트랙마다 dev macro nDCG@10 최대인 N. 같으면 격자 순서(N 오름차순)에서 앞선 작은 N"
+      },
+      "index_text": "'{title}\\n{body}' (공지 제목 + 줄바꿈 + 정규화 본문)",
+      "inputs": {
+        "corpus_manifest": {
+          "path": "fixtures/kisa/manifest.json",
+          "sha256": "bf670ecd666e77139ae0c53a7be0badb5bdd82e8ff54d4876d59290b68c8b0c4"
+        },
+        "corpus_metadata": {
+          "path": "fixtures/kisa/metadata.jsonl",
+          "sha256": "c1512e8d234e0dbe4d32430877e61775612dd2248046122f74e227d446737eaf"
+        },
+        "queries": {
+          "path": "eval/golden/golden_v1.jsonl",
+          "sha256": "2f94253c6c0551c536973c95b830dcf123e7acb858304fa8678812a19360d3dc"
+        }
+      },
+      "n_documents": 50,
+      "protocol_version": "eval-protocol-v2",
+      "reproduction_inputs": {},
+      "selected": {
+        "config": {
+          "n": 20
+        },
+        "dev_macro_ndcg@10": 0.9616393735890663,
+        "selected_on": "dev",
+        "tau": -0.9427499771118164,
+        "tau_selection": {
+          "dev_abstain_rate": 0.75,
+          "dev_false_abstain_rate": 0.05263157894736842,
+          "dev_j": 0.6973684210526316,
+          "n_candidates": 23,
+          "rule": "dev에서 abstain_rate - false_abstain_rate 최대, 같으면 가장 낮은 tau",
+          "tau": -0.9427499771118164
+        }
+      },
+      "splits_stored": [
+        "dev",
+        "test"
+      ],
+      "stored_results": {
+        "fields": [
+          "n_unjudged_removed",
+          "question_id",
+          "results",
+          "top1_score_raw"
+        ],
+        "path": "results/experiments/rerank/kisa/rerank.jsonl",
+        "ranking": "(점수 내림차순, 문서 ID 오름차순) 정렬 뒤 질문의 unjudged를 지운 condensed list",
+        "result_fields": [
+          "doc_id",
+          "rank",
+          "score"
+        ],
+        "top_n": 100
+      },
+      "test": {
+        "config": {
+          "n": 20
+        },
+        "config_hash": "2d5ec5681979319edb0a818a4b0c2a12c592228253e797bbe76b4d2a720b750b",
+        "executed_at": "2026-10-29T15:59:36+00:00",
+        "tau": -0.9427499771118164
+      },
+      "timing": {
+        "index_seconds": 3.8767884170010802,
+        "n_queries_timed": 52,
+        "query_latency_median_seconds": 6.116899853997893
+      },
+      "track": "kisa",
+      "variant": "rerank"
+    },
+    "public/rerank": {
+      "baseline": {
+        "retriever": "bm25",
+        "stored_results": "results/baselines/public/bm25.jsonl"
+      },
+      "created_at": "2026-10-29T15:42:05+00:00",
+      "description": {
+        "bm25": {
+          "b": 0.75,
+          "k1": 1.2,
+          "tokenizer": "bm25-tok-v1"
+        },
+        "candidates": "기준선 BM25 설정으로 다시 계산한 전체 순위(질의 토큰이 하나라도 든 문서만)의 상위 N건. 저장본 상위 100건으로 후보를 만들지 않는다",
+        "reranker": {
+          "activation": "none (로짓 원점수)",
+          "batch_size": 16,
+          "device": "cpu",
+          "max_doc_tokens": 515,
+          "max_length": 512,
+          "n_docs": 1560,
+          "n_docs_truncated_even_with_empty_query": 1,
+          "name": "BAAI/bge-reranker-v2-m3",
+          "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+          "runtime": {
+            "numpy": "2.5.3",
+            "python": "3.13.14",
+            "sentence_transformers": "6.1.0",
+            "torch": "2.14.1",
+            "transformers": "5.17.0"
+          }
+        },
+        "score": "후보 N건: 리랭커 원점수(로짓). N 밖: min(후보 점수) - 1 - BM25 순위 * 1e-6 (BM25 순서 유지, 모든 후보보다 엄격히 작다)",
+        "selected_n_usage": {
+          "pairs": 2204,
+          "questions": 144,
+          "scope": "이 실행이 선택한 N으로 채점한 질문 전체(--split all이면 dev 격자 단계와 test를 합산)",
+          "truncated_pairs": 2
+        },
+        "tie_break": "점수가 같으면 문서 ID 오름차순(공통 채점 코드)"
+      },
+      "environment": {
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "machine": "arm64",
+        "omp_num_threads": "4",
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.14"
+      },
+      "experiment": "rerank",
+      "fixed": {
+        "bm25": {
+          "b": 0.75,
+          "k1": 1.2,
+          "tokenizer": "bm25-tok-v1"
+        },
+        "candidates": "BM25 전체 순위(unjudged 제거 전)의 상위 N건",
+        "reranker": {
+          "activation": "none (로짓 원점수)",
+          "max_length": 512,
+          "name": "BAAI/bge-reranker-v2-m3",
+          "pair_format": "(질의 문자열 그대로, 색인 텍스트 그대로) 쌍, 지시문 접두사 없음, 512 토큰 초과분은 절단",
+          "revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e"
+        },
+        "score": "후보 N건: 리랭커 원점수(로짓). N 밖: min(후보 점수) - 1 - BM25 순위 * 1e-6 (BM25 순서 유지, 모든 후보보다 엄격히 작다)"
+      },
+      "grid": {
+        "rows": [
+          {
+            "config": {
+              "n": 20
+            },
+            "dev_macro_ndcg@10": 0.8464440605409439
+          },
+          {
+            "config": {
+              "n": 50
+            },
+            "dev_macro_ndcg@10": 0.8702535843504677
+          },
+          {
+            "config": {
+              "n": 100
+            },
+            "dev_macro_ndcg@10": 0.8702535843504677
+          }
+        ],
+        "selection_rule": "트랙마다 dev macro nDCG@10 최대인 N. 같으면 격자 순서(N 오름차순)에서 앞선 작은 N"
+      },
+      "index_text": "'{id} {description_en}' (레코드 id + 공백 + 영문 설명, CPE·CWE·CVSS 미색인)",
+      "inputs": {
+        "corpus": {
+          "path": "fixtures/nvd/cves.jsonl",
+          "sha256": "96ce6757d724ab85593357a1806698bfe9026854b2f9823b6da4cbf01ce83ffa"
+        },
+        "queries": {
+          "path": "eval/public/queries.jsonl",
+          "sha256": "1d8ab42360e3cee23e8d67bc933e5af7ec6a8365eb32d315105233016d294a99"
+        }
+      },
+      "n_documents": 1560,
+      "protocol_version": "eval-protocol-v2",
+      "reproduction_inputs": {},
+      "selected": {
+        "config": {
+          "n": 50
+        },
+        "dev_macro_ndcg@10": 0.8702535843504677,
+        "selected_on": "dev",
+        "tau": -7.357858657836914,
+        "tau_selection": {
+          "dev_abstain_rate": 1.0,
+          "dev_false_abstain_rate": 0.021739130434782608,
+          "dev_j": 0.9782608695652174,
+          "n_candidates": 45,
+          "rule": "dev에서 abstain_rate - false_abstain_rate 최대, 같으면 가장 낮은 tau",
+          "tau": -7.357858657836914
+        }
+      },
+      "splits_stored": [
+        "dev",
+        "test"
+      ],
+      "stored_results": {
+        "fields": [
+          "n_unjudged_removed",
+          "question_id",
+          "results",
+          "top1_score_raw"
+        ],
+        "path": "results/experiments/rerank/public/rerank.jsonl",
+        "ranking": "(점수 내림차순, 문서 ID 오름차순) 정렬 뒤 질문의 unjudged를 지운 condensed list",
+        "result_fields": [
+          "doc_id",
+          "rank",
+          "score"
+        ],
+        "top_n": 100
+      },
+      "test": {
+        "config": {
+          "n": 50
+        },
+        "config_hash": "4cd80f9885ed8a01c44897d507d5f7156fc204af0dca63f617d9ca5f3854585e",
+        "executed_at": "2026-10-29T15:42:05+00:00",
+        "tau": -7.357858657836914
+      },
+      "timing": {
+        "index_seconds": 3.062132291997841,
+        "n_queries_timed": 144,
+        "query_latency_median_seconds": 0.08867027050291654
+      },
+      "track": "public",
+      "variant": "rerank"
+    }
+  }
+}

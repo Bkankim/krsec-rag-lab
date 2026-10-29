@@ -1,0 +1,393 @@
+{
+  "comparisons": {
+    "kisa/rerank": {
+      "baseline": "bm25",
+      "baseline_macro": 0.9450922866017336,
+      "bootstrap": {
+        "n_per_type": {
+          "cve_explicit": 11,
+          "explanation_comparison": 5,
+          "product_symptom": 7
+        },
+        "resamples": 10000,
+        "seed": 20261029,
+        "stratified_by": "query_type"
+      },
+      "by_type": {
+        "cve_explicit": {
+          "metrics": {
+            "hit@10": {
+              "baseline": 0.9090909090909091,
+              "delta": 0.0,
+              "experiment": 0.9090909090909091
+            },
+            "mrr@10": {
+              "baseline": 0.9090909090909091,
+              "delta": 0.0,
+              "experiment": 0.9090909090909091
+            },
+            "ndcg@10": {
+              "baseline": 0.9090909090909091,
+              "delta": 0.0,
+              "experiment": 0.9090909090909091
+            }
+          },
+          "n_scored": 11,
+          "observation_only": false
+        },
+        "explanation_comparison": {
+          "metrics": {
+            "hit@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            },
+            "mrr@10": {
+              "baseline": 0.9,
+              "delta": 0.0,
+              "experiment": 0.9
+            },
+            "ndcg@10": {
+              "baseline": 0.9261859507142916,
+              "delta": 0.0,
+              "experiment": 0.9261859507142916
+            }
+          },
+          "n_scored": 5,
+          "observation_only": true
+        },
+        "product_symptom": {
+          "metrics": {
+            "hit@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            },
+            "mrr@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            },
+            "ndcg@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            }
+          },
+          "n_scored": 7,
+          "observation_only": true
+        }
+      },
+      "ci95": {
+        "high": 0.07381404928570849,
+        "low": -0.07381404928570849
+      },
+      "cve_explicit": {
+        "delta_ndcg@10": 0.0,
+        "regression": false
+      },
+      "degraded": [
+        {
+          "delta": -0.36907024642854247,
+          "ndcg_after": 0.6309297535714575,
+          "ndcg_before": 1.0,
+          "query_type": "explanation_comparison",
+          "question_id": "g1-ec-03",
+          "rank_after": 2,
+          "rank_before": 1
+        }
+      ],
+      "delta": 0.0,
+      "experiment_macro": 0.9450922866017336,
+      "improved_top10": [
+        {
+          "delta": 0.36907024642854247,
+          "ndcg_after": 1.0,
+          "ndcg_before": 0.6309297535714575,
+          "query_type": "explanation_comparison",
+          "question_id": "g1-ec-10",
+          "rank_after": 1,
+          "rank_before": 2
+        }
+      ],
+      "metric": "test macro nDCG@10 (condensed, 정답이 있는 유형의 단순 평균)",
+      "n_degraded": 1,
+      "n_improved": 1,
+      "n_test_questions": 23,
+      "n_unchanged": 21,
+      "no_answer": {
+        "baseline": {
+          "abstain_rate": 1.0,
+          "false_abstain_rate": 0.30434782608695654,
+          "n_answerable": 23,
+          "n_no_answer": 6,
+          "tau": 11.436208248079549
+        },
+        "experiment": {
+          "abstain_rate": 0.3333333333333333,
+          "false_abstain_rate": 0.0,
+          "n_answerable": 23,
+          "n_no_answer": 6,
+          "tau": -0.9427499771118164
+        }
+      },
+      "rank_note": "rank_*는 저장된 condensed 상위 100건 안의 첫 정답 순위이고 null은 저장 범위 밖이다",
+      "secondary_metrics": {
+        "hit@10": {
+          "baseline": 0.9696969696969697,
+          "delta": 0.0,
+          "experiment": 0.9696969696969697
+        },
+        "mrr@10": {
+          "baseline": 0.9363636363636364,
+          "delta": 0.0,
+          "experiment": 0.9363636363636364
+        }
+      },
+      "timing": {
+        "baseline": {
+          "index_seconds": 0.009876040996459778,
+          "query_latency_median_seconds": 2.860400127246976e-05
+        },
+        "experiment": {
+          "index_seconds": 3.8767884170010802,
+          "query_latency_median_seconds": 6.116899853997893
+        },
+        "note": "참고값: 2단계 실험은 같은 맥에서 병렬로 돌아 시간이 서로 간섭할 수 있다"
+      },
+      "track": "kisa",
+      "variant": "rerank",
+      "verdict": "hypothesis-rejected"
+    },
+    "public/rerank": {
+      "baseline": "bm25",
+      "baseline_macro": 0.8551281574988379,
+      "bootstrap": {
+        "n_per_type": {
+          "cve_explicit": 35,
+          "product_symptom": 39
+        },
+        "resamples": 10000,
+        "seed": 20261029,
+        "stratified_by": "query_type"
+      },
+      "by_type": {
+        "cve_explicit": {
+          "metrics": {
+            "hit@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            },
+            "mrr@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            },
+            "ndcg@10": {
+              "baseline": 1.0,
+              "delta": 0.0,
+              "experiment": 1.0
+            }
+          },
+          "n_scored": 35,
+          "observation_only": false
+        },
+        "product_symptom": {
+          "metrics": {
+            "hit@10": {
+              "baseline": 0.7948717948717948,
+              "delta": 0.0,
+              "experiment": 0.7948717948717948
+            },
+            "mrr@10": {
+              "baseline": 0.7077228327228327,
+              "delta": 0.0002543752543753275,
+              "experiment": 0.707977207977208
+            },
+            "ndcg@10": {
+              "baseline": 0.7102563149976756,
+              "delta": 0.0059749706613742015,
+              "experiment": 0.7162312856590498
+            }
+          },
+          "n_scored": 39,
+          "observation_only": false
+        }
+      },
+      "ci95": {
+        "high": 0.02444034299643325,
+        "low": -0.020612847015431483
+      },
+      "cve_explicit": {
+        "delta_ndcg@10": 0.0,
+        "regression": false
+      },
+      "degraded": [
+        {
+          "delta": -0.5693234419266069,
+          "ndcg_after": 0.43067655807339306,
+          "ndcg_before": 1.0,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0009",
+          "rank_after": 4,
+          "rank_before": 1
+        },
+        {
+          "delta": -0.27267015568947806,
+          "ndcg_after": 0.6578986223737446,
+          "ndcg_before": 0.9305687780632227,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0015",
+          "rank_after": 1,
+          "rank_before": 1
+        },
+        {
+          "delta": -0.18340980524840012,
+          "ndcg_after": 0.0,
+          "ndcg_before": 0.18340980524840012,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0047",
+          "rank_after": 15,
+          "rank_before": 3
+        },
+        {
+          "delta": -0.014434881121747567,
+          "ndcg_after": 0.3010299956639812,
+          "ndcg_before": 0.31546487678572877,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0042",
+          "rank_after": 9,
+          "rank_before": 8
+        }
+      ],
+      "delta": 0.0029874853306870452,
+      "experiment_macro": 0.8581156428295249,
+      "improved_top10": [
+        {
+          "delta": 0.43067655807339306,
+          "ndcg_after": 0.43067655807339306,
+          "ndcg_before": 0.0,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0038",
+          "rank_after": 4,
+          "rank_before": 17
+        },
+        {
+          "delta": 0.2975964202381242,
+          "ndcg_after": 0.6309297535714575,
+          "ndcg_before": 0.3333333333333333,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0035",
+          "rank_after": 2,
+          "rank_before": 7
+        },
+        {
+          "delta": 0.22009176629808025,
+          "ndcg_after": 1.0,
+          "ndcg_before": 0.7799082337019198,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0030",
+          "rank_after": 1,
+          "rank_before": 2
+        },
+        {
+          "delta": 0.1513973410960101,
+          "ndcg_after": 0.8899541168509599,
+          "ndcg_before": 0.7385567757549498,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0060",
+          "rank_after": 1,
+          "rank_before": 1
+        },
+        {
+          "delta": 0.09478836436955096,
+          "ndcg_after": 1.0,
+          "ndcg_before": 0.905211635630449,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0033",
+          "rank_after": 1,
+          "rank_before": 1
+        },
+        {
+          "delta": 0.07831168970466862,
+          "ndcg_after": 0.9609247825245573,
+          "ndcg_before": 0.8826130928198886,
+          "query_type": "product_symptom",
+          "question_id": "pub-prod-0031",
+          "rank_after": 1,
+          "rank_before": 1
+        }
+      ],
+      "metric": "test macro nDCG@10 (condensed, 정답이 있는 유형의 단순 평균)",
+      "n_degraded": 4,
+      "n_improved": 6,
+      "n_test_questions": 74,
+      "n_unchanged": 64,
+      "no_answer": {
+        "baseline": {
+          "abstain_rate": 1.0,
+          "false_abstain_rate": 0.13513513513513514,
+          "n_answerable": 74,
+          "n_no_answer": 12,
+          "tau": 5.191783655695957
+        },
+        "experiment": {
+          "abstain_rate": 1.0,
+          "false_abstain_rate": 0.06756756756756757,
+          "n_answerable": 74,
+          "n_no_answer": 12,
+          "tau": -7.357858657836914
+        }
+      },
+      "rank_note": "rank_*는 저장된 condensed 상위 100건 안의 첫 정답 순위이고 null은 저장 범위 밖이다",
+      "secondary_metrics": {
+        "hit@10": {
+          "baseline": 0.8974358974358974,
+          "delta": 0.0,
+          "experiment": 0.8974358974358974
+        },
+        "mrr@10": {
+          "baseline": 0.8538614163614163,
+          "delta": 0.00012718762718766374,
+          "experiment": 0.853988603988604
+        }
+      },
+      "timing": {
+        "baseline": {
+          "index_seconds": 0.009989042002416681,
+          "query_latency_median_seconds": 5.021000106353313e-06
+        },
+        "experiment": {
+          "index_seconds": 3.062132291997841,
+          "query_latency_median_seconds": 0.08867027050291654
+        },
+        "note": "참고값: 2단계 실험은 같은 맥에서 병렬로 돌아 시간이 서로 간섭할 수 있다"
+      },
+      "track": "public",
+      "variant": "rerank",
+      "verdict": "hypothesis-rejected"
+    }
+  },
+  "experiment": "rerank",
+  "hypothesis": "cross-encoder 리랭커(BAAI/bge-reranker-v2-m3)로 BM25 상위 N건을 다시 정렬하면 같은 후보군의 BM25 순서보다 test macro nDCG@10이 높다.",
+  "primary": {
+    "baseline": "bm25",
+    "track": "public",
+    "variant": "rerank",
+    "verdict": "hypothesis-rejected"
+  },
+  "protocol_version": "eval-protocol-v2",
+  "rule": {
+    "bootstrap": "test 질문을 유형별 층화 복원추출 10000회, random.Random(20261029) 하나를 공유, 매 회 macro nDCG@10 차이 재계산, 2.5/97.5 백분위",
+    "verdict": "delta > 0 이고 ci95.low > 0 이면 hypothesis-confirmed, 그 밖은 hypothesis-rejected"
+  },
+  "secondary": [
+    {
+      "baseline": "bm25",
+      "track": "kisa",
+      "variant": "rerank",
+      "verdict": "hypothesis-rejected"
+    }
+  ]
+}

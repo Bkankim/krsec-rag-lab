@@ -1,0 +1,398 @@
+{
+  "experiment": "rerank",
+  "protocol_version": "eval-protocol-v2",
+  "runs": {
+    "kisa/rerank": {
+      "dev": {
+        "by_type": {
+          "cve_explicit": {
+            "metrics": {
+              "hit@1": 0.7777777777777778,
+              "hit@10": 1.0,
+              "hit@5": 0.8888888888888888,
+              "mrr@10": 0.8492063492063493,
+              "ndcg@10": 0.884918120767199,
+              "recall@1": 0.7222222222222222,
+              "recall@10": 1.0,
+              "recall@5": 0.8888888888888888
+            },
+            "n_excluded": 0,
+            "n_questions": 9,
+            "n_scored": 9,
+            "n_skipped": 0,
+            "observation_only": true,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          },
+          "explanation_comparison": {
+            "metrics": {
+              "hit@1": 1.0,
+              "hit@10": 1.0,
+              "hit@5": 1.0,
+              "mrr@10": 1.0,
+              "ndcg@10": 1.0,
+              "recall@1": 0.9,
+              "recall@10": 1.0,
+              "recall@5": 1.0
+            },
+            "n_excluded": 1,
+            "n_questions": 5,
+            "n_scored": 5,
+            "n_skipped": 0,
+            "observation_only": true,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          },
+          "no_answer": {
+            "metrics": {
+              "hit@1": null,
+              "hit@10": null,
+              "hit@5": null,
+              "mrr@10": null,
+              "ndcg@10": null,
+              "recall@1": null,
+              "recall@10": null,
+              "recall@5": null
+            },
+            "n_excluded": 0,
+            "n_questions": 4,
+            "n_scored": 0,
+            "n_skipped": 4,
+            "observation_only": false,
+            "tie_at_cutoff": null
+          },
+          "product_symptom": {
+            "metrics": {
+              "hit@1": 1.0,
+              "hit@10": 1.0,
+              "hit@5": 1.0,
+              "mrr@10": 1.0,
+              "ndcg@10": 1.0,
+              "recall@1": 0.9,
+              "recall@10": 1.0,
+              "recall@5": 1.0
+            },
+            "n_excluded": 0,
+            "n_questions": 5,
+            "n_scored": 5,
+            "n_skipped": 0,
+            "observation_only": true,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          }
+        },
+        "macro": {
+          "hit@1": 0.9259259259259259,
+          "hit@10": 1.0,
+          "hit@5": 0.9629629629629629,
+          "mrr@10": 0.9497354497354498,
+          "ndcg@10": 0.9616393735890663,
+          "recall@1": 0.8407407407407407,
+          "recall@10": 1.0,
+          "recall@5": 0.9629629629629629
+        },
+        "macro_n_types": 3,
+        "n_excluded": 1,
+        "n_questions": 23,
+        "no_answer": {
+          "abstain_rate": 0.75,
+          "false_abstain_rate": 0.05263157894736842,
+          "n_answerable": 19,
+          "n_no_answer": 4,
+          "tau": -0.9427499771118164
+        }
+      },
+      "test": {
+        "by_type": {
+          "cve_explicit": {
+            "metrics": {
+              "hit@1": 0.9090909090909091,
+              "hit@10": 0.9090909090909091,
+              "hit@5": 0.9090909090909091,
+              "mrr@10": 0.9090909090909091,
+              "ndcg@10": 0.9090909090909091,
+              "recall@1": 0.9090909090909091,
+              "recall@10": 0.9090909090909091,
+              "recall@5": 0.9090909090909091
+            },
+            "n_excluded": 0,
+            "n_questions": 11,
+            "n_scored": 11,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          },
+          "explanation_comparison": {
+            "metrics": {
+              "hit@1": 0.8,
+              "hit@10": 1.0,
+              "hit@5": 1.0,
+              "mrr@10": 0.9,
+              "ndcg@10": 0.9261859507142916,
+              "recall@1": 0.8,
+              "recall@10": 1.0,
+              "recall@5": 1.0
+            },
+            "n_excluded": 1,
+            "n_questions": 5,
+            "n_scored": 5,
+            "n_skipped": 0,
+            "observation_only": true,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          },
+          "no_answer": {
+            "metrics": {
+              "hit@1": null,
+              "hit@10": null,
+              "hit@5": null,
+              "mrr@10": null,
+              "ndcg@10": null,
+              "recall@1": null,
+              "recall@10": null,
+              "recall@5": null
+            },
+            "n_excluded": 0,
+            "n_questions": 6,
+            "n_scored": 0,
+            "n_skipped": 6,
+            "observation_only": false,
+            "tie_at_cutoff": null
+          },
+          "product_symptom": {
+            "metrics": {
+              "hit@1": 1.0,
+              "hit@10": 1.0,
+              "hit@5": 1.0,
+              "mrr@10": 1.0,
+              "ndcg@10": 1.0,
+              "recall@1": 1.0,
+              "recall@10": 1.0,
+              "recall@5": 1.0
+            },
+            "n_excluded": 0,
+            "n_questions": 7,
+            "n_scored": 7,
+            "n_skipped": 0,
+            "observation_only": true,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          }
+        },
+        "macro": {
+          "hit@1": 0.903030303030303,
+          "hit@10": 0.9696969696969697,
+          "hit@5": 0.9696969696969697,
+          "mrr@10": 0.9363636363636364,
+          "ndcg@10": 0.9450922866017336,
+          "recall@1": 0.903030303030303,
+          "recall@10": 0.9696969696969697,
+          "recall@5": 0.9696969696969697
+        },
+        "macro_n_types": 3,
+        "n_excluded": 1,
+        "n_questions": 29,
+        "no_answer": {
+          "abstain_rate": 0.3333333333333333,
+          "false_abstain_rate": 0.0,
+          "n_answerable": 23,
+          "n_no_answer": 6,
+          "tau": -0.9427499771118164
+        }
+      }
+    },
+    "public/rerank": {
+      "dev": {
+        "by_type": {
+          "cve_explicit": {
+            "metrics": {
+              "hit@1": 1.0,
+              "hit@10": 1.0,
+              "hit@5": 1.0,
+              "mrr@10": 1.0,
+              "ndcg@10": 1.0,
+              "recall@1": 1.0,
+              "recall@10": 1.0,
+              "recall@5": 1.0
+            },
+            "n_excluded": 0,
+            "n_questions": 25,
+            "n_scored": 25,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          },
+          "no_answer": {
+            "metrics": {
+              "hit@1": null,
+              "hit@10": null,
+              "hit@5": null,
+              "mrr@10": null,
+              "ndcg@10": null,
+              "recall@1": null,
+              "recall@10": null,
+              "recall@5": null
+            },
+            "n_excluded": 0,
+            "n_questions": 12,
+            "n_scored": 0,
+            "n_skipped": 12,
+            "observation_only": false,
+            "tie_at_cutoff": null
+          },
+          "product_symptom": {
+            "metrics": {
+              "hit@1": 0.7142857142857143,
+              "hit@10": 0.7619047619047619,
+              "hit@5": 0.7619047619047619,
+              "mrr@10": 0.7380952380952381,
+              "ndcg@10": 0.7405071687009355,
+              "recall@1": 0.5353741496598639,
+              "recall@10": 0.7619047619047619,
+              "recall@5": 0.7244897959183673
+            },
+            "n_excluded": 0,
+            "n_questions": 21,
+            "n_scored": 21,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          }
+        },
+        "macro": {
+          "hit@1": 0.8571428571428572,
+          "hit@10": 0.8809523809523809,
+          "hit@5": 0.8809523809523809,
+          "mrr@10": 0.8690476190476191,
+          "ndcg@10": 0.8702535843504677,
+          "recall@1": 0.7676870748299319,
+          "recall@10": 0.8809523809523809,
+          "recall@5": 0.8622448979591837
+        },
+        "macro_n_types": 2,
+        "n_excluded": 0,
+        "n_questions": 58,
+        "no_answer": {
+          "abstain_rate": 1.0,
+          "false_abstain_rate": 0.021739130434782608,
+          "n_answerable": 46,
+          "n_no_answer": 12,
+          "tau": -7.357858657836914
+        }
+      },
+      "test": {
+        "by_type": {
+          "cve_explicit": {
+            "metrics": {
+              "hit@1": 1.0,
+              "hit@10": 1.0,
+              "hit@5": 1.0,
+              "mrr@10": 1.0,
+              "ndcg@10": 1.0,
+              "recall@1": 1.0,
+              "recall@10": 1.0,
+              "recall@5": 1.0
+            },
+            "n_excluded": 0,
+            "n_questions": 35,
+            "n_scored": 35,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          },
+          "no_answer": {
+            "metrics": {
+              "hit@1": null,
+              "hit@10": null,
+              "hit@5": null,
+              "mrr@10": null,
+              "ndcg@10": null,
+              "recall@1": null,
+              "recall@10": null,
+              "recall@5": null
+            },
+            "n_excluded": 0,
+            "n_questions": 12,
+            "n_scored": 0,
+            "n_skipped": 12,
+            "observation_only": false,
+            "tie_at_cutoff": null
+          },
+          "product_symptom": {
+            "metrics": {
+              "hit@1": 0.6666666666666666,
+              "hit@10": 0.7948717948717948,
+              "hit@5": 0.7692307692307693,
+              "mrr@10": 0.707977207977208,
+              "ndcg@10": 0.7162312856590498,
+              "recall@1": 0.362833778470344,
+              "recall@10": 0.6511763218276911,
+              "recall@5": 0.58572537819392
+            },
+            "n_excluded": 0,
+            "n_questions": 39,
+            "n_scored": 39,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          }
+        },
+        "macro": {
+          "hit@1": 0.8333333333333333,
+          "hit@10": 0.8974358974358974,
+          "hit@5": 0.8846153846153846,
+          "mrr@10": 0.853988603988604,
+          "ndcg@10": 0.8581156428295249,
+          "recall@1": 0.681416889235172,
+          "recall@10": 0.8255881609138456,
+          "recall@5": 0.79286268909696
+        },
+        "macro_n_types": 2,
+        "n_excluded": 0,
+        "n_questions": 86,
+        "no_answer": {
+          "abstain_rate": 1.0,
+          "false_abstain_rate": 0.06756756756756757,
+          "n_answerable": 74,
+          "n_no_answer": 12,
+          "tau": -7.357858657836914
+        }
+      }
+    }
+  }
+}
