@@ -1,0 +1,354 @@
+{
+  "experiment": "crossling",
+  "protocol_version": "eval-protocol-v2",
+  "runs": {
+    "public/bm25_ko2en": {
+      "dev": {
+        "by_type": {
+          "cve_explicit": {
+            "metrics": {
+              "hit@1": 0.32,
+              "hit@10": 0.68,
+              "hit@5": 0.64,
+              "mrr@10": 0.45,
+              "ndcg@10": 0.5071869202358316,
+              "recall@1": 0.32,
+              "recall@10": 0.68,
+              "recall@5": 0.64
+            },
+            "n_excluded": 0,
+            "n_questions": 25,
+            "n_scored": 25,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 1,
+              "@5": 0
+            }
+          },
+          "no_answer": {
+            "metrics": {
+              "hit@1": null,
+              "hit@10": null,
+              "hit@5": null,
+              "mrr@10": null,
+              "ndcg@10": null,
+              "recall@1": null,
+              "recall@10": null,
+              "recall@5": null
+            },
+            "n_excluded": 0,
+            "n_questions": 12,
+            "n_scored": 0,
+            "n_skipped": 12,
+            "observation_only": false,
+            "tie_at_cutoff": null
+          },
+          "product_symptom": {
+            "metrics": {
+              "hit@1": 0.19047619047619047,
+              "hit@10": 0.38095238095238093,
+              "hit@5": 0.2857142857142857,
+              "mrr@10": 0.24172335600907027,
+              "ndcg@10": 0.2773318872465714,
+              "recall@1": 0.16666666666666666,
+              "recall@10": 0.38095238095238093,
+              "recall@5": 0.2857142857142857
+            },
+            "n_excluded": 0,
+            "n_questions": 21,
+            "n_scored": 21,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 2,
+              "@10": 1,
+              "@5": 4
+            }
+          }
+        },
+        "macro": {
+          "hit@1": 0.25523809523809526,
+          "hit@10": 0.5304761904761905,
+          "hit@5": 0.46285714285714286,
+          "mrr@10": 0.34586167800453516,
+          "ndcg@10": 0.3922594037412015,
+          "recall@1": 0.24333333333333335,
+          "recall@10": 0.5304761904761905,
+          "recall@5": 0.46285714285714286
+        },
+        "macro_n_types": 2,
+        "n_excluded": 0,
+        "n_questions": 58,
+        "no_answer": {
+          "abstain_rate": 0.6666666666666666,
+          "false_abstain_rate": 0.17391304347826086,
+          "n_answerable": 46,
+          "n_no_answer": 12,
+          "tau": 8.492415500456154
+        }
+      },
+      "test": {
+        "by_type": {
+          "cve_explicit": {
+            "metrics": {
+              "hit@1": 0.17142857142857143,
+              "hit@10": 0.5428571428571428,
+              "hit@5": 0.5142857142857142,
+              "mrr@10": 0.3080952380952381,
+              "ndcg@10": 0.36652529486494984,
+              "recall@1": 0.17142857142857143,
+              "recall@10": 0.5428571428571428,
+              "recall@5": 0.5142857142857142
+            },
+            "n_excluded": 0,
+            "n_questions": 35,
+            "n_scored": 35,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          },
+          "no_answer": {
+            "metrics": {
+              "hit@1": null,
+              "hit@10": null,
+              "hit@5": null,
+              "mrr@10": null,
+              "ndcg@10": null,
+              "recall@1": null,
+              "recall@10": null,
+              "recall@5": null
+            },
+            "n_excluded": 0,
+            "n_questions": 12,
+            "n_scored": 0,
+            "n_skipped": 12,
+            "observation_only": false,
+            "tie_at_cutoff": null
+          },
+          "product_symptom": {
+            "metrics": {
+              "hit@1": 0.1282051282051282,
+              "hit@10": 0.28205128205128205,
+              "hit@5": 0.2564102564102564,
+              "mrr@10": 0.17713675213675215,
+              "ndcg@10": 0.18769920617085495,
+              "recall@1": 0.10683760683760685,
+              "recall@10": 0.21156898656898657,
+              "recall@5": 0.17730972730972733
+            },
+            "n_excluded": 0,
+            "n_questions": 39,
+            "n_scored": 39,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 1,
+              "@10": 2,
+              "@5": 10
+            }
+          }
+        },
+        "macro": {
+          "hit@1": 0.1498168498168498,
+          "hit@10": 0.41245421245421243,
+          "hit@5": 0.3853479853479853,
+          "mrr@10": 0.24261599511599513,
+          "ndcg@10": 0.2771122505179024,
+          "recall@1": 0.13913308913308914,
+          "recall@10": 0.3772130647130647,
+          "recall@5": 0.34579772079772075
+        },
+        "macro_n_types": 2,
+        "n_excluded": 0,
+        "n_questions": 86,
+        "no_answer": {
+          "abstain_rate": 0.8333333333333334,
+          "false_abstain_rate": 0.1891891891891892,
+          "n_answerable": 74,
+          "n_no_answer": 12,
+          "tau": 8.492415500456154
+        }
+      }
+    },
+    "public/dense_ko2en": {
+      "dev": {
+        "by_type": {
+          "cve_explicit": {
+            "metrics": {
+              "hit@1": 0.2,
+              "hit@10": 0.48,
+              "hit@5": 0.4,
+              "mrr@10": 0.28276190476190477,
+              "ndcg@10": 0.32984222156470067,
+              "recall@1": 0.2,
+              "recall@10": 0.48,
+              "recall@5": 0.4
+            },
+            "n_excluded": 0,
+            "n_questions": 25,
+            "n_scored": 25,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          },
+          "no_answer": {
+            "metrics": {
+              "hit@1": null,
+              "hit@10": null,
+              "hit@5": null,
+              "mrr@10": null,
+              "ndcg@10": null,
+              "recall@1": null,
+              "recall@10": null,
+              "recall@5": null
+            },
+            "n_excluded": 0,
+            "n_questions": 12,
+            "n_scored": 0,
+            "n_skipped": 12,
+            "observation_only": false,
+            "tie_at_cutoff": null
+          },
+          "product_symptom": {
+            "metrics": {
+              "hit@1": 0.19047619047619047,
+              "hit@10": 0.3333333333333333,
+              "hit@5": 0.3333333333333333,
+              "mrr@10": 0.2619047619047619,
+              "ndcg@10": 0.24180166187124721,
+              "recall@1": 0.12585034013605442,
+              "recall@10": 0.2836734693877551,
+              "recall@5": 0.26326530612244897
+            },
+            "n_excluded": 0,
+            "n_questions": 21,
+            "n_scored": 21,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          }
+        },
+        "macro": {
+          "hit@1": 0.19523809523809524,
+          "hit@10": 0.4066666666666666,
+          "hit@5": 0.3666666666666667,
+          "mrr@10": 0.2723333333333333,
+          "ndcg@10": 0.2858219417179739,
+          "recall@1": 0.1629251700680272,
+          "recall@10": 0.3818367346938776,
+          "recall@5": 0.33163265306122447
+        },
+        "macro_n_types": 2,
+        "n_excluded": 0,
+        "n_questions": 58,
+        "no_answer": {
+          "abstain_rate": 0.5833333333333334,
+          "false_abstain_rate": 0.2391304347826087,
+          "n_answerable": 46,
+          "n_no_answer": 12,
+          "tau": 0.5584375858306885
+        }
+      },
+      "test": {
+        "by_type": {
+          "cve_explicit": {
+            "metrics": {
+              "hit@1": 0.14285714285714285,
+              "hit@10": 0.2571428571428571,
+              "hit@5": 0.2,
+              "mrr@10": 0.17908163265306123,
+              "ndcg@10": 0.19744736335034221,
+              "recall@1": 0.14285714285714285,
+              "recall@10": 0.2571428571428571,
+              "recall@5": 0.2
+            },
+            "n_excluded": 0,
+            "n_questions": 35,
+            "n_scored": 35,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          },
+          "no_answer": {
+            "metrics": {
+              "hit@1": null,
+              "hit@10": null,
+              "hit@5": null,
+              "mrr@10": null,
+              "ndcg@10": null,
+              "recall@1": null,
+              "recall@10": null,
+              "recall@5": null
+            },
+            "n_excluded": 0,
+            "n_questions": 12,
+            "n_scored": 0,
+            "n_skipped": 12,
+            "observation_only": false,
+            "tie_at_cutoff": null
+          },
+          "product_symptom": {
+            "metrics": {
+              "hit@1": 0.23076923076923078,
+              "hit@10": 0.5128205128205128,
+              "hit@5": 0.48717948717948717,
+              "mrr@10": 0.3211843711843712,
+              "ndcg@10": 0.3451038730709874,
+              "recall@1": 0.1336798636021434,
+              "recall@10": 0.3953020449134439,
+              "recall@5": 0.3378556847653813
+            },
+            "n_excluded": 0,
+            "n_questions": 39,
+            "n_scored": 39,
+            "n_skipped": 0,
+            "observation_only": false,
+            "tie_at_cutoff": {
+              "@1": 0,
+              "@10": 0,
+              "@5": 0
+            }
+          }
+        },
+        "macro": {
+          "hit@1": 0.18681318681318682,
+          "hit@10": 0.38498168498168495,
+          "hit@5": 0.3435897435897436,
+          "mrr@10": 0.25013300191871624,
+          "ndcg@10": 0.2712756182106648,
+          "recall@1": 0.13826850322964312,
+          "recall@10": 0.3262224510281505,
+          "recall@5": 0.26892784238269063
+        },
+        "macro_n_types": 2,
+        "n_excluded": 0,
+        "n_questions": 86,
+        "no_answer": {
+          "abstain_rate": 0.25,
+          "false_abstain_rate": 0.2972972972972973,
+          "n_answerable": 74,
+          "n_no_answer": 12,
+          "tau": 0.5584375858306885
+        }
+      }
+    }
+  }
+}
