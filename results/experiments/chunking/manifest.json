@@ -1,0 +1,414 @@
+{
+  "experiment": "chunking",
+  "protocol_version": "eval-protocol-v2",
+  "runs": {
+    "kisa/chunk_max": {
+      "baseline": {
+        "retriever": "dense",
+        "stored_results": "results/baselines/kisa/dense.jsonl"
+      },
+      "created_at": "2026-10-29T15:59:17+00:00",
+      "description": {
+        "chunk_hit": {
+          "by_config": {
+            "1024/0": {
+              "dev": {
+                "by_type": {
+                  "cve_explicit": {
+                    "mean": 0.7777777777777778,
+                    "n_questions": 9,
+                    "n_with_gold_chunks": 9
+                  },
+                  "explanation_comparison": {
+                    "mean": 1.0,
+                    "n_questions": 5,
+                    "n_with_gold_chunks": 5
+                  },
+                  "product_symptom": {
+                    "mean": 1.0,
+                    "n_questions": 5,
+                    "n_with_gold_chunks": 5
+                  }
+                },
+                "macro_hit@10": 0.9259259259259259,
+                "n_questions": 19,
+                "n_with_gold_chunks": 19
+              }
+            },
+            "1024/128": {
+              "dev": {
+                "by_type": {
+                  "cve_explicit": {
+                    "mean": 0.7777777777777778,
+                    "n_questions": 9,
+                    "n_with_gold_chunks": 9
+                  },
+                  "explanation_comparison": {
+                    "mean": 1.0,
+                    "n_questions": 5,
+                    "n_with_gold_chunks": 5
+                  },
+                  "product_symptom": {
+                    "mean": 1.0,
+                    "n_questions": 5,
+                    "n_with_gold_chunks": 5
+                  }
+                },
+                "macro_hit@10": 0.9259259259259259,
+                "n_questions": 19,
+                "n_with_gold_chunks": 19
+              },
+              "test": {
+                "by_type": {
+                  "cve_explicit": {
+                    "mean": 0.36363636363636365,
+                    "n_questions": 11,
+                    "n_with_gold_chunks": 11
+                  },
+                  "explanation_comparison": {
+                    "mean": 1.0,
+                    "n_questions": 5,
+                    "n_with_gold_chunks": 5
+                  },
+                  "product_symptom": {
+                    "mean": 1.0,
+                    "n_questions": 7,
+                    "n_with_gold_chunks": 7
+                  }
+                },
+                "macro_hit@10": 0.787878787878788,
+                "n_questions": 23,
+                "n_with_gold_chunks": 23
+              }
+            },
+            "256/0": {
+              "dev": {
+                "by_type": {
+                  "cve_explicit": {
+                    "mean": 0.7777777777777778,
+                    "n_questions": 9,
+                    "n_with_gold_chunks": 9
+                  },
+                  "explanation_comparison": {
+                    "mean": 1.0,
+                    "n_questions": 5,
+                    "n_with_gold_chunks": 5
+                  },
+                  "product_symptom": {
+                    "mean": 1.0,
+                    "n_questions": 5,
+                    "n_with_gold_chunks": 5
+                  }
+                },
+                "macro_hit@10": 0.9259259259259259,
+                "n_questions": 19,
+                "n_with_gold_chunks": 19
+              }
+            },
+            "256/32": {
+              "dev": {
+                "by_type": {
+                  "cve_explicit": {
+                    "mean": 0.8888888888888888,
+                    "n_questions": 9,
+                    "n_with_gold_chunks": 9
+                  },
+                  "explanation_comparison": {
+                    "mean": 1.0,
+                    "n_questions": 5,
+                    "n_with_gold_chunks": 5
+                  },
+                  "product_symptom": {
+                    "mean": 1.0,
+                    "n_questions": 5,
+                    "n_with_gold_chunks": 5
+                  }
+                },
+                "macro_hit@10": 0.9629629629629629,
+                "n_questions": 19,
+                "n_with_gold_chunks": 19
+              }
+            },
+            "512/0": {
+              "dev": {
+                "by_type": {
+                  "cve_explicit": {
+                    "mean": 0.7777777777777778,
+                    "n_questions": 9,
+                    "n_with_gold_chunks": 9
+                  },
+                  "explanation_comparison": {
+                    "mean": 1.0,
+                    "n_questions": 5,
+                    "n_with_gold_chunks": 5
+                  },
+                  "product_symptom": {
+                    "mean": 1.0,
+                    "n_questions": 5,
+                    "n_with_gold_chunks": 5
+                  }
+                },
+                "macro_hit@10": 0.9259259259259259,
+                "n_questions": 19,
+                "n_with_gold_chunks": 19
+              }
+            },
+            "512/64": {
+              "dev": {
+                "by_type": {
+                  "cve_explicit": {
+                    "mean": 0.8888888888888888,
+                    "n_questions": 9,
+                    "n_with_gold_chunks": 9
+                  },
+                  "explanation_comparison": {
+                    "mean": 1.0,
+                    "n_questions": 5,
+                    "n_with_gold_chunks": 5
+                  },
+                  "product_symptom": {
+                    "mean": 1.0,
+                    "n_questions": 5,
+                    "n_with_gold_chunks": 5
+                  }
+                },
+                "macro_hit@10": 0.9629629629629629,
+                "n_questions": 19,
+                "n_with_gold_chunks": 19
+              }
+            }
+          },
+          "observed_on": "모델 실행 때의 관측값(--compare 범위 밖). dev는 격자 전체, test는 확정 설정만",
+          "rule": "정답 청크 = 정답 문서의 근거 구간(두 판정자 구간 전부, 제목 길이 + 1만큼 이동)과 1자 이상 겹치는 청크; 순위 = 청크 점수 내림차순 전체 순위에서 그 질문 unjudged 문서의 청크를 지운 목록(접기 없음); 질문 하나의 hit@10가 유형별 평균 -> 유형 단순 평균(macro)"
+        },
+        "chunk_stats": {
+          "1024/0": {
+            "max_chunks_per_doc": 23,
+            "n_chunks": 95,
+            "n_docs": 50,
+            "n_docs_with_2plus_chunks": 12
+          },
+          "1024/128": {
+            "max_chunks_per_doc": 26,
+            "n_chunks": 100,
+            "n_docs": 50,
+            "n_docs_with_2plus_chunks": 12
+          },
+          "256/0": {
+            "max_chunks_per_doc": 89,
+            "n_chunks": 291,
+            "n_docs": 50,
+            "n_docs_with_2plus_chunks": 41
+          },
+          "256/32": {
+            "max_chunks_per_doc": 102,
+            "n_chunks": 320,
+            "n_docs": 50,
+            "n_docs_with_2plus_chunks": 41
+          },
+          "512/0": {
+            "max_chunks_per_doc": 45,
+            "n_chunks": 158,
+            "n_docs": 50,
+            "n_docs_with_2plus_chunks": 26
+          },
+          "512/64": {
+            "max_chunks_per_doc": 51,
+            "n_chunks": 171,
+            "n_docs": 50,
+            "n_docs_with_2plus_chunks": 26
+          }
+        },
+        "chunking": {
+          "aggregation": "문서 점수 = 그 문서 청크 점수(정규화 벡터 내적)의 최댓값, 후보 = 코퍼스 전체 문서",
+          "chunk_id": "<문서 ID>#<색인 텍스트 문자 시작>-<끝> (반개구간, 텍스트 없음)",
+          "grid_labels": "size/overlap (토큰)",
+          "unit": "bge-m3 토크나이저로 색인 텍스트 전체를 한 번 토큰화(특수 토큰 제외)하고, 토큰 `size`개 창을 `size - overlap` 간격으로 민다. 마지막 창은 텍스트 끝까지(짧을 수 있음), 텍스트가 한 창보다 짧으면 청크 1개. 청크의 문자 구간은 첫 토큰 시작 ~ 마지막 토큰 끝(반개구간)이고 첫 청크는 0에서, 마지막 청크는 텍스트 끝에서 끝난다. 인코딩할 때 청크 텍스트는 다시 토큰화되므로 특수 토큰 2개가 더해진다."
+        },
+        "dense": {
+          "doc_encode_seconds_by_config": {
+            "1024/0": 77.17274783299945,
+            "1024/128": 100.6895229169968,
+            "256/0": 86.18775550000282,
+            "256/32": 96.24900725000043,
+            "512/0": 77.97382095800276,
+            "512/64": 94.51234754199686
+          },
+          "model": {
+            "device": "cpu",
+            "document_format": "청크 텍스트(색인 텍스트의 문자 구간), 청크마다 인코딩, 문서 절단 없음",
+            "dtype": "float32",
+            "max_seq_length": 8192,
+            "name": "BAAI/bge-m3",
+            "normalized": true,
+            "pooling": "cls",
+            "query_format": "질의 문자열 그대로(지시문 접두사 없음)",
+            "representation": "dense only (bge-m3의 sparse/colbert 헤드는 사용하지 않음)",
+            "revision": "5617a9f61b028005a4858fdac845db406aefb181"
+          },
+          "note": "dense 인덱스는 설정마다 점수를 내기 직전에 만든다(timing.index_seconds는 토큰화·청크 경계만)",
+          "runtime": {
+            "numpy": "2.5.3",
+            "python": "3.13.14",
+            "sentence_transformers": "6.1.0",
+            "torch": "2.14.1"
+          }
+        },
+        "public_records_with_2plus_chunks": {
+          "1024/0": 0,
+          "1024/128": 0,
+          "256/0": 1,
+          "256/32": 1,
+          "512/0": 1,
+          "512/64": 1
+        },
+        "tokens": {
+          "max_doc_tokens": 22747,
+          "n_docs": 50,
+          "n_docs_over_8192_tokens": 2,
+          "note": "색인 텍스트 전체 토큰화(특수 토큰 제외) 기준"
+        }
+      },
+      "environment": {
+        "cpu": "Apple M5 Pro",
+        "cpu_count": 18,
+        "machine": "arm64",
+        "omp_num_threads": "4",
+        "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.14"
+      },
+      "experiment": "chunking",
+      "fixed": {
+        "aggregation": "문서 점수 = 그 문서 청크 점수(정규화 벡터 내적)의 최댓값, 후보 = 코퍼스 전체 문서",
+        "chunk_id_format": "<문서 ID>#<색인 텍스트 문자 시작>-<끝> (반개구간, 텍스트 없음)",
+        "chunk_unit": "bge-m3 토크나이저로 색인 텍스트 전체를 한 번 토큰화(특수 토큰 제외)하고, 토큰 `size`개 창을 `size - overlap` 간격으로 민다. 마지막 창은 텍스트 끝까지(짧을 수 있음), 텍스트가 한 창보다 짧으면 청크 1개. 청크의 문자 구간은 첫 토큰 시작 ~ 마지막 토큰 끝(반개구간)이고 첫 청크는 0에서, 마지막 청크는 텍스트 끝에서 끝난다. 인코딩할 때 청크 텍스트는 다시 토큰화되므로 특수 토큰 2개가 더해진다.",
+        "dense": {
+          "name": "BAAI/bge-m3",
+          "revision": "5617a9f61b028005a4858fdac845db406aefb181"
+        },
+        "tokenizer": {
+          "name": "BAAI/bge-m3",
+          "revision": "5617a9f61b028005a4858fdac845db406aefb181"
+        }
+      },
+      "grid": {
+        "rows": [
+          {
+            "config": {
+              "overlap": 0,
+              "size": 256
+            },
+            "dev_macro_ndcg@10": 0.8970439311321435
+          },
+          {
+            "config": {
+              "overlap": 32,
+              "size": 256
+            },
+            "dev_macro_ndcg@10": 0.8978911109015764
+          },
+          {
+            "config": {
+              "overlap": 0,
+              "size": 512
+            },
+            "dev_macro_ndcg@10": 0.8622721368902271
+          },
+          {
+            "config": {
+              "overlap": 64,
+              "size": 512
+            },
+            "dev_macro_ndcg@10": 0.8849977646288215
+          },
+          {
+            "config": {
+              "overlap": 0,
+              "size": 1024
+            },
+            "dev_macro_ndcg@10": 0.8898470147610978
+          },
+          {
+            "config": {
+              "overlap": 128,
+              "size": 1024
+            },
+            "dev_macro_ndcg@10": 0.9191677542706643
+          }
+        ],
+        "selection_rule": "dev macro nDCG@10 최대, 같으면 격자 순서에서 앞선 설정"
+      },
+      "index_text": "'{title}\\n{body}' (공지 제목 + 줄바꿈 + 정규화 본문)",
+      "inputs": {
+        "corpus_manifest": {
+          "path": "fixtures/kisa/manifest.json",
+          "sha256": "bf670ecd666e77139ae0c53a7be0badb5bdd82e8ff54d4876d59290b68c8b0c4"
+        },
+        "corpus_metadata": {
+          "path": "fixtures/kisa/metadata.jsonl",
+          "sha256": "c1512e8d234e0dbe4d32430877e61775612dd2248046122f74e227d446737eaf"
+        },
+        "queries": {
+          "path": "eval/golden/golden_v1.jsonl",
+          "sha256": "2f94253c6c0551c536973c95b830dcf123e7acb858304fa8678812a19360d3dc"
+        }
+      },
+      "n_documents": 50,
+      "protocol_version": "eval-protocol-v2",
+      "reproduction_inputs": {},
+      "selected": {
+        "config": {
+          "overlap": 128,
+          "size": 1024
+        },
+        "dev_macro_ndcg@10": 0.9191677542706643,
+        "selected_on": "dev",
+        "tau": 0.6178503036499023,
+        "tau_selection": {
+          "dev_abstain_rate": 0.75,
+          "dev_false_abstain_rate": 0.10526315789473684,
+          "dev_j": 0.6447368421052632,
+          "n_candidates": 23,
+          "rule": "dev에서 abstain_rate - false_abstain_rate 최대, 같으면 가장 낮은 tau",
+          "tau": 0.6178503036499023
+        }
+      },
+      "splits_stored": [
+        "dev",
+        "test"
+      ],
+      "stored_results": {
+        "fields": [
+          "n_unjudged_removed",
+          "question_id",
+          "results",
+          "top1_score_raw"
+        ],
+        "path": "results/experiments/chunking/kisa/chunk_max.jsonl",
+        "ranking": "(점수 내림차순, 문서 ID 오름차순) 정렬 뒤 질문의 unjudged를 지운 condensed list",
+        "result_fields": [
+          "doc_id",
+          "rank",
+          "score"
+        ],
+        "top_n": 100
+      },
+      "test": {
+        "config": {
+          "overlap": 128,
+          "size": 1024
+        },
+        "config_hash": "9c16a4d7995a35f93b5dfbb9e53b331b8b3521a6e825a91551d5c18f66061a8d",
+        "executed_at": "2026-10-29T15:59:17+00:00",
+        "tau": 0.6178503036499023
+      },
+      "timing": {
+        "index_seconds": 3.9379061660001753,
+        "n_queries_timed": 52,
+        "query_latency_median_seconds": 0.0961720624982263
+      },
+      "track": "kisa",
+      "variant": "chunk_max"
+    }
+  }
+}
