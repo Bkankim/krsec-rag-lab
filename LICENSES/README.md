@@ -10,7 +10,7 @@
 
 | 소스 | 정책 | 확인 상태 (2026-09-19) | 리포 포함 범위 |
 |---|---|---|---|
-| KISA 보안공지 (boho.or.kr) | 정책 원문 **미확인** - 사이트에 공공누리 마크·저작권 정책 페이지가 없고 "All rights reserved" 푸터만 확인됨 | 허용 여부 미확인. **확인 전까지 프로젝트 방침으로 본문 미배포** | 수집 스크립트 + 메타데이터 인덱스(URL·제목·날짜·게시물 ID·추출 CVE ID)만. 본문은 로컬 캐시(gitignore) |
+| KISA 보안공지 (boho.or.kr) | 정책 원문 **미확인** - 사이트에 공공누리 마크·저작권 정책 페이지가 없고 "All rights reserved" 푸터만 확인됨 | 허용 여부 미확인. **확인 전까지 프로젝트 방침으로 본문 미배포** | 수집 스크립트 + 메타데이터 인덱스(URL·제목·날짜·게시물 ID·추출 CVE ID)만. 전체 코퍼스의 메타데이터 인덱스(`fixtures/kisa_full/metadata.jsonl`)와 manifest(`fixtures/kisa_full/manifest.json`)도 URL·제목·날짜·nttId·추출 CVE ID·본문 sha256만 담고, 본문은 로컬 캐시 `data/kisa_full/`(gitignore) |
 | NVD (nvd.nist.gov) | 미국 연방정부 저작물 + CVE 레코드는 MITRE 고지 재현 조건 - [Terms of Use](https://nvd.nist.gov/developers/terms-of-use) | 약관 확인 (2026-10-29 재확인: MITRE CVE Terms of Use, NVD API Terms of Use) | `fixtures/nvd/cves.jsonl`에 선정 필드만 담은 서브셋 포함. MITRE 저작권·라이선스 고지와 NVD 고지를 `fixtures/nvd/NOTICE.md`에 동봉(선정 필드로 수정한 콘텐츠이므로 NVD 공식 데이터로 표기하지 않는다). 원 응답 캐시는 `data/nvd/`(gitignore). API 키 커밋 금지 |
 | CISA KEV | CC0 1.0 - [license.txt](https://www.cisa.gov/sites/default/files/licenses/kev/license.txt) | 원문 확인 | `fixtures/nvd/kev.json`에 KISA 인용 CVE와 겹치는 항목만 포함. 전체 카탈로그 원본은 `data/nvd/`(gitignore) |
 | SigmaHQ rules | [DRL 1.1](https://github.com/SigmaHQ/Detection-Rule-License) - author·원본 링크·라이선스 표시 보존 | 원문 확인 | 초기 범위 제외. 도입 시 룰 파일의 author 필드 보존 + DRL 전문 + 원본 링크 동봉 |
