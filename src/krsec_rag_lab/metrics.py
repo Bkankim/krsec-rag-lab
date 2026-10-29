@@ -17,16 +17,24 @@ from dataclasses import dataclass
 
 
 def _validate(ranked: Sequence[str], k: int) -> None:
+    if isinstance(ranked, str | bytes):
+        raise ValueError("ranked must be a sequence of ids, not a single str/bytes")  # noqa: TRY004 - 입력 오류는 ValueError로 통일(7.1)
     if k <= 0:
         raise ValueError(f"k must be positive, got {k}")
     if len(set(ranked)) != len(ranked):
         raise ValueError("ranked contains duplicate ids; fold duplicates before scoring")
 
 
+def _gold_set(gold: Iterable[str]) -> set[str]:
+    if isinstance(gold, str | bytes):
+        raise ValueError("gold must be an iterable of ids, not a single str/bytes")  # noqa: TRY004 - 입력 오류는 ValueError로 통일(7.1)
+    return set(gold)
+
+
 def hit_at_k(ranked: Sequence[str], gold: Iterable[str], k: int) -> float | None:
     """top-k 안에 정답이 하나라도 있으면 1.0, 없으면 0.0. G가 비면 None."""
     _validate(ranked, k)
-    gold_set = set(gold)
+    gold_set = _gold_set(gold)
     if not gold_set:
         return None
     return 1.0 if gold_set.intersection(ranked[:k]) else 0.0
@@ -35,7 +43,7 @@ def hit_at_k(ranked: Sequence[str], gold: Iterable[str], k: int) -> float | None
 def recall_at_k(ranked: Sequence[str], gold: Iterable[str], k: int) -> float | None:
     """|G ∩ top_k| / |G|. 분모는 min(|G|, k)가 아니라 |G|다. G가 비면 None."""
     _validate(ranked, k)
-    gold_set = set(gold)
+    gold_set = _gold_set(gold)
     if not gold_set:
         return None
     return len(gold_set.intersection(ranked[:k])) / len(gold_set)
@@ -44,7 +52,7 @@ def recall_at_k(ranked: Sequence[str], gold: Iterable[str], k: int) -> float | N
 def reciprocal_rank_at_k(ranked: Sequence[str], gold: Iterable[str], k: int) -> float | None:
     """첫 정답의 순위가 k 이내이면 1/순위, 아니면 0.0. G가 비면 None. MRR@k의 한 질의 값."""
     _validate(ranked, k)
-    gold_set = set(gold)
+    gold_set = _gold_set(gold)
     if not gold_set:
         return None
     for rank, doc_id in enumerate(ranked[:k], start=1):
@@ -59,7 +67,7 @@ def ndcg_at_k(ranked: Sequence[str], gold: Iterable[str], k: int) -> float | Non
     IDCG는 min(|G|, k)개 항이라 정답 수가 k보다 많아도 완벽한 순위가 1.0을 받는다.
     """
     _validate(ranked, k)
-    gold_set = set(gold)
+    gold_set = _gold_set(gold)
     if not gold_set:
         return None
     dcg = sum(
@@ -129,5 +137,10 @@ def false_abstain_rate(top_scores: Iterable[float | None], tau: float) -> float 
 
 
 def sort_by_score(scores: Mapping[str, float]) -> list[str]:
-    """문서 점수를 `(-score, doc_id)` 오름차순으로 정렬해 결정적인 순위를 만든다(7.4)."""
+    """문서 점수를 `(-score, doc_id)` 오름차순으로 정렬해 결정적인 순위를 만든다(7.4).
+
+    NaN 점수는 비교가 항상 False라 입력 순서에 따라 순위가 달라지므로 ValueError다.
+    """
+    if any(math.isnan(score) for score in scores.values()):
+        raise ValueError("scores contain NaN; the order would depend on input order")
     return sorted(scores, key=lambda doc_id: (-scores[doc_id], doc_id))

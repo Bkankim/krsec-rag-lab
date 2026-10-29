@@ -283,3 +283,60 @@ def test_discount_is_one_over_log2_i_plus_one():
     # 1위 할인이 1이다: 정답이 1위에만 있고 |G| = 1이면 nDCG = 1.0, 2위면 1/log2(3)
     assert ndcg_at_k(["d1"], {"d1"}, 1) == 1.0
     assert ndcg_at_k(["d9", "d1"], {"d1"}, 2) == pytest.approx(1 / math.log2(3))
+
+
+# --- 입력 거부: 조용한 0점 대신 ValueError (final-review) -----------------------------------------
+
+
+@pytest.mark.parametrize(
+    "order", [("d7", "d2", "d9"), ("d9", "d2", "d7")], ids=["nan-first", "nan-last"]
+)
+def test_sort_by_score_rejects_nan(order):
+    # NaN은 모든 비교가 False라 입력 순서에 따라 순위가 달라진다
+    scores = {doc: (math.nan if doc == "d7" else 0.8) for doc in order}
+    with pytest.raises(ValueError, match="NaN"):
+        sort_by_score(scores)
+
+
+@pytest.mark.parametrize("metric", METRICS)
+@pytest.mark.parametrize("gold", ["d2", b"d2"], ids=["str", "bytes"])
+def test_bare_str_or_bytes_gold_is_rejected(metric, gold):
+    # set("d2") == {"d", "2"}로 쪼개지면 모든 지표가 조용히 0이 된다
+    with pytest.raises(ValueError, match="gold"):
+        metric(["d2", "d7"], gold, 3)
+
+
+@pytest.mark.parametrize("metric", METRICS)
+def test_bare_str_ranked_is_rejected(metric):
+    with pytest.raises(ValueError, match="ranked"):
+        metric("d2d7", {"d2"}, 3)
+
+
+@pytest.mark.parametrize(
+    ("call", "match"),
+    [
+        pytest.param(
+            lambda: ann_recall_at_k(["c1", "c2"], ["c1"], 0), "k must be positive", id="ann-k0"
+        ),
+        pytest.param(
+            lambda: ann_recall_at_k(["c1", "c2"], ["c1"], -1), "k must be positive", id="ann-k-1"
+        ),
+        pytest.param(
+            lambda: ann_recall_at_k(["c1", "c2", "c3"], ["c1", "c1", "c3"], 3),
+            "duplicate",
+            id="ann-dup-in-ann",
+        ),
+        pytest.param(
+            lambda: ann_recall_at_k(["c1", "c1", "c3"], ["c1", "c3"], 3),
+            "duplicate",
+            id="ann-dup-in-exact",
+        ),
+        pytest.param(lambda: mrr_at_k([(["d1"], {"d1"})], 0), "k must be positive", id="mrr-k0"),
+        pytest.param(lambda: mrr_at_k([(["d1"], {"d1"})], -1), "k must be positive", id="mrr-k-1"),
+        pytest.param(lambda: mrr_at_k([(["d1", "d1"], {"d1"})], 3), "duplicate", id="mrr-dup"),
+        pytest.param(lambda: mrr_at_k([(["d1"], "d1")], 3), "gold", id="mrr-str-gold"),
+    ],
+)
+def test_ann_recall_and_mrr_validate_input(call, match):
+    with pytest.raises(ValueError, match=match):
+        call()
