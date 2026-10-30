@@ -1,6 +1,6 @@
 {
   "schema": "m5-judgments-v1",
-  "created_at": "2026-10-30T00:12:48Z",
+  "created_at": "2026-10-30T00:32:16Z",
   "status": "complete",
   "problems": [],
   "k": 3,
@@ -67,6 +67,7 @@
   "instruction_sha256": "2d1492fccbdafb48aeb5ad30f5c421e245cec661ca0975ef1b90872212363d45",
   "system_prompt_sha256": "3fb41b397a2cf7c97f293ba12c549483c6902f6cfbdd885f22691a4b8fac514b",
   "answer_schema_sha256": "9d207200250597d2ffb68cb7bd009828b3d6739badf28994d8291a0cc5006da8",
+  "cache_config_sha256": "0daf25510c2e8ceb95dc1e94155ced20c95562fe92e53a02d8da589a58a26faa",
   "labels": {
     "faithfulness": [
       "supported",

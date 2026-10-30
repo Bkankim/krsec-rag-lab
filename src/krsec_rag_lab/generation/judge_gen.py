@@ -38,6 +38,11 @@ JUDGMENT_DIR = Path("results/m5/judgments")
 KISA_LOCAL_CACHE = Path("data/m5/generation")
 SCOPE_SPLITS = {"public": ("test",), "kisa": ("dev", "test")}
 SUMMARY_SPLITS = {"public": ("test",), "kisa": ("dev", "test", "all")}
+STATUS_SAMPLE = "sample"
+STATUS_PARTIAL = "partial"
+STATUS_COMPLETE = "complete"
+STATUS_INCOMPLETE = "incomplete"
+STORED_STATUSES = (STATUS_SAMPLE, STATUS_PARTIAL, STATUS_COMPLETE, STATUS_INCOMPLETE)
 MIN_TARGETS = 20
 VALID_FLOOR = 0.9
 TOLERANCE = 1e-9
@@ -413,10 +418,12 @@ class LimitLog:
         self._lock = threading.Lock()
         if path is not None and path.is_file():
             self._events = json.loads(path.read_text(encoding="utf-8"))
-            for event in self._events:
-                # 이전 실행이 대기 중에 끊긴 경우: 지금 재개한 것으로 닫는다
-                if event["resumed_at"] is None:
-                    self._close(event)
+            stale = [event for event in self._events if event["resumed_at"] is None]
+            for event in stale:
+                # 이전 실행이 대기 중에 끊긴 경우: 지금 재개한 것으로 닫고 저장한다(다시 열 때마다 대기 시간이 늘지 않게)
+                self._close(event)
+            if stale:
+                self._save()
 
     def _save(self) -> None:
         if self.path is not None:
@@ -600,6 +607,9 @@ def plan_track(
 ) -> list[Item]:
     """한 트랙의 판정 계획. KISA는 `kisa_root`(로컬 캐시)와 `load_body(nttId, 문서 항목)`가 필요하다."""
     gen_manifest = json.loads((root / generation_dir / "manifest.json").read_text(encoding="utf-8"))
+    if gen_manifest["tracks"][track]["inputs"] != data.input_fingerprints(track, root):
+        # 질문·gold·코퍼스가 생성 뒤에 바뀌었으면 옛 답변을 지금 정답 자료로 채점하게 된다
+        raise InputMismatch(f"{track}: input files differ from the generation manifest's inputs")
     rows = load_generation_rows(track, root, generation_dir)
     questions = {q.question_id: q for q in data.load_questions(track, root)}
     if track == "public":
@@ -991,6 +1001,23 @@ def jsonl_text(rows: Sequence[Mapping]) -> str:
     return "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows)
 
 
+def manifest_status(tracks: set[str], problems: Sequence[str], sample: bool) -> str:
+    """소표본 = sample, 트랙 일부만 = partial, 전체 트랙에서 완료 조건 위반 없음 = complete, 있음 = incomplete."""
+    if sample:
+        return STATUS_SAMPLE
+    if tracks != set(data.TRACKS):
+        return STATUS_PARTIAL
+    return STATUS_INCOMPLETE if problems else STATUS_COMPLETE
+
+
+def cache_config_sha256(judges: Mapping[str, judge.Judge]) -> str:
+    """호출 캐시 디렉터리 이름에 쓰는 설정 해시. `CallCache.key`가 덮지 않는 시스템 프롬프트·스키마·플래그를 포함한다."""
+    flags = {name: [obj.model, *obj.describe()["flags"]] for name, obj in judges.items()}
+    return judge.text_sha256(
+        json.dumps([INSTRUCTION_SHA256, SYSTEM_PROMPT_SHA256, SCHEMA_SHA256, flags], sort_keys=True)
+    )
+
+
 def new_manifest(
     *,
     judges: Mapping[str, judge.Judge],
@@ -1007,7 +1034,7 @@ def new_manifest(
     return {
         "schema": SCHEMA,
         "created_at": judge._now(),
-        "status": "sample" if sample else ("complete" if not problems else "incomplete"),
+        "status": manifest_status(set(rows_by_track), problems, sample),
         "problems": list(problems),
         "k": JUDGE_K,
         "generation": {
@@ -1026,6 +1053,7 @@ def new_manifest(
         "instruction_sha256": INSTRUCTION_SHA256,
         "system_prompt_sha256": SYSTEM_PROMPT_SHA256,
         "answer_schema_sha256": SCHEMA_SHA256,
+        "cache_config_sha256": cache_config_sha256(judges),
         "labels": {axis: list(LABELS[axis]) for axis in AXES},
         "reason_codes": {
             axis: {label: list(codes) for label, codes in REASON_CODES[axis].items()}
@@ -1057,7 +1085,12 @@ def read_jsonl(path: Path) -> list[dict]:
     return pipeline.read_jsonl_rows(path)
 
 
-def check_stored(root: Path, out_dir: Path, generation_dir: Path = GENERATION_DIR) -> list[str]:
+def check_stored(
+    root: Path,
+    out_dir: Path,
+    generation_dir: Path = GENERATION_DIR,
+    require_complete: bool = False,
+) -> list[str]:
     """저장본 검사(모델·API·KISA 캐시 없이): manifest 해시, 행 키·값, 생성 행과의 대응, summary.json 재계산 대조."""
     manifest_path = out_dir / "manifest.json"
     if not manifest_path.is_file():
@@ -1070,8 +1103,15 @@ def check_stored(root: Path, out_dir: Path, generation_dir: Path = GENERATION_DI
         problems.append("generation run_id differs from results/m5/generation/manifest.json")
     if manifest["generation"]["topk_sha256"] != data.file_sha256(gen_dir / "topk.json"):
         problems.append("topk.json sha256 differs from manifest")
-    if manifest["instruction_sha256"] != INSTRUCTION_SHA256:
-        problems.append("judge instruction sha256 differs from the code")
+    if manifest["generation"]["manifest_sha256"] != data.file_sha256(gen_dir / "manifest.json"):
+        problems.append("generation manifest.json sha256 differs from manifest")
+    for key, current in (
+        ("instruction_sha256", INSTRUCTION_SHA256),
+        ("system_prompt_sha256", SYSTEM_PROMPT_SHA256),
+        ("answer_schema_sha256", SCHEMA_SHA256),
+    ):
+        if manifest[key] != current:
+            problems.append(f"{key} differs from the code")
     rows_by_track: dict[str, list[dict]] = {}
     for track, block in manifest["tracks"].items():
         path = out_dir / block["file"]
@@ -1104,8 +1144,20 @@ def check_stored(root: Path, out_dir: Path, generation_dir: Path = GENERATION_DI
             problems.append(
                 f"{cell['track']}/{cell['split']}/{cell['query_type']}: topk cell differs from rows"
             )
-    if manifest["status"] == "complete":
-        problems += gate_problems(recomputed)
+    status = manifest["status"]
+    if status not in STORED_STATUSES:
+        problems.append(f"unknown manifest status {status!r}")
+    elif status != STATUS_SAMPLE:
+        gate = gate_problems(recomputed)
+        problems += gate
+        if set(rows_by_track) != set(data.TRACKS):
+            expected = STATUS_PARTIAL
+        else:
+            expected = STATUS_INCOMPLETE if gate else STATUS_COMPLETE
+        if status != expected:
+            problems.append(f"manifest status {status!r} differs from the recomputed {expected!r}")
+    if require_complete and status != STATUS_COMPLETE:
+        problems.append(f"committed results must be a complete run, manifest status is {status!r}")
     return problems
 
 

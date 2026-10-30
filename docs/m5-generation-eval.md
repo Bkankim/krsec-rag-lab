@@ -6,7 +6,7 @@ k=3 생성 결과(`docs/m5-generation.md`)의 답을 faithfulness(문맥이 뒷�
 
 - 코드: `src/krsec_rag_lab/generation/judge_gen.py`, CLI `scripts/judge_generation.py`, 테스트 `tests/test_judge_generation.py`
 - 결과: `results/m5/judgments/{manifest.json, public.jsonl, kisa.jsonl, summary.json}`
-- 판정자 호출 캐시(`data/m5/judgments/cache`, gitignore)에는 라벨·reason code·요청 해시만 있다. KISA 문맥·근거 구간·생성 답변 원문은
+- 판정자 호출 캐시(`data/m5/judgments/cache/cfg-<설정 해시>`, gitignore; 지시문·시스템 프롬프트·스키마·플래그가 바뀌면 다른 디렉터리를 쓴다)에는 라벨·reason code·요청 해시만 있다. KISA 문맥·근거 구간·생성 답변 원문은
   디스크(결과, 캐시, 로그)에 남기지 않는다(`LICENSES/README.md`).
 
 ## 판정 규칙
@@ -51,12 +51,13 @@ k=3 생성 결과(`docs/m5-generation.md`)의 답을 faithfulness(문맥이 뒷�
 
 ## 입력 정합
 
+- 입력 파일: 생성 `manifest.json`의 `tracks[track].inputs` 해시가 지금의 질의셋·정답·코퍼스 파일과 같아야 한다(생성 뒤에 바뀌었으면 exit 1).
 - 문맥: #65 행의 `retrieved`와 `pipeline.build_context`로 k=3 문맥을 다시 만들고 행의 `context_sha256`·`truncated`·`context_chars`와
   하나라도 다르면 실패한다(검색을 다시 하지 않는다).
 - KISA 답변 원문: `<KISA-ROOT>/data/m5/generation/kisa_k3.jsonl`의 `run_id`가 커밋된 `results/m5/generation/manifest.json`과 같고,
   답변을 뺀 나머지 값이 커밋된 `kisa_k3.jsonl` 행과 같고, 질문 집합이 같아야 한다(다르면 exit 1).
 - 근거 구간: 오프셋이 기대는 파서 버전(`kisa-html-v1`)이 `fixtures/kisa/manifest.json`과 같고 본문 길이 안에 들어와야 한다.
-- 저장본 검사(`--summary-only`)는 판정 행이 커밋된 k=3 생성 행과 질문 집합·분할·유형·상태가 대응하는지, `manifest.json`의 해시가
+- 저장본 검사(`--summary-only`)는 판정 지시문·시스템 프롬프트·스키마 해시가 코드와 같은지, `manifest.json`의 `status`(`complete` | `incomplete` | `partial` | `sample`)가 다시 계산한 완료 조건과 맞는지, 커밋 결과는 `complete`인지도 본다. 또 판정 행이 커밋된 k=3 생성 행과 질문 집합·분할·유형·상태가 대응하는지, `manifest.json`의 해시가
   파일과 같은지도 본다.
 
 ## 재현

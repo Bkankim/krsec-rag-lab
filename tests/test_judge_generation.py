@@ -649,6 +649,16 @@ def test_an_interrupted_wait_is_closed_when_the_log_is_reopened(tmp_path):
     assert event["resumed_at"] is not None and event["waited_seconds"] >= 0
 
 
+def test_closing_an_interrupted_wait_is_saved_so_reopening_does_not_extend_it(tmp_path):
+    path = tmp_path / "limit_events.json"
+    jg.LimitLog(path).stop("B", LIMIT_MESSAGE)
+    first = jg.LimitLog(path).events()[0]
+    on_disk = json.loads(path.read_text(encoding="utf-8"))[0]
+    assert on_disk["resumed_at"] == first["resumed_at"] is not None
+    again = jg.LimitLog(path).events()[0]
+    assert again == first  # 다시 열어도 같은 값
+
+
 def test_other_judge_errors_are_not_treated_as_a_usage_limit():
     items = basic_plan(1)
 
@@ -1033,6 +1043,63 @@ def test_stored_outputs_that_drift_from_the_manifest_or_generation_fail(tmp_path
     assert jg.check_stored(tmp_path, out)
 
 
+def rewrite_manifest(out, **changes):
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    manifest.update(changes)
+    (out / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("changes", "needle"),
+    [
+        ({"system_prompt_sha256": "0" * 64}, "system_prompt_sha256"),
+        ({"answer_schema_sha256": "0" * 64}, "answer_schema_sha256"),
+        ({"instruction_sha256": "0" * 64}, "instruction_sha256"),
+        ({"status": "bogus"}, "unknown manifest status"),
+        (
+            {"status": "complete"},
+            "differs from the recomputed",
+        ),  # 트랙 일부뿐인 저장본은 complete가 아니다
+        ({"status": "incomplete"}, "differs from the recomputed"),
+    ],
+)
+def test_manifest_fields_that_drift_from_the_code_or_the_rows_fail_the_check(
+    tmp_path, changes, needle
+):
+    out = write_synthetic_repo(tmp_path)
+    rewrite_manifest(out, **changes)
+    assert any(needle in problem for problem in jg.check_stored(tmp_path, out))
+
+
+def test_generation_manifest_edited_with_the_same_run_id_fails_the_check(tmp_path):
+    out = write_synthetic_repo(tmp_path)
+    gen = tmp_path / jg.GENERATION_DIR / "manifest.json"
+    gen.write_text(json.dumps({"run_id": "run-1", "model": {"name": "edited"}}), encoding="utf-8")
+    assert any("manifest.json sha256" in p for p in jg.check_stored(tmp_path, out))
+
+
+def test_incomplete_stored_run_fails_the_check_and_committed_results_must_be_complete(tmp_path):
+    out = write_synthetic_repo(tmp_path)  # 판정 대상 5건(<20)인 공개 트랙만
+    rewrite_manifest(out, status="partial")
+    problems = jg.check_stored(tmp_path, out)
+    assert any("judged targets" in p for p in problems)  # 20건 미만이면 partial이어도 게이트 위반
+    assert any("complete run" in p for p in jg.check_stored(tmp_path, out, require_complete=True))
+
+
+def test_cache_config_changes_with_the_system_prompt_schema_or_flags(monkeypatch):
+    judges = {"A": fake("A", lambda *_: GOOD), "B": fake("B", lambda *_: GOOD)}
+    base = jg.cache_config_sha256(judges)
+    assert base == jg.cache_config_sha256(judges)
+    monkeypatch.setattr(jg, "SYSTEM_PROMPT_SHA256", "1" * 64)
+    assert jg.cache_config_sha256(judges) != base
+    monkeypatch.undo()
+    monkeypatch.setattr(jg, "SCHEMA_SHA256", "2" * 64)
+    assert jg.cache_config_sha256(judges) != base
+    monkeypatch.undo()
+    judges["A"].model = "other-model"
+    assert jg.cache_config_sha256(judges) != base
+
+
 def test_rows_not_matching_the_generation_rows_fail_the_check(tmp_path):
     out = write_synthetic_repo(tmp_path)
     gen_path = tmp_path / jg.GENERATION_DIR / "public_k3.jsonl"
@@ -1087,7 +1154,7 @@ def test_cli_full_public_run_with_fake_judges_passes_the_gate_and_summary_only_m
         == 0
     )
     manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["status"] == "complete" and manifest["problems"] == []
+    assert manifest["status"] == "partial" and manifest["problems"] == []  # 트랙 일부만
     assert manifest["tracks"]["public"]["n_judged"] >= jg.MIN_TARGETS
     assert judge_generation.main(["--summary-only", "--out-dir", str(out)]) == 0
 
@@ -1100,7 +1167,9 @@ def test_cli_exits_one_when_fewer_than_90_percent_are_valid_for_both_judges(tmp_
     )
     assert code == 1
     manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["status"] == "incomplete" and manifest["problems"]
+    assert (
+        manifest["status"] == "partial" and manifest["problems"]
+    )  # 트랙 일부만, 게이트 위반은 problems에
     retries = {(e["judge"], e["kind"]): e["n"] for e in manifest["calls"]["by_judge_kind"]}
     assert retries[("B", "retry")] == retries[("B", "judge")] > 0  # 질문마다 재질의 1회
 
@@ -1119,6 +1188,46 @@ def test_cli_exit_codes_for_usage_limit_and_judge_errors(tmp_path):
 
     assert judge_generation.main([*base, *out("a")], judges=cli_judges(limit)) == 3
     assert judge_generation.main([*base, *out("b")], judges=cli_judges(broken)) == 2
+
+
+def test_sample_cannot_overwrite_the_committed_dir_through_an_equivalent_path(tmp_path):
+    for alias in (
+        "results/m5/judgments/../judgments",
+        str(ROOT / "results/m5/judgments/../judgments"),
+        "./results/m5/judgments",
+    ):
+        with pytest.raises(SystemExit):
+            judge_generation.main(["--track", "public", "--limit", "3", "--out-dir", alias])
+    link = tmp_path / "link"
+    link.symlink_to(ROOT / "results/m5/judgments", target_is_directory=True)
+    with pytest.raises(SystemExit):
+        judge_generation.main(["--track", "public", "--limit", "3", "--out-dir", str(link)])
+
+
+@pytest.mark.parametrize("tracks", [["public"], ["kisa"]])
+def test_single_track_run_cannot_write_to_the_committed_dir(tracks):
+    with pytest.raises(SystemExit):
+        judge_generation.main(["--track", *tracks, "--kisa-root", "x"])
+
+
+def test_inputs_changed_since_generation_stop_the_run(monkeypatch, tmp_path):
+    assert jg.plan_track("public", ROOT)  # 커밋된 입력은 생성 manifest의 해시와 같다
+    real = data.input_fingerprints
+
+    def changed(track, root):
+        fingerprints = real(track, root)
+        fingerprints["queries"] = {**fingerprints["queries"], "sha256": "0" * 64}
+        return fingerprints
+
+    monkeypatch.setattr(data, "input_fingerprints", changed)
+    with pytest.raises(jg.InputMismatch):
+        jg.plan_track("public", ROOT)
+    assert (
+        judge_generation.main(
+            ["--track", "public", "--limit", "1", "--out-dir", str(tmp_path / "x")]
+        )
+        == 1
+    )
 
 
 def test_cli_argument_errors(tmp_path):

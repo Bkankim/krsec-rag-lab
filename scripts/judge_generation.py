@@ -58,7 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--cache-dir",
         type=Path,
         default=CACHE_DIR,
-        help="판정 호출 캐시(라벨·코드·요청 해시만). 기본값 data/m5/judgments/cache (gitignore)",
+        help="판정 호출 캐시 위치(라벨·코드·요청 해시만). 기본값 data/m5/judgments/cache (gitignore). 그 아래 설정 해시별 하위 디렉터리를 쓴다",
     )
     parser.add_argument("--jobs", type=int, default=3, help="판정자마다 동시에 보내는 호출 수")
     parser.add_argument(
@@ -86,11 +86,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def resolve(path: Path) -> Path:
-    return path if path.is_absolute() else ROOT / path
+    return (path if path.is_absolute() else ROOT / path).resolve()
 
 
 def summary_only(out_dir: Path) -> int:
-    problems = judge_gen.check_stored(ROOT, out_dir)
+    committed = out_dir == resolve(judge_gen.JUDGMENT_DIR)
+    problems = judge_gen.check_stored(ROOT, out_dir, require_complete=committed)
     if problems:
         for problem in problems:
             print(f"error: {problem}", file=sys.stderr)
@@ -133,6 +134,11 @@ def main(argv: list[str] | None = None, *, judges: Mapping[str, judge.Judge] | N
         parser.error("--limit must be a positive integer")
     if args.limit is not None and out_dir == resolve(judge_gen.JUDGMENT_DIR):
         parser.error("--limit needs --out-dir (a sample must not overwrite the committed results)")
+    if out_dir == resolve(judge_gen.JUDGMENT_DIR) and set(args.track) != set(data.TRACKS):
+        parser.error(
+            "the committed results hold both tracks; a single-track run needs --out-dir "
+            "(otherwise the other track silently drops out of manifest.json and summary.json)"
+        )
     if "kisa" in args.track and args.kisa_root is None:
         parser.error("--kisa-root is required for the kisa track")
 
@@ -154,7 +160,8 @@ def main(argv: list[str] | None = None, *, judges: Mapping[str, judge.Judge] | N
                 judge_gen.plan_track(track, ROOT, kisa_root=args.kisa_root, load_body=load_body),
                 args.limit,
             )
-            for track in args.track
+            for track in data.TRACKS
+            if track in args.track
         }
     except judge_gen.InputMismatch as error:
         print(f"error: {error}", file=sys.stderr)
@@ -170,7 +177,8 @@ def main(argv: list[str] | None = None, *, judges: Mapping[str, judge.Judge] | N
         print(f"{track}: {len(items)} rows, {n_judged} to judge", file=sys.stderr, flush=True)
 
     judges = judges or judge_gen.default_judges()
-    cache_dir = resolve(args.cache_dir)
+    # CallCache.key는 시스템 프롬프트·스키마·플래그를 덮지 않는다: 설정마다 캐시 디렉터리를 나눠 옛 라벨이 새 설정으로 재사용되지 않게 한다
+    cache_dir = resolve(args.cache_dir) / f"cfg-{judge_gen.cache_config_sha256(judges)[:12]}"
     cache = judge.CallCache(cache_dir)
     log = judge_gen.LimitLog(cache_dir / STATE_NAME)
     try:
