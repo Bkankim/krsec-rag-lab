@@ -1,0 +1,1280 @@
+{
+  "schema": "m5-judgments-v1",
+  "k": 3,
+  "tracks": {
+    "public": {
+      "n_judged": 63,
+      "n_valid_both": 63,
+      "valid_rate": 1.0,
+      "n_valid_A": 63,
+      "valid_rate_A": 1.0,
+      "n_valid_B": 63,
+      "valid_rate_B": 1.0
+    },
+    "kisa": {
+      "n_judged": 39,
+      "n_valid_both": 39,
+      "valid_rate": 1.0,
+      "n_valid_A": 39,
+      "valid_rate_A": 1.0,
+      "n_valid_B": 39,
+      "valid_rate_B": 1.0
+    }
+  },
+  "cells": [
+    {
+      "track": "public",
+      "split": "test",
+      "query_type": "cve_explicit",
+      "n_rows": 35,
+      "n_judged": 35,
+      "n_skipped_abstain": 0,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 35,
+        "n_both_valid": 35,
+        "n_invalid": 0,
+        "n_agree": 33,
+        "n_disagree": 2,
+        "agreement_rate": 0.9428571428571428,
+        "disagreement_rate": 0.05714285714285714,
+        "confirmed_counts": {
+          "supported": 21,
+          "partially_supported": 12,
+          "unsupported": 0
+        },
+        "n_confirmed_positive": 21,
+        "confirmed_positive_rate": 0.6,
+        "kappa": {
+          "n": 35,
+          "value": 0.877622,
+          "observed_agreement": 0.942857,
+          "expected_agreement": 0.533061,
+          "null_reason": null
+        }
+      },
+      "correctness": {
+        "n": 35,
+        "n_both_valid": 35,
+        "n_invalid": 0,
+        "n_agree": 30,
+        "n_disagree": 5,
+        "agreement_rate": 0.8571428571428571,
+        "disagreement_rate": 0.14285714285714285,
+        "confirmed_counts": {
+          "correct": 22,
+          "partially_correct": 8,
+          "incorrect": 0
+        },
+        "n_confirmed_positive": 22,
+        "confirmed_positive_rate": 0.6285714285714286,
+        "kappa": {
+          "n": 35,
+          "value": 0.667932,
+          "observed_agreement": 0.857143,
+          "expected_agreement": 0.569796,
+          "null_reason": null
+        }
+      },
+      "machine": {
+        "n_questions": 35,
+        "n_no_answer": 0,
+        "n_answerable": 35,
+        "n_cited_answers": 35,
+        "correct_abstain_rate": null,
+        "false_abstain_rate": 0.0,
+        "citation_hit_rate": 1.0
+      }
+    },
+    {
+      "track": "public",
+      "split": "test",
+      "query_type": "product_symptom",
+      "n_rows": 39,
+      "n_judged": 28,
+      "n_skipped_abstain": 11,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 28,
+        "n_both_valid": 28,
+        "n_invalid": 0,
+        "n_agree": 27,
+        "n_disagree": 1,
+        "agreement_rate": 0.9642857142857143,
+        "disagreement_rate": 0.03571428571428571,
+        "confirmed_counts": {
+          "supported": 27,
+          "partially_supported": 0,
+          "unsupported": 0
+        },
+        "n_confirmed_positive": 27,
+        "confirmed_positive_rate": 0.9642857142857143,
+        "kappa": {
+          "n": 28,
+          "value": 0.0,
+          "observed_agreement": 0.964286,
+          "expected_agreement": 0.964286,
+          "null_reason": null
+        }
+      },
+      "correctness": {
+        "n": 28,
+        "n_both_valid": 28,
+        "n_invalid": 0,
+        "n_agree": 26,
+        "n_disagree": 2,
+        "agreement_rate": 0.9285714285714286,
+        "disagreement_rate": 0.07142857142857142,
+        "confirmed_counts": {
+          "correct": 14,
+          "partially_correct": 10,
+          "incorrect": 2
+        },
+        "n_confirmed_positive": 14,
+        "confirmed_positive_rate": 0.5,
+        "kappa": {
+          "n": 28,
+          "value": 0.857143,
+          "observed_agreement": 0.928571,
+          "expected_agreement": 0.5,
+          "null_reason": null
+        }
+      },
+      "machine": {
+        "n_questions": 39,
+        "n_no_answer": 0,
+        "n_answerable": 39,
+        "n_cited_answers": 28,
+        "correct_abstain_rate": null,
+        "false_abstain_rate": 0.28205128205128205,
+        "citation_hit_rate": 0.9285714285714286
+      }
+    },
+    {
+      "track": "public",
+      "split": "test",
+      "query_type": "no_answer",
+      "n_rows": 12,
+      "n_judged": 0,
+      "n_skipped_abstain": 12,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 0,
+        "n_both_valid": 0,
+        "n_invalid": 0,
+        "n_agree": 0,
+        "n_disagree": 0,
+        "agreement_rate": null,
+        "disagreement_rate": null,
+        "confirmed_counts": {
+          "supported": 0,
+          "partially_supported": 0,
+          "unsupported": 0
+        },
+        "n_confirmed_positive": 0,
+        "confirmed_positive_rate": null,
+        "kappa": {
+          "n": 0,
+          "value": null,
+          "observed_agreement": null,
+          "expected_agreement": null,
+          "null_reason": "no valid label pairs"
+        }
+      },
+      "correctness": {
+        "n": 0,
+        "n_both_valid": 0,
+        "n_invalid": 0,
+        "n_agree": 0,
+        "n_disagree": 0,
+        "agreement_rate": null,
+        "disagreement_rate": null,
+        "confirmed_counts": {
+          "correct": 0,
+          "partially_correct": 0,
+          "incorrect": 0
+        },
+        "n_confirmed_positive": 0,
+        "confirmed_positive_rate": null,
+        "kappa": {
+          "n": 0,
+          "value": null,
+          "observed_agreement": null,
+          "expected_agreement": null,
+          "null_reason": "no valid label pairs"
+        }
+      },
+      "machine": {
+        "n_questions": 12,
+        "n_no_answer": 12,
+        "n_answerable": 0,
+        "n_cited_answers": 0,
+        "correct_abstain_rate": 1.0,
+        "false_abstain_rate": null,
+        "citation_hit_rate": null
+      }
+    },
+    {
+      "track": "public",
+      "split": "test",
+      "query_type": "all",
+      "n_rows": 86,
+      "n_judged": 63,
+      "n_skipped_abstain": 23,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 63,
+        "n_both_valid": 63,
+        "n_invalid": 0,
+        "n_agree": 60,
+        "n_disagree": 3,
+        "agreement_rate": 0.9523809523809523,
+        "disagreement_rate": 0.047619047619047616,
+        "confirmed_counts": {
+          "supported": 48,
+          "partially_supported": 12,
+          "unsupported": 0
+        },
+        "n_confirmed_positive": 48,
+        "confirmed_positive_rate": 0.7619047619047619,
+        "kappa": {
+          "n": 63,
+          "value": 0.858639,
+          "observed_agreement": 0.952381,
+          "expected_agreement": 0.663139,
+          "null_reason": null
+        }
+      },
+      "correctness": {
+        "n": 63,
+        "n_both_valid": 63,
+        "n_invalid": 0,
+        "n_agree": 56,
+        "n_disagree": 7,
+        "agreement_rate": 0.8888888888888888,
+        "disagreement_rate": 0.1111111111111111,
+        "confirmed_counts": {
+          "correct": 36,
+          "partially_correct": 18,
+          "incorrect": 2
+        },
+        "n_confirmed_positive": 36,
+        "confirmed_positive_rate": 0.5714285714285714,
+        "kappa": {
+          "n": 63,
+          "value": 0.76555,
+          "observed_agreement": 0.888889,
+          "expected_agreement": 0.526077,
+          "null_reason": null
+        }
+      },
+      "machine": {
+        "n_questions": 86,
+        "n_no_answer": 12,
+        "n_answerable": 74,
+        "n_cited_answers": 63,
+        "correct_abstain_rate": 1.0,
+        "false_abstain_rate": 0.14864864864864866,
+        "citation_hit_rate": 0.9682539682539683
+      }
+    },
+    {
+      "track": "kisa",
+      "split": "dev",
+      "query_type": "cve_explicit",
+      "n_rows": 9,
+      "n_judged": 8,
+      "n_skipped_abstain": 1,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 8,
+        "n_both_valid": 8,
+        "n_invalid": 0,
+        "n_agree": 8,
+        "n_disagree": 0,
+        "agreement_rate": 1.0,
+        "disagreement_rate": 0.0,
+        "confirmed_counts": {
+          "supported": 8,
+          "partially_supported": 0,
+          "unsupported": 0
+        },
+        "n_confirmed_positive": 8,
+        "confirmed_positive_rate": 1.0,
+        "kappa": {
+          "n": 8,
+          "value": null,
+          "observed_agreement": 1.0,
+          "expected_agreement": 1.0,
+          "null_reason": "both judges used a single label, kappa is undefined"
+        }
+      },
+      "correctness": {
+        "n": 8,
+        "n_both_valid": 8,
+        "n_invalid": 0,
+        "n_agree": 7,
+        "n_disagree": 1,
+        "agreement_rate": 0.875,
+        "disagreement_rate": 0.125,
+        "confirmed_counts": {
+          "correct": 7,
+          "partially_correct": 0,
+          "incorrect": 0
+        },
+        "n_confirmed_positive": 7,
+        "confirmed_positive_rate": 0.875,
+        "kappa": {
+          "n": 8,
+          "value": 0.0,
+          "observed_agreement": 0.875,
+          "expected_agreement": 0.875,
+          "null_reason": null
+        }
+      },
+      "machine": {
+        "n_questions": 9,
+        "n_no_answer": 0,
+        "n_answerable": 9,
+        "n_cited_answers": 8,
+        "correct_abstain_rate": null,
+        "false_abstain_rate": 0.1111111111111111,
+        "citation_hit_rate": 1.0
+      }
+    },
+    {
+      "track": "kisa",
+      "split": "dev",
+      "query_type": "product_symptom",
+      "n_rows": 5,
+      "n_judged": 5,
+      "n_skipped_abstain": 0,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 5,
+        "n_both_valid": 5,
+        "n_invalid": 0,
+        "n_agree": 4,
+        "n_disagree": 1,
+        "agreement_rate": 0.8,
+        "disagreement_rate": 0.2,
+        "confirmed_counts": {
+          "supported": 4,
+          "partially_supported": 0,
+          "unsupported": 0
+        },
+        "n_confirmed_positive": 4,
+        "confirmed_positive_rate": 0.8,
+        "kappa": {
+          "n": 5,
+          "value": 0.0,
+          "observed_agreement": 0.8,
+          "expected_agreement": 0.8,
+          "null_reason": null
+        }
+      },
+      "correctness": {
+        "n": 5,
+        "n_both_valid": 5,
+        "n_invalid": 0,
+        "n_agree": 5,
+        "n_disagree": 0,
+        "agreement_rate": 1.0,
+        "disagreement_rate": 0.0,
+        "confirmed_counts": {
+          "correct": 4,
+          "partially_correct": 0,
+          "incorrect": 1
+        },
+        "n_confirmed_positive": 4,
+        "confirmed_positive_rate": 0.8,
+        "kappa": {
+          "n": 5,
+          "value": 1.0,
+          "observed_agreement": 1.0,
+          "expected_agreement": 0.68,
+          "null_reason": null
+        }
+      },
+      "machine": {
+        "n_questions": 5,
+        "n_no_answer": 0,
+        "n_answerable": 5,
+        "n_cited_answers": 5,
+        "correct_abstain_rate": null,
+        "false_abstain_rate": 0.0,
+        "citation_hit_rate": 0.8
+      }
+    },
+    {
+      "track": "kisa",
+      "split": "dev",
+      "query_type": "explanation_comparison",
+      "n_rows": 5,
+      "n_judged": 4,
+      "n_skipped_abstain": 1,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 4,
+        "n_both_valid": 4,
+        "n_invalid": 0,
+        "n_agree": 4,
+        "n_disagree": 0,
+        "agreement_rate": 1.0,
+        "disagreement_rate": 0.0,
+        "confirmed_counts": {
+          "supported": 2,
+          "partially_supported": 2,
+          "unsupported": 0
+        },
+        "n_confirmed_positive": 2,
+        "confirmed_positive_rate": 0.5,
+        "kappa": {
+          "n": 4,
+          "value": 1.0,
+          "observed_agreement": 1.0,
+          "expected_agreement": 0.5,
+          "null_reason": null
+        }
+      },
+      "correctness": {
+        "n": 4,
+        "n_both_valid": 4,
+        "n_invalid": 0,
+        "n_agree": 3,
+        "n_disagree": 1,
+        "agreement_rate": 0.75,
+        "disagreement_rate": 0.25,
+        "confirmed_counts": {
+          "correct": 2,
+          "partially_correct": 0,
+          "incorrect": 1
+        },
+        "n_confirmed_positive": 2,
+        "confirmed_positive_rate": 0.5,
+        "kappa": {
+          "n": 4,
+          "value": 0.5,
+          "observed_agreement": 0.75,
+          "expected_agreement": 0.5,
+          "null_reason": null
+        }
+      },
+      "machine": {
+        "n_questions": 5,
+        "n_no_answer": 0,
+        "n_answerable": 5,
+        "n_cited_answers": 4,
+        "correct_abstain_rate": null,
+        "false_abstain_rate": 0.2,
+        "citation_hit_rate": 1.0
+      }
+    },
+    {
+      "track": "kisa",
+      "split": "dev",
+      "query_type": "no_answer",
+      "n_rows": 4,
+      "n_judged": 0,
+      "n_skipped_abstain": 4,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 0,
+        "n_both_valid": 0,
+        "n_invalid": 0,
+        "n_agree": 0,
+        "n_disagree": 0,
+        "agreement_rate": null,
+        "disagreement_rate": null,
+        "confirmed_counts": {
+          "supported": 0,
+          "partially_supported": 0,
+          "unsupported": 0
+        },
+        "n_confirmed_positive": 0,
+        "confirmed_positive_rate": null,
+        "kappa": {
+          "n": 0,
+          "value": null,
+          "observed_agreement": null,
+          "expected_agreement": null,
+          "null_reason": "no valid label pairs"
+        }
+      },
+      "correctness": {
+        "n": 0,
+        "n_both_valid": 0,
+        "n_invalid": 0,
+        "n_agree": 0,
+        "n_disagree": 0,
+        "agreement_rate": null,
+        "disagreement_rate": null,
+        "confirmed_counts": {
+          "correct": 0,
+          "partially_correct": 0,
+          "incorrect": 0
+        },
+        "n_confirmed_positive": 0,
+        "confirmed_positive_rate": null,
+        "kappa": {
+          "n": 0,
+          "value": null,
+          "observed_agreement": null,
+          "expected_agreement": null,
+          "null_reason": "no valid label pairs"
+        }
+      },
+      "machine": {
+        "n_questions": 4,
+        "n_no_answer": 4,
+        "n_answerable": 0,
+        "n_cited_answers": 0,
+        "correct_abstain_rate": 1.0,
+        "false_abstain_rate": null,
+        "citation_hit_rate": null
+      }
+    },
+    {
+      "track": "kisa",
+      "split": "dev",
+      "query_type": "all",
+      "n_rows": 23,
+      "n_judged": 17,
+      "n_skipped_abstain": 6,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 17,
+        "n_both_valid": 17,
+        "n_invalid": 0,
+        "n_agree": 16,
+        "n_disagree": 1,
+        "agreement_rate": 0.9411764705882353,
+        "disagreement_rate": 0.058823529411764705,
+        "confirmed_counts": {
+          "supported": 14,
+          "partially_supported": 2,
+          "unsupported": 0
+        },
+        "n_confirmed_positive": 14,
+        "confirmed_positive_rate": 0.8235294117647058,
+        "kappa": {
+          "n": 17,
+          "value": 0.767123,
+          "observed_agreement": 0.941176,
+          "expected_agreement": 0.747405,
+          "null_reason": null
+        }
+      },
+      "correctness": {
+        "n": 17,
+        "n_both_valid": 17,
+        "n_invalid": 0,
+        "n_agree": 15,
+        "n_disagree": 2,
+        "agreement_rate": 0.8823529411764706,
+        "disagreement_rate": 0.11764705882352941,
+        "confirmed_counts": {
+          "correct": 13,
+          "partially_correct": 0,
+          "incorrect": 2
+        },
+        "n_confirmed_positive": 13,
+        "confirmed_positive_rate": 0.7647058823529411,
+        "kappa": {
+          "n": 17,
+          "value": 0.604651,
+          "observed_agreement": 0.882353,
+          "expected_agreement": 0.702422,
+          "null_reason": null
+        }
+      },
+      "machine": {
+        "n_questions": 23,
+        "n_no_answer": 4,
+        "n_answerable": 19,
+        "n_cited_answers": 17,
+        "correct_abstain_rate": 1.0,
+        "false_abstain_rate": 0.10526315789473684,
+        "citation_hit_rate": 0.9411764705882353
+      }
+    },
+    {
+      "track": "kisa",
+      "split": "test",
+      "query_type": "cve_explicit",
+      "n_rows": 11,
+      "n_judged": 10,
+      "n_skipped_abstain": 1,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 10,
+        "n_both_valid": 10,
+        "n_invalid": 0,
+        "n_agree": 10,
+        "n_disagree": 0,
+        "agreement_rate": 1.0,
+        "disagreement_rate": 0.0,
+        "confirmed_counts": {
+          "supported": 9,
+          "partially_supported": 0,
+          "unsupported": 1
+        },
+        "n_confirmed_positive": 9,
+        "confirmed_positive_rate": 0.9,
+        "kappa": {
+          "n": 10,
+          "value": 1.0,
+          "observed_agreement": 1.0,
+          "expected_agreement": 0.82,
+          "null_reason": null
+        }
+      },
+      "correctness": {
+        "n": 10,
+        "n_both_valid": 10,
+        "n_invalid": 0,
+        "n_agree": 9,
+        "n_disagree": 1,
+        "agreement_rate": 0.9,
+        "disagreement_rate": 0.1,
+        "confirmed_counts": {
+          "correct": 8,
+          "partially_correct": 0,
+          "incorrect": 1
+        },
+        "n_confirmed_positive": 8,
+        "confirmed_positive_rate": 0.8,
+        "kappa": {
+          "n": 10,
+          "value": 0.615385,
+          "observed_agreement": 0.9,
+          "expected_agreement": 0.74,
+          "null_reason": null
+        }
+      },
+      "machine": {
+        "n_questions": 11,
+        "n_no_answer": 0,
+        "n_answerable": 11,
+        "n_cited_answers": 10,
+        "correct_abstain_rate": null,
+        "false_abstain_rate": 0.09090909090909091,
+        "citation_hit_rate": 1.0
+      }
+    },
+    {
+      "track": "kisa",
+      "split": "test",
+      "query_type": "product_symptom",
+      "n_rows": 7,
+      "n_judged": 7,
+      "n_skipped_abstain": 0,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 7,
+        "n_both_valid": 7,
+        "n_invalid": 0,
+        "n_agree": 7,
+        "n_disagree": 0,
+        "agreement_rate": 1.0,
+        "disagreement_rate": 0.0,
+        "confirmed_counts": {
+          "supported": 7,
+          "partially_supported": 0,
+          "unsupported": 0
+        },
+        "n_confirmed_positive": 7,
+        "confirmed_positive_rate": 1.0,
+        "kappa": {
+          "n": 7,
+          "value": null,
+          "observed_agreement": 1.0,
+          "expected_agreement": 1.0,
+          "null_reason": "both judges used a single label, kappa is undefined"
+        }
+      },
+      "correctness": {
+        "n": 7,
+        "n_both_valid": 7,
+        "n_invalid": 0,
+        "n_agree": 6,
+        "n_disagree": 1,
+        "agreement_rate": 0.8571428571428571,
+        "disagreement_rate": 0.14285714285714285,
+        "confirmed_counts": {
+          "correct": 6,
+          "partially_correct": 0,
+          "incorrect": 0
+        },
+        "n_confirmed_positive": 6,
+        "confirmed_positive_rate": 0.8571428571428571,
+        "kappa": {
+          "n": 7,
+          "value": 0.0,
+          "observed_agreement": 0.857143,
+          "expected_agreement": 0.857143,
+          "null_reason": null
+        }
+      },
+      "machine": {
+        "n_questions": 7,
+        "n_no_answer": 0,
+        "n_answerable": 7,
+        "n_cited_answers": 7,
+        "correct_abstain_rate": null,
+        "false_abstain_rate": 0.0,
+        "citation_hit_rate": 1.0
+      }
+    },
+    {
+      "track": "kisa",
+      "split": "test",
+      "query_type": "explanation_comparison",
+      "n_rows": 5,
+      "n_judged": 5,
+      "n_skipped_abstain": 0,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 5,
+        "n_both_valid": 5,
+        "n_invalid": 0,
+        "n_agree": 5,
+        "n_disagree": 0,
+        "agreement_rate": 1.0,
+        "disagreement_rate": 0.0,
+        "confirmed_counts": {
+          "supported": 4,
+          "partially_supported": 1,
+          "unsupported": 0
+        },
+        "n_confirmed_positive": 4,
+        "confirmed_positive_rate": 0.8,
+        "kappa": {
+          "n": 5,
+          "value": 1.0,
+          "observed_agreement": 1.0,
+          "expected_agreement": 0.68,
+          "null_reason": null
+        }
+      },
+      "correctness": {
+        "n": 5,
+        "n_both_valid": 5,
+        "n_invalid": 0,
+        "n_agree": 5,
+        "n_disagree": 0,
+        "agreement_rate": 1.0,
+        "disagreement_rate": 0.0,
+        "confirmed_counts": {
+          "correct": 5,
+          "partially_correct": 0,
+          "incorrect": 0
+        },
+        "n_confirmed_positive": 5,
+        "confirmed_positive_rate": 1.0,
+        "kappa": {
+          "n": 5,
+          "value": null,
+          "observed_agreement": 1.0,
+          "expected_agreement": 1.0,
+          "null_reason": "both judges used a single label, kappa is undefined"
+        }
+      },
+      "machine": {
+        "n_questions": 5,
+        "n_no_answer": 0,
+        "n_answerable": 5,
+        "n_cited_answers": 5,
+        "correct_abstain_rate": null,
+        "false_abstain_rate": 0.0,
+        "citation_hit_rate": 1.0
+      }
+    },
+    {
+      "track": "kisa",
+      "split": "test",
+      "query_type": "no_answer",
+      "n_rows": 6,
+      "n_judged": 0,
+      "n_skipped_abstain": 6,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 0,
+        "n_both_valid": 0,
+        "n_invalid": 0,
+        "n_agree": 0,
+        "n_disagree": 0,
+        "agreement_rate": null,
+        "disagreement_rate": null,
+        "confirmed_counts": {
+          "supported": 0,
+          "partially_supported": 0,
+          "unsupported": 0
+        },
+        "n_confirmed_positive": 0,
+        "confirmed_positive_rate": null,
+        "kappa": {
+          "n": 0,
+          "value": null,
+          "observed_agreement": null,
+          "expected_agreement": null,
+          "null_reason": "no valid label pairs"
+        }
+      },
+      "correctness": {
+        "n": 0,
+        "n_both_valid": 0,
+        "n_invalid": 0,
+        "n_agree": 0,
+        "n_disagree": 0,
+        "agreement_rate": null,
+        "disagreement_rate": null,
+        "confirmed_counts": {
+          "correct": 0,
+          "partially_correct": 0,
+          "incorrect": 0
+        },
+        "n_confirmed_positive": 0,
+        "confirmed_positive_rate": null,
+        "kappa": {
+          "n": 0,
+          "value": null,
+          "observed_agreement": null,
+          "expected_agreement": null,
+          "null_reason": "no valid label pairs"
+        }
+      },
+      "machine": {
+        "n_questions": 6,
+        "n_no_answer": 6,
+        "n_answerable": 0,
+        "n_cited_answers": 0,
+        "correct_abstain_rate": 1.0,
+        "false_abstain_rate": null,
+        "citation_hit_rate": null
+      }
+    },
+    {
+      "track": "kisa",
+      "split": "test",
+      "query_type": "all",
+      "n_rows": 29,
+      "n_judged": 22,
+      "n_skipped_abstain": 7,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 22,
+        "n_both_valid": 22,
+        "n_invalid": 0,
+        "n_agree": 22,
+        "n_disagree": 0,
+        "agreement_rate": 1.0,
+        "disagreement_rate": 0.0,
+        "confirmed_counts": {
+          "supported": 20,
+          "partially_supported": 1,
+          "unsupported": 1
+        },
+        "n_confirmed_positive": 20,
+        "confirmed_positive_rate": 0.9090909090909091,
+        "kappa": {
+          "n": 22,
+          "value": 1.0,
+          "observed_agreement": 1.0,
+          "expected_agreement": 0.834711,
+          "null_reason": null
+        }
+      },
+      "correctness": {
+        "n": 22,
+        "n_both_valid": 22,
+        "n_invalid": 0,
+        "n_agree": 20,
+        "n_disagree": 2,
+        "agreement_rate": 0.9090909090909091,
+        "disagreement_rate": 0.09090909090909091,
+        "confirmed_counts": {
+          "correct": 19,
+          "partially_correct": 0,
+          "incorrect": 1
+        },
+        "n_confirmed_positive": 19,
+        "confirmed_positive_rate": 0.8636363636363636,
+        "kappa": {
+          "n": 22,
+          "value": 0.463415,
+          "observed_agreement": 0.909091,
+          "expected_agreement": 0.830579,
+          "null_reason": null
+        }
+      },
+      "machine": {
+        "n_questions": 29,
+        "n_no_answer": 6,
+        "n_answerable": 23,
+        "n_cited_answers": 22,
+        "correct_abstain_rate": 1.0,
+        "false_abstain_rate": 0.043478260869565216,
+        "citation_hit_rate": 1.0
+      }
+    },
+    {
+      "track": "kisa",
+      "split": "all",
+      "query_type": "cve_explicit",
+      "n_rows": 20,
+      "n_judged": 18,
+      "n_skipped_abstain": 2,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 18,
+        "n_both_valid": 18,
+        "n_invalid": 0,
+        "n_agree": 18,
+        "n_disagree": 0,
+        "agreement_rate": 1.0,
+        "disagreement_rate": 0.0,
+        "confirmed_counts": {
+          "supported": 17,
+          "partially_supported": 0,
+          "unsupported": 1
+        },
+        "n_confirmed_positive": 17,
+        "confirmed_positive_rate": 0.9444444444444444,
+        "kappa": {
+          "n": 18,
+          "value": 1.0,
+          "observed_agreement": 1.0,
+          "expected_agreement": 0.895062,
+          "null_reason": null
+        }
+      },
+      "correctness": {
+        "n": 18,
+        "n_both_valid": 18,
+        "n_invalid": 0,
+        "n_agree": 16,
+        "n_disagree": 2,
+        "agreement_rate": 0.8888888888888888,
+        "disagreement_rate": 0.1111111111111111,
+        "confirmed_counts": {
+          "correct": 15,
+          "partially_correct": 0,
+          "incorrect": 1
+        },
+        "n_confirmed_positive": 15,
+        "confirmed_positive_rate": 0.8333333333333334,
+        "kappa": {
+          "n": 18,
+          "value": 0.454545,
+          "observed_agreement": 0.888889,
+          "expected_agreement": 0.796296,
+          "null_reason": null
+        }
+      },
+      "machine": {
+        "n_questions": 20,
+        "n_no_answer": 0,
+        "n_answerable": 20,
+        "n_cited_answers": 18,
+        "correct_abstain_rate": null,
+        "false_abstain_rate": 0.1,
+        "citation_hit_rate": 1.0
+      }
+    },
+    {
+      "track": "kisa",
+      "split": "all",
+      "query_type": "product_symptom",
+      "n_rows": 12,
+      "n_judged": 12,
+      "n_skipped_abstain": 0,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 12,
+        "n_both_valid": 12,
+        "n_invalid": 0,
+        "n_agree": 11,
+        "n_disagree": 1,
+        "agreement_rate": 0.9166666666666666,
+        "disagreement_rate": 0.08333333333333333,
+        "confirmed_counts": {
+          "supported": 11,
+          "partially_supported": 0,
+          "unsupported": 0
+        },
+        "n_confirmed_positive": 11,
+        "confirmed_positive_rate": 0.9166666666666666,
+        "kappa": {
+          "n": 12,
+          "value": 0.0,
+          "observed_agreement": 0.916667,
+          "expected_agreement": 0.916667,
+          "null_reason": null
+        }
+      },
+      "correctness": {
+        "n": 12,
+        "n_both_valid": 12,
+        "n_invalid": 0,
+        "n_agree": 11,
+        "n_disagree": 1,
+        "agreement_rate": 0.9166666666666666,
+        "disagreement_rate": 0.08333333333333333,
+        "confirmed_counts": {
+          "correct": 10,
+          "partially_correct": 0,
+          "incorrect": 1
+        },
+        "n_confirmed_positive": 10,
+        "confirmed_positive_rate": 0.8333333333333334,
+        "kappa": {
+          "n": 12,
+          "value": 0.625,
+          "observed_agreement": 0.916667,
+          "expected_agreement": 0.777778,
+          "null_reason": null
+        }
+      },
+      "machine": {
+        "n_questions": 12,
+        "n_no_answer": 0,
+        "n_answerable": 12,
+        "n_cited_answers": 12,
+        "correct_abstain_rate": null,
+        "false_abstain_rate": 0.0,
+        "citation_hit_rate": 0.9166666666666666
+      }
+    },
+    {
+      "track": "kisa",
+      "split": "all",
+      "query_type": "explanation_comparison",
+      "n_rows": 10,
+      "n_judged": 9,
+      "n_skipped_abstain": 1,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 9,
+        "n_both_valid": 9,
+        "n_invalid": 0,
+        "n_agree": 9,
+        "n_disagree": 0,
+        "agreement_rate": 1.0,
+        "disagreement_rate": 0.0,
+        "confirmed_counts": {
+          "supported": 6,
+          "partially_supported": 3,
+          "unsupported": 0
+        },
+        "n_confirmed_positive": 6,
+        "confirmed_positive_rate": 0.6666666666666666,
+        "kappa": {
+          "n": 9,
+          "value": 1.0,
+          "observed_agreement": 1.0,
+          "expected_agreement": 0.555556,
+          "null_reason": null
+        }
+      },
+      "correctness": {
+        "n": 9,
+        "n_both_valid": 9,
+        "n_invalid": 0,
+        "n_agree": 8,
+        "n_disagree": 1,
+        "agreement_rate": 0.8888888888888888,
+        "disagreement_rate": 0.1111111111111111,
+        "confirmed_counts": {
+          "correct": 7,
+          "partially_correct": 0,
+          "incorrect": 1
+        },
+        "n_confirmed_positive": 7,
+        "confirmed_positive_rate": 0.7777777777777778,
+        "kappa": {
+          "n": 9,
+          "value": 0.608696,
+          "observed_agreement": 0.888889,
+          "expected_agreement": 0.716049,
+          "null_reason": null
+        }
+      },
+      "machine": {
+        "n_questions": 10,
+        "n_no_answer": 0,
+        "n_answerable": 10,
+        "n_cited_answers": 9,
+        "correct_abstain_rate": null,
+        "false_abstain_rate": 0.1,
+        "citation_hit_rate": 1.0
+      }
+    },
+    {
+      "track": "kisa",
+      "split": "all",
+      "query_type": "no_answer",
+      "n_rows": 10,
+      "n_judged": 0,
+      "n_skipped_abstain": 10,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 0,
+        "n_both_valid": 0,
+        "n_invalid": 0,
+        "n_agree": 0,
+        "n_disagree": 0,
+        "agreement_rate": null,
+        "disagreement_rate": null,
+        "confirmed_counts": {
+          "supported": 0,
+          "partially_supported": 0,
+          "unsupported": 0
+        },
+        "n_confirmed_positive": 0,
+        "confirmed_positive_rate": null,
+        "kappa": {
+          "n": 0,
+          "value": null,
+          "observed_agreement": null,
+          "expected_agreement": null,
+          "null_reason": "no valid label pairs"
+        }
+      },
+      "correctness": {
+        "n": 0,
+        "n_both_valid": 0,
+        "n_invalid": 0,
+        "n_agree": 0,
+        "n_disagree": 0,
+        "agreement_rate": null,
+        "disagreement_rate": null,
+        "confirmed_counts": {
+          "correct": 0,
+          "partially_correct": 0,
+          "incorrect": 0
+        },
+        "n_confirmed_positive": 0,
+        "confirmed_positive_rate": null,
+        "kappa": {
+          "n": 0,
+          "value": null,
+          "observed_agreement": null,
+          "expected_agreement": null,
+          "null_reason": "no valid label pairs"
+        }
+      },
+      "machine": {
+        "n_questions": 10,
+        "n_no_answer": 10,
+        "n_answerable": 0,
+        "n_cited_answers": 0,
+        "correct_abstain_rate": 1.0,
+        "false_abstain_rate": null,
+        "citation_hit_rate": null
+      }
+    },
+    {
+      "track": "kisa",
+      "split": "all",
+      "query_type": "all",
+      "n_rows": 52,
+      "n_judged": 39,
+      "n_skipped_abstain": 13,
+      "n_skipped_parse_failed": 0,
+      "n_skipped_context_overflow": 0,
+      "n_correctness_not_applicable": 0,
+      "faithfulness": {
+        "n": 39,
+        "n_both_valid": 39,
+        "n_invalid": 0,
+        "n_agree": 38,
+        "n_disagree": 1,
+        "agreement_rate": 0.9743589743589743,
+        "disagreement_rate": 0.02564102564102564,
+        "confirmed_counts": {
+          "supported": 34,
+          "partially_supported": 3,
+          "unsupported": 1
+        },
+        "n_confirmed_positive": 34,
+        "confirmed_positive_rate": 0.8717948717948718,
+        "kappa": {
+          "n": 39,
+          "value": 0.874598,
+          "observed_agreement": 0.974359,
+          "expected_agreement": 0.795529,
+          "null_reason": null
+        }
+      },
+      "correctness": {
+        "n": 39,
+        "n_both_valid": 39,
+        "n_invalid": 0,
+        "n_agree": 35,
+        "n_disagree": 4,
+        "agreement_rate": 0.8974358974358975,
+        "disagreement_rate": 0.10256410256410256,
+        "confirmed_counts": {
+          "correct": 32,
+          "partially_correct": 0,
+          "incorrect": 3
+        },
+        "n_confirmed_positive": 32,
+        "confirmed_positive_rate": 0.8205128205128205,
+        "kappa": {
+          "n": 39,
+          "value": 0.551724,
+          "observed_agreement": 0.897436,
+          "expected_agreement": 0.771203,
+          "null_reason": null
+        }
+      },
+      "machine": {
+        "n_questions": 52,
+        "n_no_answer": 10,
+        "n_answerable": 42,
+        "n_cited_answers": 39,
+        "correct_abstain_rate": 1.0,
+        "false_abstain_rate": 0.07142857142857142,
+        "citation_hit_rate": 0.9743589743589743
+      }
+    }
+  ]
+}

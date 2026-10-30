@@ -1,0 +1,179 @@
+{
+  "schema": "m5-judgments-v1",
+  "created_at": "2026-10-30T00:32:16Z",
+  "status": "complete",
+  "problems": [],
+  "k": 3,
+  "generation": {
+    "run_id": "8a7c1c6b2f8bf06b",
+    "model": "qwen3:8b",
+    "manifest_sha256": "a899bad42ddc27260e2385131b341336494153ab7629a699567d035fb665485e",
+    "topk_sha256": "36f69b15eeb63a6aa1ffb5b08a7038691248643840c7c25e94df53650dd335eb",
+    "rows": {
+      "public": "5c1bf0ec3bb66b996c6ac51ef0b298a424c36361efca00e35e2f30155b8b440e",
+      "kisa": "0ea59aca3f46841e6098e99ec0bb98aeda2fa7961c2086437758e878b876e941"
+    }
+  },
+  "judges": {
+    "A": {
+      "judge": "A",
+      "vendor": "Anthropic",
+      "model": "claude-opus-5-5",
+      "cli": "claude",
+      "cli_version": "2.1.312 (Claude Code)",
+      "flags": [
+        "-p <prompt>",
+        "--model claude-opus-5-5",
+        "--effort medium",
+        "--output-format json",
+        "--safe-mode",
+        "--tools=",
+        "--no-session-persistence",
+        "--strict-mcp-config",
+        "--disable-slash-commands",
+        "--permission-mode dontAsk",
+        "--system-prompt <fixed one-line judge prompt>"
+      ]
+    },
+    "B": {
+      "judge": "B",
+      "vendor": "OpenAI",
+      "model": "gpt-6.1-sol",
+      "cli": "codex",
+      "cli_version": "codex-cli 0.163.0",
+      "flags": [
+        "exec",
+        "--json",
+        "-s read-only",
+        "--skip-git-repo-check",
+        "--ephemeral",
+        "-m gpt-6.1-sol",
+        "-c model_reasoning_effort=\"medium\"",
+        "--ignore-user-config",
+        "--ignore-rules",
+        "--disable shell_tool",
+        "--disable unified_exec",
+        "--disable plugins",
+        "--disable apps",
+        "--disable hooks",
+        "--disable multi_agent",
+        "--disable browser_use",
+        "--disable computer_use",
+        "--output-schema <fixed answer schema>",
+        "<prompt>"
+      ]
+    }
+  },
+  "instruction_sha256": "2d1492fccbdafb48aeb5ad30f5c421e245cec661ca0975ef1b90872212363d45",
+  "system_prompt_sha256": "3fb41b397a2cf7c97f293ba12c549483c6902f6cfbdd885f22691a4b8fac514b",
+  "answer_schema_sha256": "9d207200250597d2ffb68cb7bd009828b3d6739badf28994d8291a0cc5006da8",
+  "cache_config_sha256": "0daf25510c2e8ceb95dc1e94155ced20c95562fe92e53a02d8da589a58a26faa",
+  "labels": {
+    "faithfulness": [
+      "supported",
+      "partially_supported",
+      "unsupported"
+    ],
+    "correctness": [
+      "correct",
+      "partially_correct",
+      "incorrect",
+      "not_applicable"
+    ]
+  },
+  "reason_codes": {
+    "faithfulness": {
+      "supported": [
+        "all_claims_in_context"
+      ],
+      "partially_supported": [
+        "some_claims_not_in_context",
+        "extra_detail_beyond_context"
+      ],
+      "unsupported": [
+        "claims_not_in_context",
+        "contradicts_context",
+        "no_substantive_answer"
+      ]
+    },
+    "correctness": {
+      "correct": [
+        "matches_reference"
+      ],
+      "partially_correct": [
+        "covers_part_of_reference",
+        "includes_wrong_detail"
+      ],
+      "incorrect": [
+        "contradicts_reference",
+        "misses_reference",
+        "answers_other_question"
+      ],
+      "not_applicable": [
+        "no_reference"
+      ]
+    }
+  },
+  "rules": {
+    "scope": {
+      "public": [
+        "test"
+      ],
+      "kisa": [
+        "dev",
+        "test"
+      ]
+    },
+    "judged": "status ok, abstain false (no_answer questions: faithfulness only, correctness not_applicable)",
+    "confirmed": "both judges valid and equal -> label, both valid and different -> disagree, either null -> invalid",
+    "min_targets_per_track": 20,
+    "min_both_valid_rate": 0.9,
+    "retry": "one extra call per judge and question when an axis label/code is outside the fixed lists"
+  },
+  "calls": {
+    "total": 204,
+    "by_judge_kind": [
+      {
+        "judge": "A",
+        "kind": "judge",
+        "n": 102
+      },
+      {
+        "judge": "A",
+        "kind": "retry",
+        "n": 0
+      },
+      {
+        "judge": "B",
+        "kind": "judge",
+        "n": 102
+      },
+      {
+        "judge": "B",
+        "kind": "retry",
+        "n": 0
+      }
+    ],
+    "first_at": "2026-10-30T00:08:27Z",
+    "last_at": "2026-10-30T00:12:19Z"
+  },
+  "limit_waits": {
+    "n_events": 0,
+    "total_wait_seconds": 0,
+    "events": []
+  },
+  "tracks": {
+    "public": {
+      "file": "public.jsonl",
+      "sha256": "5617d15ed7c43bec24b0cf4ee5ed8666ef263772ebf07cd794ea2422be5d2ae2",
+      "n_rows": 86,
+      "n_judged": 63
+    },
+    "kisa": {
+      "file": "kisa.jsonl",
+      "sha256": "138cd5c2939cb956a72710c91862d9ed97428f11e89aee6a77ea9fde7abde52e",
+      "n_rows": 52,
+      "n_judged": 39
+    }
+  }
+}
