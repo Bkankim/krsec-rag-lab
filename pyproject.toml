@@ -38,6 +38,12 @@ qdrant = [
     "qdrant-client>=1.19,<1.20",
     "numpy>=1.26",
 ]
+# 이슈 #67(LangChain/LangGraph 어댑터) 전용. CI(uv sync --locked --dev)에는 들어가지 않는다.
+# 로컬에서 통합 테스트를 돌릴 때만 `uv sync --locked --group langchain`.
+langchain = [
+    "langchain-core>=1.7,<2",
+    "langgraph>=1.2,<2",
+]
 
 [tool.ruff]
 line-length = 100
