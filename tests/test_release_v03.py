@@ -58,6 +58,12 @@ def built(tmp_path_factory):
         target = root / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / relative, target)
+    # v0.3 범위의 사본은 M5 구간이 없는 README를 쓴다(M5 표는 v1.0 검사 몫이다)
+    text = (root / README).read_text(encoding="utf-8")
+    begin, end = tables.README_M5
+    (root / README).write_text(
+        text[: text.index(begin)] + text[text.index(end) + len(end) :], encoding="utf-8"
+    )
     return root
 
 

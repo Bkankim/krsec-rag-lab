@@ -2,32 +2,45 @@
 
 한국어 보안 문서 RAG 평가 하네스 - 온프렘 스택 ablation 리포트. Bkankim의 단독 프로젝트다.
 
-KISA 보안공지(한국어)와 NVD CVE(영어)를 코퍼스로, 두 LLM이 교차 판정한 골든 평가셋 위에서
-RAG 파이프라인의 각 구성요소(청킹·하이브리드 검색·리랭킹·임베딩)를 하나씩 바꿔가며
-검색·생성 품질과 비용(지연시간·VRAM)을 측정한 기록을 남긴다.
+KISA 보안공지(한국어)와 NVD CVE(영어)를 코퍼스로, 두 LLM이 교차 판정한 골든 평가셋 위에서 RAG 파이프라인의 각 구성요소
+(청킹·하이브리드 검색·리랭킹·임베딩)를 하나씩 바꿔가며 검색 품질을 재고, 검색 결과로 만든 답의 품질(근거 충실도·정답성·답 없음
+처리)과 입력 토큰·지연시간을 측정한 기록을 남긴다. 파싱→청킹→임베딩→적재→검색의 데이터 레이어는 프레임워크 없이 직접 구현했고,
+LangChain/LangGraph는 같은 결과를 내는 어댑터로만 얹었다. 마일스톤 M0~M5가 끝났고 최종 재현 패키지는 v1.0이다.
 
 핵심 원칙:
 
 - **측정이 먼저다.** 모든 실험은 가설 → 측정 → 판정(기각 포함)으로 종료한다. 데모는 부록이다.
 - **재현 가능해야 한다.** README의 모든 수치는 릴리스에 첨부된 질문별 원시 결과에서 재생성된다
   (`uv run python scripts/make_readme_tables.py --check`가 일치를 검증한다).
-- **온프렘으로 돌아간다.** 로컬 임베딩(bge-m3) + Qdrant + 로컬 LLM. 검색·생성 실행에는 외부 API 의존이 없다.
-  예외: 골든셋 정답 판정에는 외부 모델 API 2종을 쓴다(KISA 본문 전송 고지는 [LICENSES/](LICENSES/)).
+- **온프렘으로 돌아간다.** 로컬 임베딩(bge-m3) + Qdrant + 로컬 LLM(Ollama). 검색·생성 실행에는 외부 API 의존이 없다.
+  예외: 골든셋 정답 판정과 M5 생성 답의 교차 판정에는 외부 모델 API 2종을 쓴다(KISA 본문 전송 고지는 [LICENSES/](LICENSES/)).
 - **정답의 한계를 밝힌다.** 평가 정답은 두 LLM(Anthropic Opus 계열, OpenAI GPT 계열)의 교차 판정이며 사람 검수가
   아니다. 두 판정자가 모두 relevant로 일치하고 근거 구간이 있는 문서만 정답으로 확정하고 불일치·kappa를 기록한다. 공개 트랙(NVD fixture)의
   정답만 LLM 판정 없이 메타데이터로 정한다(정의: [docs/eval-protocol.md](docs/eval-protocol.md)).
 
 ## 상태
 
-**M4 완료, v0.3** - KISA 보안공지 게시판 전체를 한 번 수집해 누락·중복·파싱 실패를 센 결과와, 그 코퍼스를 Qdrant에
-증분 동기화해 갱신·삭제·재인덱싱 멱등성 1~5단계를 검증한 결과를 v0.3 릴리스로 묶었다(아래 "M4 결과"). 평가 트랙의
-고정 50건과 M2·M3 결과는 바뀌지 않았다. 릴리스 노트(asset 목록·sha256·한계): [docs/release-v0.3.md](docs/release-v0.3.md),
-수집 보고: [docs/m4-collection.md](docs/m4-collection.md), 색인 보고: [docs/m4-idempotency.md](docs/m4-idempotency.md).
+**M0~M5 완료, v1.0.** 선택 과제인 M6(온프렘 서빙, WSL2+CUDA+vLLM)은 이 범위에서 제외했다. 마일스톤별 결과와 정본 문서:
 
-이전 릴리스: M3 완료, v0.2(M3 실험 5개, 다섯 주 판정이 모두 `hypothesis-rejected`, 아래 "M3 실험 결과").
-노트: [docs/release-v0.2.md](docs/release-v0.2.md), 실험 요약: [docs/experiments/summary.md](docs/experiments/summary.md).
-M2 완료, v0.1(베이스라인 3종 exact CVE lookup / BM25 / dense bge-m3, 두 트랙). 노트: [docs/release-v0.1.md](docs/release-v0.1.md).
-M5 이후의 로드맵은 [PLAN.md](PLAN.md)와 [Milestones](../../milestones)에 있다.
+- **M5 완료, v1.0** - 로컬 LLM 생성 파이프라인(top-k 1·3·5 기계 지표, 입력 토큰, 지연)과 k=3 답의 faithfulness·정답성 교차 판정,
+  LangChain/LangGraph 어댑터(아래 "M5 결과"). 릴리스 노트(asset 목록·sha256·재현·한계): [docs/release-v1.0.md](docs/release-v1.0.md),
+  보고서: [docs/m5-generation.md](docs/m5-generation.md), [docs/m5-generation-eval.md](docs/m5-generation-eval.md),
+  [docs/m5-integration.md](docs/m5-integration.md).
+- M4 완료, v0.3 - KISA 보안공지 게시판 전체를 한 번 수집해 누락·중복·파싱 실패를 센 결과와, 그 코퍼스를 Qdrant에 증분 동기화해
+  갱신·삭제·재인덱싱 멱등성 1~5단계를 검증한 결과(아래 "M4 결과"). 노트: [docs/release-v0.3.md](docs/release-v0.3.md),
+  수집 보고: [docs/m4-collection.md](docs/m4-collection.md), 색인 보고: [docs/m4-idempotency.md](docs/m4-idempotency.md).
+- M3 완료, v0.2 - 실험 5개(하이브리드, 리랭커, 청킹, 한영 교차, 임베딩 교체). 다섯 주 판정이 모두 `hypothesis-rejected`
+  (아래 "M3 실험 결과"). 노트: [docs/release-v0.2.md](docs/release-v0.2.md), 실험 요약: [docs/experiments/summary.md](docs/experiments/summary.md).
+- M2 완료, v0.1 - 베이스라인 3종(exact CVE lookup / BM25 / dense bge-m3)을 두 트랙에서 측정(아래 "결과").
+  노트: [docs/release-v0.1.md](docs/release-v0.1.md), 해석: [docs/baselines.md](docs/baselines.md).
+- M1 완료 - 미니 코퍼스(NVD fixture, 고정 KISA 공지)와 평가 규약, CVE 자동 라벨 오류율 측정, 두 모델 교차 판정 골든셋 v1.
+  규약: [docs/eval-protocol.md](docs/eval-protocol.md), 지표 교차검증: [docs/metrics-crosscheck.md](docs/metrics-crosscheck.md).
+- M0 완료 - 임베딩 데이터 레이어를 처음부터 직접 구현해 문서 1건·질의 1건의 전 단계를 추적하고, NumPy 전수·Qdrant exact·HNSW를
+  대조했다. 노트북: [notebooks/00_embeddings_from_scratch.ipynb](notebooks/00_embeddings_from_scratch.ipynb),
+  대조: [docs/qdrant-comparison.md](docs/qdrant-comparison.md).
+
+마일스톤 정의와 완료 기준은 [PLAN.md](PLAN.md)와 [Milestones](../../milestones)에 있다. 평가 트랙의 고정 50건과 M2·M3·M4 결과는 v1.0에서
+바뀌지 않았다.
 
 ## 평가 트랙과 재현
 
@@ -66,13 +79,14 @@ OUT=$(mktemp -d)
 uv run --no-sync python scripts/run_baselines.py --track kisa --retriever bm25 --kisa-root <KISA 캐시가 있는 체크아웃> --out-dir "$OUT"
 ```
 
-README 표와 원시 결과의 일치 검증(네트워크·캐시 불필요, 베이스라인 표, M3 판정 표, M4 표 모두):
+README 표와 원시 결과의 일치 검증(네트워크·캐시·모델 불필요, 베이스라인 표, M3 판정 표, M4 표, M5 표 모두):
 
 ```bash
 uv run python scripts/make_readme_tables.py --check
-uv run python scripts/check_release.py                                  # v0.1 asset 검사
-uv run python scripts/check_release.py --note docs/release-v0.2.md      # v0.2 asset 검사
+uv run python scripts/check_release.py --note docs/release-v1.0.md      # v1.0 asset 검사 (v0.3 검사를 모두 포함)
 uv run python scripts/check_release.py --note docs/release-v0.3.md      # v0.3 asset 검사
+uv run python scripts/check_release.py --note docs/release-v0.2.md      # v0.2 asset 검사
+uv run python scripts/check_release.py                                  # v0.1 asset 검사
 ```
 
 **M3 실험** (모델·KISA 캐시 없이 저장본에서 `metrics.json`·`comparison.json`을 다시 계산해 커밋된 파일과 대조한다.
@@ -84,6 +98,18 @@ for exp in hybrid rerank chunking crossling embedding; do
   uv run python scripts/run_experiment.py --exp "$exp" --compare
 done
 ```
+
+**M5 생성·판정** (저장본 검사는 모델·Ollama·외부 API·KISA 캐시 없이 통과한다. 행 키 집합, 해시, 질문 집합을 보고 `topk.json`·`summary.json`을
+다시 계산해 커밋된 파일과 대조한다. 불일치는 종료 코드 1):
+
+```bash
+uv run python scripts/run_generation.py --metrics-only      # 생성 저장본 + topk.json
+uv run python scripts/judge_generation.py --summary-only    # 판정 저장본 + summary.json
+```
+
+생성을 다시 돌리려면 로컬 Ollama와 모델(`qwen3:8b`)이, 판정을 다시 돌리려면 `claude`·`codex` CLI 로그인이, KISA 트랙은 로컬 캐시가
+필요하다. 명령과 조건은 [docs/m5-generation.md](docs/m5-generation.md), [docs/m5-generation-eval.md](docs/m5-generation-eval.md),
+[docs/m5-integration.md](docs/m5-integration.md)의 재현 절과 [docs/release-v1.0.md](docs/release-v1.0.md)의 재현 절에 있다.
 
 ## 결과
 
@@ -263,6 +289,104 @@ manifest)와 로컬 캐시에 따로 둔다. 본문은 커밋하지 않는다. �
 
 <!-- END M4 TABLES (scripts/make_readme_tables.py) -->
 
+## M5 결과
+
+검색 결과로 답을 만드는 생성 단계와 그 평가다. 생성은 로컬 Ollama 모델 하나(`qwen3:8b`)로만 하고 검색은 M2의 BM25를 그대로 쓴다
+(외부 모델 API 없음). 트랙 x top-k(1, 3, 5)마다 계약 파싱 성공률·기권·인용 적중·입력 토큰·지연을 기계 지표로 재고, k=3 답은
+faithfulness(문맥이 뒷받침하는가)와 정답성(정답 자료와 맞는가)을 두 모델이 서로의 결과를 보지 않고 따로 판정했다. 답 없음 처리는
+기계 판정이다. 세 축은 하나의 점수로 합치지 않는다. 판정은 사람 검수가 아니다. KISA 트랙의 생성 답변 원문은 커밋하지 않는다
+([LICENSES/](LICENSES/)). 생성 규칙·프롬프트·재현은 [docs/m5-generation.md](docs/m5-generation.md), 판정 규칙·불일치 분석은
+[docs/m5-generation-eval.md](docs/m5-generation-eval.md)에 있다.
+
+**LangChain/LangGraph 통합.** 코어는 프레임워크 없는 함수와 CLI로 두고, 그 위에 `BaseRetriever` 어댑터와 검색 -> 생성 -> 인용 검사
+(기권이면 종료) 상태 그래프를 얹었다(`src/krsec_rag_lab/integrations/`). 어댑터는 코어의 공개 함수를 부르기만 하고, 같은 입력에서 코어
+경로와 같은 결과를 내는지는 합성 데이터 테스트와 실제 모델 비교로 확인했다(방법·결과·한계:
+[docs/m5-integration.md](docs/m5-integration.md)). 의존성은 `langchain` 그룹이라 `uv sync --locked --dev`와 CI에는 들어가지 않는다.
+
+<!-- BEGIN M5 TABLES (scripts/make_readme_tables.py) -->
+
+이 구간은 `scripts/make_readme_tables.py`가 `results/m5/generation/`과 `results/m5/judgments/`의 저장본(질문별 행, `topk.json`, `summary.json`)을 다시 검사하고 질의셋 라벨과 판정 행에서 지표를 다시 계산해 만든다. 손으로 고치지 않는다. 검증: `uv run python scripts/make_readme_tables.py --check`. 세 축(faithfulness, 정답성, 답 없음 처리)은 따로 보고하고 하나의 점수로 합치지 않는다. 분할 `all`은 dev와 test의 합이다. 판정은 두 모델의 교차 판정이고 사람 검수가 아니며, KISA 생성 답변 원문은 어디에도 없다.
+
+### 실행 구성 ([m5-generation.md](docs/m5-generation.md), [m5-generation-eval.md](docs/m5-generation-eval.md))
+
+| 항목 | 값 |
+|---|---|
+| 생성 모델 | `qwen3:8b` (8.2B, Q4_K_M, Apache-2.0), Ollama 0.32.15 |
+| 모델 digest | `500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41` |
+| 요청 옵션 | temperature 0, seed 42, num_ctx 16384, num_predict 512, think false, format json |
+| 프롬프트 sha256 / 실행 ID | `48c60b10def29cd43a76f3c74f3fef51cada5af483d61b0df28029c4fae4bbc7` / `8a7c1c6b2f8bf06b` |
+| 검색 | BM25 (M2 선택 값, public k1 1.2, b 0.75; kisa k1 3.0, b 0.9), 문서당 3000자 상한 |
+| 생성 질문 수 | public 144, kisa 52 (k 1, 3, 5) |
+| 판정자 | A `claude-opus-5-5` (Anthropic, 2.1.312 (Claude Code)), B `gpt-6.1-sol` (OpenAI, codex-cli 0.163.0) |
+| 판정 범위 | k=3, public test, kisa dev+test |
+| 판정 대상 / 두 판정자 모두 유효 | public 63 / 63, kisa 39 / 39 |
+| 판정자 호출 | 204회 (재질의 0회), 한도 대기 0회, 상태 `complete` |
+
+### top-k 기계 지표: 공개 트랙 (NVD), 144문항 dev+test ([m5-generation.md](docs/m5-generation.md))
+
+| k | 계약 파싱 성공률 | 재질의 수 | 문맥 초과 | 올바른 기권률 | 잘못된 기권률 | 인용 적중률 | 무효 인용률 | 입력 토큰 중앙값 | 입력 토큰 최대 | 지연 중앙값(초) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 1.000 | 0 | 0 | 1.000 | 0.142 | 0.942 | 0.000 | 288 | 465 | 0.95 |
+| 3 | 1.000 | 0 | 0 | 1.000 | 0.125 | 0.952 | 0.000 | 295 | 834 | 1.70 |
+| 5 | 1.000 | 0 | 0 | 1.000 | 0.125 | 0.962 | 0.000 | 295 | 1012 | 1.78 |
+
+### top-k 기계 지표: KISA 트랙, 52문항 dev+test ([m5-generation.md](docs/m5-generation.md))
+
+| k | 계약 파싱 성공률 | 재질의 수 | 문맥 초과 | 올바른 기권률 | 잘못된 기권률 | 인용 적중률 | 무효 인용률 | 입력 토큰 중앙값 | 입력 토큰 최대 | 지연 중앙값(초) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 1.000 | 0 | 0 | 1.000 | 0.476 | 0.909 | 0.000 | 835 | 2287 | 1.36 |
+| 3 | 1.000 | 0 | 0 | 1.000 | 0.071 | 0.974 | 0.000 | 3282 | 4909 | 4.45 |
+| 5 | 1.000 | 0 | 0 | 1.000 | 0.048 | 0.950 | 0.000 | 4824 | 7271 | 7.46 |
+
+### faithfulness: 두 판정자 교차 판정, k=3 ([m5-generation-eval.md](docs/m5-generation-eval.md))
+
+| 트랙 (분할) | 유형 | 분모 | 확정 supported 비율 | 일치율 | 불일치율 | invalid | kappa |
+|---|---|---|---|---|---|---|---|
+| public (test) | cve_explicit | 35 | 0.600 | 0.943 | 0.057 | 0 | 0.878 |
+| public (test) | product_symptom | 28 | 0.964 | 0.964 | 0.036 | 0 | 0.000 |
+| public (test) | all | 63 | 0.762 | 0.952 | 0.048 | 0 | 0.859 |
+| kisa (all) | cve_explicit | 18 | 0.944 | 1.000 | 0.000 | 0 | 1.000 |
+| kisa (all) | product_symptom | 12 | 0.917 | 0.917 | 0.083 | 0 | 0.000 |
+| kisa (all) | explanation_comparison | 9 | 0.667 | 1.000 | 0.000 | 0 | 1.000 |
+| kisa (all) | all | 39 | 0.872 | 0.974 | 0.026 | 0 | 0.875 |
+
+### 정답성: 두 판정자 교차 판정, k=3 ([m5-generation-eval.md](docs/m5-generation-eval.md))
+
+| 트랙 (분할) | 유형 | 분모 | 확정 correct 비율 | 일치율 | 불일치율 | invalid | kappa |
+|---|---|---|---|---|---|---|---|
+| public (test) | cve_explicit | 35 | 0.629 | 0.857 | 0.143 | 0 | 0.668 |
+| public (test) | product_symptom | 28 | 0.500 | 0.929 | 0.071 | 0 | 0.857 |
+| public (test) | all | 63 | 0.571 | 0.889 | 0.111 | 0 | 0.766 |
+| kisa (all) | cve_explicit | 18 | 0.833 | 0.889 | 0.111 | 0 | 0.455 |
+| kisa (all) | product_symptom | 12 | 0.833 | 0.917 | 0.083 | 0 | 0.625 |
+| kisa (all) | explanation_comparison | 9 | 0.778 | 0.889 | 0.111 | 0 | 0.609 |
+| kisa (all) | all | 39 | 0.821 | 0.897 | 0.103 | 0 | 0.552 |
+
+### 답 없음 처리와 판정 제외: k=3, 기계 판정 ([m5-generation-eval.md](docs/m5-generation-eval.md))
+
+| 트랙 (분할) | 유형 | 행 수 | 판정 | 기권 제외 | 파싱 실패 제외 | 문맥 초과 제외 | 올바른 기권률 | 잘못된 기권률 | 인용 적중률 |
+|---|---|---|---|---|---|---|---|---|---|
+| public (test) | cve_explicit | 35 | 35 | 0 | 0 | 0 | - | 0.000 | 1.000 |
+| public (test) | product_symptom | 39 | 28 | 11 | 0 | 0 | - | 0.282 | 0.929 |
+| public (test) | no_answer | 12 | 0 | 12 | 0 | 0 | 1.000 | - | - |
+| public (test) | all | 86 | 63 | 23 | 0 | 0 | 1.000 | 0.149 | 0.968 |
+| kisa (all) | cve_explicit | 20 | 18 | 2 | 0 | 0 | - | 0.100 | 1.000 |
+| kisa (all) | product_symptom | 12 | 12 | 0 | 0 | 0 | - | 0.000 | 0.917 |
+| kisa (all) | explanation_comparison | 10 | 9 | 1 | 0 | 0 | - | 0.100 | 1.000 |
+| kisa (all) | no_answer | 10 | 0 | 10 | 0 | 0 | 1.000 | - | - |
+| kisa (all) | all | 52 | 39 | 13 | 0 | 0 | 1.000 | 0.071 | 0.974 |
+
+### 판정자 불일치 (확정되지 않은 질문-축 수)
+
+| 트랙 | 축 | 불일치 (`disagree`) | 무효 (`invalid`) |
+|---|---|---|---|
+| public | faithfulness | 3 | 0 |
+| public | correctness | 7 | 0 |
+| kisa | faithfulness | 1 | 0 |
+| kisa | correctness | 4 | 0 |
+
+<!-- END M5 TABLES (scripts/make_readme_tables.py) -->
+
 ## 한계
 
 - 정답은 두 LLM의 교차 판정이고 사람 검수가 아니다. kappa·`unjudged`·`excluded` 건수와 미검증 항목:
@@ -275,13 +399,31 @@ manifest)와 로컬 캐시에 따로 둔다. 본문은 커밋하지 않는다. �
 - M4 수집은 한 시점의 스냅샷이다. 이후 올라온 글은 코퍼스에 들어오지 않고, 이미지뿐인 공지는 텍스트 본문이 없어 파싱 실패로
   남는다. 멱등성 검증의 벡터 허용오차는 같은 장비·같은 스레드 수·batch_size 1에서의 값이다. 이 단계에서는 검색 품질을
   평가하지 않았다(한계 전체: [docs/m4-collection.md](docs/m4-collection.md), [docs/m4-idempotency.md](docs/m4-idempotency.md)).
+- M5 생성은 모델 하나, 프롬프트 하나, 시드 하나의 결과라 분산을 모른다. 판정은 k=3만이고 공개 트랙은 test 분할만 판정했다
+  (k=1·5는 기계 지표로만 비교한다). 두 판정자는 같은 방향으로 틀릴 수 있고, 일치는 정확성의 증명이 아니며, 판정이 갈린 질문은 대부분
+  `correct`와 `partially_correct` 같은 경계에서 갈렸다. 공개 트랙 `no_answer`의 올바른 기권은 BM25가 한 건도 찾지 못한 쉬운 경우가
+  섞여 있어 "문서가 있어도 답이 없음을 알아보는 능력"의 증거가 아니다. 입력 토큰과 지연은 이 장비와 Ollama 버전의 값이다
+  (한계 전체: [docs/m5-generation.md](docs/m5-generation.md), [docs/m5-generation-eval.md](docs/m5-generation-eval.md),
+  [docs/m5-integration.md](docs/m5-integration.md)).
 
 ## 데이터와 라이선스
 
 원본 데이터의 소스별 라이선스와 재배포 범위는 [LICENSES/](LICENSES/) 참조.
 KISA 보안공지 본문은 재배포하지 않는다(수집 스크립트와 메타데이터 인덱스만 제공).
-릴리스 asset에는 질문 ID·문서 ID·순위·점수와 manifest·정답 파일, 전체 코퍼스의 메타데이터(URL·제목·날짜·nttId·CVE ID)와
-M4 보고서만 있고 본문은 없다.
+릴리스 asset에는 질문 ID·문서 ID·순위·점수와 manifest·정답 파일, 전체 코퍼스의 메타데이터(URL·제목·날짜·nttId·CVE ID),
+M4 보고서, M5 생성 행(공개 트랙은 NVD 문서 기반 답변 포함, KISA 트랙은 답변 없이 검색·인용 문서 ID와 토큰·지연 같은 고정 필드만)과 판정 행(고정 라벨·코드만)이
+있고 KISA 본문은 없다.
+
+## 리포 구성
+
+| 경로 | 내용 |
+|---|---|
+| `src/krsec_rag_lab/` | 라이브러리. `baselines/`(exact·BM25·dense와 채점), `experiments/`(M3 하네스와 실험), `corpus/`(M4 전체 수집·증분 동기화), `generation/`(M5 생성 파이프라인과 판정), `integrations/`(LangChain/LangGraph 어댑터), `metrics.py`, `splits.py`, `judge.py` |
+| `scripts/` | CLI. `run_baselines.py`, `run_experiment.py`, `collect_kisa_full.py`, `sync_index.py`, `run_generation.py`, `judge_generation.py`, `run_langgraph.py`, 표 재생성과 릴리스 검사 `make_readme_tables.py`·`check_release.py` |
+| `eval/`, `fixtures/` | 평가셋(공개 144문항, 골든 54문항)과 코퍼스(NVD 1560건, 고정 KISA 50건 메타데이터, 전체 KISA 메타데이터) |
+| `results/` | 질문별 원시 결과. `baselines/`, `experiments/`, `m4/`, `m5/` |
+| `docs/` | 평가 규약, 단계별 보고서, 릴리스 노트(v0.1~v1.0) |
+| `data/` | 로컬 캐시(gitignore). KISA 본문은 여기에만 있고 커밋하지 않는다 |
 
 ## 실행
 
