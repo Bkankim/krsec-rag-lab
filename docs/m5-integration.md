@@ -131,6 +131,10 @@ exit 1이다.
 - 그래프는 코어 파이프라인의 얇은 포장이라 더 좋은 답을 만들지 않는다. 인용 검사 노드는 형식만 다시 확인하고 결과를 바꾸지
   않는다(gold 여부도 보지 않는다).
 - `BM25CoreRetriever`는 BM25 하나만 감싼다. 하이브리드·리랭크 등 다른 검색기와 LangChain 체인·에이전트·도구 호출은 범위 밖이다.
+- 외부 추적(LangSmith)은 쓰지 않는다. `LANGSMITH_TRACING`·`LANGCHAIN_TRACING_V2` 등이 환경에 켜져 있어도 `invoke_graph`·
+  `run_graph_question`은 `langsmith.tracing_context(enabled=False)`로 추적을 끈 채 돌려 노드 입출력(문맥·답변)이 올라가지 않는다.
+  `graph.invoke`를 직접 부르면 추적이 켜진 환경에서 첫 노드가 고정 오류 `tracing_env_refused`로 거부한다(문맥을 만들기 전, LLM 호출 전).
+  다만 그 직접 호출은 거부 전에 질문 문자열과 k를 담은 최상위 실행 기록이 추적기로 갈 수 있다. 직접 호출 대신 `invoke_graph`를 쓴다.
 - CLI는 공개 트랙만 지원한다. KISA 트랙을 그래프로 돌린 답변·문맥은 만들지도 남기지도 않는다.
 
 ## 범위 밖

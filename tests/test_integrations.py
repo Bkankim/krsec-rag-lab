@@ -20,6 +20,8 @@ import pytest
 pytest.importorskip("langchain_core")
 pytest.importorskip("langgraph")
 
+from langsmith.utils import get_env_var, tracing_is_enabled
+
 from krsec_rag_lab.baselines import data
 from krsec_rag_lab.generation import llm as llm_module
 from krsec_rag_lab.generation import pipeline as pl
@@ -27,8 +29,11 @@ from krsec_rag_lab.generation.llm import LLMResponse
 from krsec_rag_lab.integrations.langchain_adapter import BM25CoreRetriever
 from krsec_rag_lab.integrations.langgraph_pipeline import (
     NODE_CHECK,
+    TRACING_REFUSED,
+    TracingRefused,
     build_graph,
     check_citation_format,
+    invoke_graph,
     run_graph_question,
 )
 
@@ -301,6 +306,80 @@ def test_frameworks_are_imported_only_inside_integrations():
     assert not pattern.search((src / "integrations" / "__init__.py").read_text())
 
 
+# ------------------------------------------------------------ 외부 추적 차단 (LangSmith)
+
+TRACING_ENV_NAMES = (
+    "LANGSMITH_TRACING",
+    "LANGSMITH_TRACING_V2",
+    "LANGCHAIN_TRACING_V2",
+    "LANGCHAIN_TRACING",
+)
+AMBIENT_ENV_NAMES = (
+    *TRACING_ENV_NAMES,
+    "LANGSMITH_API_KEY",
+    "LANGCHAIN_API_KEY",
+    "LANGSMITH_ENDPOINT",
+)
+
+
+@pytest.fixture(autouse=True)
+def no_ambient_tracing(monkeypatch):
+    """개발자 환경의 추적 설정이 테스트에 새지 않게 비운다. get_env_var는 캐시되므로 앞뒤로 비운다."""
+    for name in AMBIENT_ENV_NAMES:
+        monkeypatch.delenv(name, raising=False)
+    get_env_var.cache_clear()
+    yield
+    get_env_var.cache_clear()
+
+
+def enable_tracing(monkeypatch, name):
+    """가짜 env: 추적 플래그와 가짜 키. 엔드포인트는 닿지 않는 로컬 주소라 어떤 요청도 밖으로 나가지 않는다."""
+    monkeypatch.setenv(name, "true")
+    monkeypatch.setenv("LANGSMITH_API_KEY", "fake-key-not-a-secret")
+    monkeypatch.setenv("LANGSMITH_ENDPOINT", "http://127.0.0.1:9")
+    get_env_var.cache_clear()
+
+
+class TracingProbeLLM(FakeLLM):
+    """호출 시점(생성 노드 안)에 외부 추적이 켜져 있었는지 기록한다."""
+
+    def __init__(self):
+        super().__init__([cite_first])
+        self.tracing_seen = []
+
+    def __call__(self, messages):
+        self.tracing_seen.append(bool(tracing_is_enabled()))
+        return super().__call__(messages)
+
+
+# LANGCHAIN_TRACING(v1)은 langchain-core가 켜진 채로는 스스로 RuntimeError를 낸다(아무것도 올라가지 않는다)
+@pytest.mark.parametrize("name", [n for n in TRACING_ENV_NAMES if n != "LANGCHAIN_TRACING"])
+def test_invoke_graph_turns_tracing_off_even_when_env_enables_it(index, monkeypatch, name):
+    enable_tracing(monkeypatch, name)
+    assert tracing_is_enabled() is True  # 대조: 같은 env에서 보호 없이는 추적이 켜진다
+    llm = TracingProbeLLM()
+    row = run_graph_question(build_graph(index, llm), make_question("t", "alpha"), 3)
+    assert llm.tracing_seen == [False]
+    assert row == pl.run_question(make_question("t", "alpha"), index, 3, LLMS["cite_first"]())
+    state = invoke_graph(build_graph(index, TracingProbeLLM()), "alpha", 3)
+    assert state["status"] == "ok"
+
+
+@pytest.mark.parametrize("name", TRACING_ENV_NAMES)
+def test_direct_invoke_with_tracing_env_is_refused_before_any_context(index, monkeypatch, name):
+    enable_tracing(monkeypatch, name)
+    llm = TracingProbeLLM()
+    with pytest.raises(TracingRefused, match=TRACING_REFUSED) as raised:
+        build_graph(index, llm).invoke({"question": "alpha", "k": 3})
+    assert str(raised.value) == TRACING_REFUSED  # 고정 코드뿐: env 값·질문·문맥을 담지 않는다
+    assert llm.calls == []  # 문맥을 만들기 전, LLM 호출 전에 멈춘다
+
+
+def test_direct_invoke_without_tracing_env_still_works(index):
+    state = build_graph(index, TracingProbeLLM()).invoke({"question": "alpha", "k": 3})
+    assert state["status"] == "ok"
+
+
 # ------------------------------------------------------------ CLI 보조 함수
 
 
@@ -457,6 +536,20 @@ def test_compare_reports_mismatch_and_exits_one(committed_manifest, monkeypatch,
     assert report["n_compared"] == 3
     assert report["n_match"] == 0
     assert report["mismatched"] == report["question_ids"]
+
+
+def test_compare_with_unknown_baseline_question_id_exits_one(
+    committed_manifest, monkeypatch, capsys, tmp_path
+):
+    baseline = tmp_path / "public_k3.jsonl"
+    baseline.write_text(json.dumps(stored_row("pub-gone-9999")) + "\n", encoding="utf-8")
+    monkeypatch.setattr(llm_module, "model_info", fake_model_info(committed_manifest))
+    patch_ollama(monkeypatch, lambda messages: reply())
+
+    assert run_langgraph.main(["--compare", "--n", "1", "--baseline", str(baseline)]) == 1
+    captured = capsys.readouterr()
+    assert "baseline questions not in the public question set: ['pub-gone-9999']" in captured.err
+    assert captured.out == ""
 
 
 def test_split_mode_prints_core_equal_rows(monkeypatch, capsys):

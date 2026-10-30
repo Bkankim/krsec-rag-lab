@@ -12,6 +12,8 @@ import json
 from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
+from langsmith import tracing_context
+from langsmith.utils import tracing_is_enabled
 
 from krsec_rag_lab.baselines import data
 from krsec_rag_lab.generation.llm import LLM
@@ -25,9 +27,14 @@ from krsec_rag_lab.generation.pipeline import (
     sha256_text,
 )
 
+TRACING_REFUSED = "tracing_env_refused"
 NODE_RETRIEVE = "retrieve"
 NODE_GENERATE = "generate"
 NODE_CHECK = "check_citations"
+
+
+class TracingRefused(RuntimeError):
+    """외부 추적(LangSmith)이 켜진 채 그래프를 돌리려 했다. 메시지는 고정 코드뿐이다(환경변수 값을 담지 않는다)."""
 
 
 class GraphState(TypedDict, total=False):
@@ -76,6 +83,10 @@ def build_graph(index: GenerationIndex, llm: LLM, track: str | None = None):
     track = track or index.track
 
     def retrieve_node(state: GraphState) -> dict:
+        # 문맥(KISA면 공지 본문)이 만들어지기 전에 막는다: 추적이 켜진 채 `graph.invoke`를 직접 부르면 노드 입출력이
+        # 외부로 올라간다. `invoke_graph`는 추적을 끄고 부르므로 여기서 걸리지 않는다
+        if tracing_is_enabled():
+            raise TracingRefused(TRACING_REFUSED)
         retrieved = retrieve(index, state["question"], state["k"])
         context_text, truncated = build_context(
             track, [doc_id for doc_id, _ in retrieved], index.text
@@ -144,6 +155,13 @@ def state_to_row(state: GraphState, question: data.Question) -> dict:
     }
 
 
+def invoke_graph(graph, question: str, k: int) -> GraphState:
+    """추적을 끈 채 그래프를 돌린다. `LANGSMITH_TRACING`·`LANGCHAIN_TRACING_V2` 등이 켜져 있어도 노드 입출력
+    (문맥·답변)이 LangSmith로 올라가지 않는다. 외부 추적은 이 프로젝트의 범위 밖이다."""
+    with tracing_context(enabled=False):
+        return graph.invoke({"question": question, "k": k})
+
+
 def run_graph_question(graph, question: data.Question, k: int) -> dict:
     """질문 하나를 그래프로 돌려 코어 `run_question`과 같은 형태의 행을 돌려준다."""
-    return state_to_row(graph.invoke({"question": question.query, "k": k}), question)
+    return state_to_row(invoke_graph(graph, question.query, k), question)

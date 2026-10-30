@@ -106,6 +106,9 @@ def run_compare(graph_module, args: argparse.Namespace) -> int:
     stored_rows = pipeline.read_jsonl_rows(args.baseline)
     picked = pick_baseline_rows(stored_rows, args.n)
     questions = {q.question_id: q for q in pipeline.expected_questions(TRACK, ROOT)}
+    unknown = [row["question_id"] for row in picked if row["question_id"] not in questions]
+    if unknown:
+        raise ValueError(f"baseline questions not in the public question set: {unknown}")
     index = pipeline.build_index(TRACK, ROOT)
     graph = graph_module.build_graph(index, llm)
     results = []
@@ -139,7 +142,7 @@ def run_queries(graph_module, args: argparse.Namespace) -> int:
     index = pipeline.build_index(TRACK, ROOT)
     graph = graph_module.build_graph(index, llm)
     if args.question is not None:
-        state = graph.invoke({"question": args.question, "k": args.k})
+        state = graph_module.invoke_graph(graph, args.question, args.k)
         state = {key: value for key, value in state.items() if key != "context_text"}
         print(json.dumps(state, ensure_ascii=False, indent=2))
         return 0
