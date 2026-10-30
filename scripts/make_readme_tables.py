@@ -25,6 +25,13 @@ README의 M4 구간과 `docs/release-v0.3.md`의 M4 구간(과 M3 구간)을 만
 결과별 건수, 발견 계측, 메타데이터 ID) 문서와 비교하기 전에 불일치로 보고한다. `--note-v03`으로 v0.3 노트 경로를 따로 줄 수 있다.
 M4 수치는 어디에도 고치지 않고 README와 v0.3 노트의 생성 구간만 쓴다. 본문 유출 점검(KISA 캐시 필요)은 이 스크립트의 일이 아니다.
 
+M5(`results/m5/`가 있거나 README에 M5 구간 마커가 있을 때, 데이터가 없으면 실패한다)는
+`results/m5/generation/{manifest.json,topk.json,public_k{1,3,5}.jsonl,kisa_k{1,3,5}.jsonl}`와
+`results/m5/judgments/{manifest.json,summary.json,public.jsonl,kisa.jsonl}`를 저장본 검사(생성 쪽 `pipeline.check_stored`,
+판정 쪽 `judge_gen.check_stored`: 행 키·집합, 해시, topk.json·summary.json 재계산 대조)로 먼저 확인하고, 그 값으로 README의 M5 구간과
+`docs/release-v1.0.md`의 M5 구간(과 M3·M4 구간)을 만든다. `--note-v10`으로 v1.0 노트 경로를 따로 줄 수 있다.
+M5 수치는 어디에도 고치지 않고 README와 v1.0 노트의 생성 구간만 쓴다. 모델·Ollama·외부 API·KISA 캐시를 쓰지 않는다.
+
 `--root`로 리포 루트를 바꿀 수 있다(릴리스 asset 사본 검증용, scripts/check_release.py). README는 기본으로
 `<root>/README.md`이고 `--readme`로 따로 정할 수 있다.
 """
@@ -40,6 +47,7 @@ from krsec_rag_lab.baselines import data, scoring
 from krsec_rag_lab.baselines.runner import RETRIEVERS
 from krsec_rag_lab.experiments import ExperimentError, harness
 from krsec_rag_lab.experiments import compare as cmp
+from krsec_rag_lab.generation import judge_gen, pipeline
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS_DIR = Path("results/baselines")
@@ -62,6 +70,7 @@ EXPERIMENTS_DIR = Path("results/experiments")
 SUMMARY_PATH = Path("docs/experiments/summary.md")
 NOTE_V02_PATH = Path("docs/release-v0.2.md")
 NOTE_V03_PATH = Path("docs/release-v0.3.md")
+NOTE_V10_PATH = Path("docs/release-v1.0.md")
 README_M3 = (
     "<!-- BEGIN M3 TABLES (scripts/make_readme_tables.py) -->",
     "<!-- END M3 TABLES (scripts/make_readme_tables.py) -->",
@@ -81,6 +90,38 @@ README_M4 = (
 NOTE_M4_RANGE = (
     "<!-- BEGIN M4 RESULTS (scripts/make_readme_tables.py) -->",
     "<!-- END M4 RESULTS (scripts/make_readme_tables.py) -->",
+)
+README_M5 = (
+    "<!-- BEGIN M5 TABLES (scripts/make_readme_tables.py) -->",
+    "<!-- END M5 TABLES (scripts/make_readme_tables.py) -->",
+)
+NOTE_M5_RANGE = (
+    "<!-- BEGIN M5 RESULTS (scripts/make_readme_tables.py) -->",
+    "<!-- END M5 RESULTS (scripts/make_readme_tables.py) -->",
+)
+M5_DIR = Path("results/m5")
+M5_GENERATION = M5_DIR / "generation"
+M5_JUDGMENTS = M5_DIR / "judgments"
+# 고정 목록: 하나라도 없으면 실패다(docs/m5-generation.md, docs/m5-generation-eval.md의 산출물)
+M5_FILES = (
+    M5_GENERATION / "manifest.json",
+    M5_GENERATION / "topk.json",
+    *[M5_GENERATION / f"{track}_k{k}.jsonl" for track in ("public", "kisa") for k in (1, 3, 5)],
+    M5_JUDGMENTS / "manifest.json",
+    M5_JUDGMENTS / "summary.json",
+    M5_JUDGMENTS / "public.jsonl",
+    M5_JUDGMENTS / "kisa.jsonl",
+)
+M5_PROBLEM = (
+    "results/m5:"  # M5 저장본 검사 실패 항목의 접두어(쓰기 모드는 이때 문서를 건드리지 않는다)
+)
+M5_TRACK_TITLES = {"public": "공개 트랙 (NVD)", "kisa": "KISA 트랙"}
+M5_NOTE = (
+    "이 구간은 `scripts/make_readme_tables.py`가 `results/m5/generation/`과 `results/m5/judgments/`의 저장본"
+    "(질문별 행, `topk.json`, `summary.json`)을 다시 검사하고 질의셋 라벨과 판정 행에서 지표를 다시 계산해 만든다. "
+    "손으로 고치지 않는다. 검증: `uv run python scripts/make_readme_tables.py --check`. 세 축(faithfulness, 정답성, "
+    "답 없음 처리)은 따로 보고하고 하나의 점수로 합치지 않는다. 분할 `all`은 dev와 test의 합이다. 판정은 두 모델의 "
+    "교차 판정이고 사람 검수가 아니며, KISA 생성 답변 원문은 어디에도 없다."
 )
 M4_COLLECTION = Path("results/m4/collection/report.json")
 M4_IDEMPOTENCY = Path("results/m4/idempotency/report.json")
@@ -1050,25 +1091,30 @@ def render_m4(m4: Mapping, link_prefix: str) -> str:
 
 
 def m4_documents(
-    root: Path, readme: Path, note: Path | None = None
+    root: Path, readme: Path, note: Path | None = None, notes: Sequence[Path] | None = None
 ) -> list[tuple[Path, tuple[str, str], str]]:
-    return [
-        (readme, README_M4, "readme"),
-        (note or root / NOTE_V03_PATH, NOTE_M4_RANGE, "note"),
-    ]
+    """(문서 경로, 마커 쌍, 구간 종류). `notes`는 M4 구간을 가진 릴리스 노트 전부다(주지 않으면 `note` 하나, 없으면 v0.3 노트)."""
+    paths = list(notes) if notes is not None else [note or root / NOTE_V03_PATH]
+    return [(readme, README_M4, "readme"), *[(path, NOTE_M4_RANGE, "note") for path in paths]]
 
 
 def _render_m4_range(kind: str, m4: Mapping) -> str:
     return render_m4(m4, "docs/" if kind == "readme" else "")
 
 
-def verify_m4(root: Path, readme: Path, *, note: Path | None = None) -> tuple[list[str], Mapping]:
+def verify_m4(
+    root: Path,
+    readme: Path,
+    *,
+    note: Path | None = None,
+    notes: Sequence[Path] | None = None,
+) -> tuple[list[str], Mapping]:
     """(불일치 목록, M4 입력). 보고서·manifest끼리의 대조와 README·v0.3 노트의 M4 구간을 본다.
 
     `root`는 보고서·manifest·메타데이터를 읽는 곳(릴리스 asset 사본이면 그 사본)이다."""
     documents = []
     for path, markers, kind in m4_documents(
-        root, readme, note
+        root, readme, note, notes
     ):  # 마커 오류는 입력을 읽기 전에 멈춘다
         text = _read_readme(path)
         documents.append((path, text, _split_readme(text, path.name, markers), kind))
@@ -1091,8 +1137,14 @@ def verify_m4(root: Path, readme: Path, *, note: Path | None = None) -> tuple[li
     return problems, m4
 
 
-def write_m4(root: Path, readme: Path, m4: Mapping, note: Path | None = None) -> None:
-    for path, markers, kind in m4_documents(root, readme, note):
+def write_m4(
+    root: Path,
+    readme: Path,
+    m4: Mapping,
+    note: Path | None = None,
+    notes: Sequence[Path] | None = None,
+) -> None:
+    for path, markers, kind in m4_documents(root, readme, note, notes):
         text = _read_readme(path)
         start, stop = _split_readme(text, path.name, markers)
         path.write_text(
@@ -1107,6 +1159,321 @@ def m4_active(root: Path, readme: Path) -> bool:
         return True
     try:
         return README_M4[0] in readme.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return False
+
+
+# ------------------------------------------------------------ M5: 생성 평가 저장본, 표, 검증
+
+
+def _m5_fmt(value: float | None, digits: int = 3) -> str:
+    return "-" if value is None else f"{value:.{digits}f}"
+
+
+def _m5_int(value: float | None) -> str:
+    return "-" if value is None else f"{value:.0f}"
+
+
+def _m5_seconds(value_ms: float | None) -> str:
+    return "-" if value_ms is None else f"{value_ms / 1000:.2f}"
+
+
+def load_m5(root: Path) -> dict:
+    """M5 입력(생성·판정 저장본)과 저장본 검사 결과. 입력 파일 문제는 CheckError.
+
+    `{"generation", "judgments", "topk", "summary", "rows", "problems"}`. problems는 저장본 검사
+    (`pipeline.check_stored`, `judge_gen.check_stored`)와 입력 해시 대조의 실패 항목이다. problems가 있으면
+    topk·summary·rows는 None이고 표를 만들 수 없다."""
+    for relative in M5_FILES:
+        if not (root / relative).is_file():
+            raise CheckError(f"missing required file: {relative.as_posix()}")
+    generation = _read_json(
+        root / M5_GENERATION / "manifest.json", "results/m5/generation/manifest.json"
+    )
+    judgments = _read_json(
+        root / M5_JUDGMENTS / "manifest.json", "results/m5/judgments/manifest.json"
+    )
+    problems: list[str] = []
+    try:
+        # 고정 구성: 트랙 2개 x k 3개. manifest에서 빠진 (트랙, k)의 파일은 저장본 검사 대상에서 빠지므로 여기서 먼저 본다
+        wanted_outputs = {f"k{k}" for k in pipeline.KS}
+        if set(generation["tracks"]) != set(data.TRACKS):
+            problems.append(
+                f"{M5_PROBLEM} generation manifest tracks differ from {list(data.TRACKS)}"
+            )
+        for track, block in generation["tracks"].items():
+            if set(block["outputs"]) != wanted_outputs:
+                problems.append(
+                    f"{M5_PROBLEM} generation manifest {track} outputs "
+                    f"{sorted(block['outputs'])} differ from {sorted(wanted_outputs)}"
+                )
+        if set(judgments["tracks"]) != set(data.TRACKS):
+            problems.append(
+                f"{M5_PROBLEM} judgments manifest tracks differ from {list(data.TRACKS)}"
+            )
+        if problems:  # 구성이 틀리면 아래 저장본 검사가 KeyError로 멈추기 전에 이 사유를 보고한다
+            return {
+                "generation": generation,
+                "judgments": judgments,
+                "topk": None,
+                "summary": None,
+                "rows": None,
+                "problems": problems,
+            }
+        for track, block in generation["tracks"].items():
+            try:
+                _check_inputs(root, f"m5 generation {track}", block)
+            except CheckError as error:
+                problems.append(f"{M5_PROBLEM} {error}")
+        problems += [
+            f"{M5_PROBLEM} generation: {item}"
+            for item in pipeline.check_stored(root, root / M5_GENERATION)
+        ]
+        problems += [
+            f"{M5_PROBLEM} judgments: {item}"
+            for item in judge_gen.check_stored(root, root / M5_JUDGMENTS, require_complete=True)
+        ]
+        if problems:
+            return {
+                "generation": generation,
+                "judgments": judgments,
+                "topk": None,
+                "summary": None,
+                "rows": None,
+                "problems": problems,
+            }
+        stored = pipeline.load_stored_rows(root / M5_GENERATION, generation)
+        questions = {track: data.load_questions(track, root) for track in generation["tracks"]}
+        topk = pipeline.compute_topk(stored, questions)
+        rows = {
+            track: judge_gen.read_jsonl(root / M5_JUDGMENTS / block["file"])
+            for track, block in judgments["tracks"].items()
+        }
+        summary = judge_gen.compute_summary(rows, topk)
+    except (OSError, UnicodeDecodeError, ValueError, KeyError, TypeError, AttributeError) as error:
+        raise CheckError(f"M5 results are malformed ({type(error).__name__})") from None
+    m5 = {
+        "generation": generation,
+        "judgments": judgments,
+        "topk": topk,
+        "summary": summary,
+        "rows": rows,
+        "problems": [],
+    }
+    try:
+        render_m5(m5, "")  # 표가 읽는 중첩 키가 없거나 형식이 틀리면 여기서 CheckError로 멈춘다
+    except (KeyError, TypeError, ValueError, AttributeError, IndexError) as error:
+        raise CheckError(f"M5 manifests are malformed ({type(error).__name__})") from None
+    return m5
+
+
+def _m5_config_rows(generation: Mapping, judgments: Mapping, summary: Mapping) -> list[str]:
+    model, request = generation["model"], generation["request"]
+    options = request["options"]
+    tracks = generation["tracks"]
+    retrieval = {
+        track: f"{track} k1 {block['retrieval']['k1']}, b {block['retrieval']['b']}"
+        for track, block in tracks.items()
+    }
+    cap = generation["context_rules"]["per_doc_char_cap"]
+    judges = judgments["judges"]
+    by_kind = judgments["calls"]["by_judge_kind"]
+    retries = sum(item["n"] for item in by_kind if item["kind"] == "retry")
+    judged = summary["tracks"]
+    return [
+        f"| 생성 모델 | `{model['name']}` ({model['parameter_size']}, {model['quantization']}, {model['license']}), Ollama {model['ollama_version']} |",
+        f"| 모델 digest | `{model['digest']}` |",
+        (
+            f"| 요청 옵션 | temperature {options['temperature']}, seed {options['seed']}, num_ctx {options['num_ctx']}, "
+            f"num_predict {options['num_predict']}, think {str(request['think']).lower()}, format {request['format']} |"
+        ),
+        f"| 프롬프트 sha256 / 실행 ID | `{generation['prompt']['sha256']}` / `{generation['run_id']}` |",
+        f"| 검색 | BM25 (M2 선택 값, {'; '.join(retrieval.values())}), 문서당 {cap}자 상한 |",
+        (
+            "| 생성 질문 수 | "
+            + ", ".join(f"{track} {block['n_questions']}" for track, block in tracks.items())
+            + " (k 1, 3, 5) |"
+        ),
+        (
+            f"| 판정자 | A `{judges['A']['model']}` ({judges['A']['vendor']}, {judges['A']['cli_version']}), "
+            f"B `{judges['B']['model']}` ({judges['B']['vendor']}, {judges['B']['cli_version']}) |"
+        ),
+        (
+            f"| 판정 범위 | k={judgments['k']}, "
+            + ", ".join(
+                f"{track} {'+'.join(splits)}"
+                for track, splits in judgments["rules"]["scope"].items()
+            )
+            + " |"
+        ),
+        (
+            "| 판정 대상 / 두 판정자 모두 유효 | "
+            + ", ".join(
+                f"{track} {stats['n_judged']} / {stats['n_valid_both']}"
+                for track, stats in judged.items()
+            )
+            + " |"
+        ),
+        (
+            f"| 판정자 호출 | {judgments['calls']['total']}회 (재질의 {retries}회), "
+            f"한도 대기 {judgments['limit_waits']['n_events']}회, 상태 `{judgments['status']}` |"
+        ),
+    ]
+
+
+def render_m5(m5: Mapping, link_prefix: str) -> str:
+    """M5 구간(README·릴리스 노트용). 보고서 문서 링크는 `<link_prefix>m5-*.md`다."""
+    gen, jm = m5["generation"], m5["judgments"]
+    topk, summary, rows = m5["topk"], m5["summary"], m5["rows"]
+    cells = {(c["track"], c["k"], c["split"], c["query_type"]): c for c in topk["cells"]}
+    ks = sorted({key[1] for key in cells})
+    link_gen = f"[m5-generation.md]({link_prefix}m5-generation.md)"
+    link_eval = f"[m5-generation-eval.md]({link_prefix}m5-generation-eval.md)"
+    lines = [
+        M5_NOTE,
+        "",
+        f"### 실행 구성 ({link_gen}, {link_eval})",
+        "",
+        "| 항목 | 값 |",
+        "|---|---|",
+        *_m5_config_rows(gen, jm, summary),
+    ]
+    for track in data.TRACKS:
+        total = cells[(track, ks[0], "all", "all")]["n_questions"]
+        lines += [
+            "",
+            f"### top-k 기계 지표: {M5_TRACK_TITLES[track]}, {total}문항 dev+test ({link_gen})",
+            "",
+            (
+                "| k | 계약 파싱 성공률 | 재질의 수 | 문맥 초과 | 올바른 기권률 | 잘못된 기권률 | 인용 적중률 "
+                "| 무효 인용률 | 입력 토큰 중앙값 | 입력 토큰 최대 | 지연 중앙값(초) |"
+            ),
+            "|---|---|---|---|---|---|---|---|---|---|---|",
+        ]
+        for k in ks:
+            c = cells[(track, k, "all", "all")]
+            lines.append(
+                f"| {k} | {_m5_fmt(c['parse_success_rate'])} | {c['n_retried']} | {c['n_context_overflow']} "
+                f"| {_m5_fmt(c['correct_abstain_rate'])} | {_m5_fmt(c['false_abstain_rate'])} "
+                f"| {_m5_fmt(c['citation_hit_rate'])} | {_m5_fmt(c['invalid_citation_rate'])} "
+                f"| {_m5_int(c['prompt_tokens_median'])} | {_m5_int(c['prompt_tokens_max'])} "
+                f"| {_m5_seconds(c['latency_ms_median'])} |"
+            )
+    scope = {track: judge_gen.SUMMARY_SPLITS[track][-1] for track in data.TRACKS}
+    judged = [c for c in summary["cells"] if c["split"] == scope[c["track"]]]
+    for axis, title in (
+        (judge_gen.FAITHFULNESS, "faithfulness"),
+        (judge_gen.CORRECTNESS, "정답성"),
+    ):
+        positive = judge_gen.POSITIVE[axis]
+        lines += [
+            "",
+            f"### {title}: 두 판정자 교차 판정, k={jm['k']} ({link_eval})",
+            "",
+            f"| 트랙 (분할) | 유형 | 분모 | 확정 {positive} 비율 | 일치율 | 불일치율 | invalid | kappa |",
+            "|---|---|---|---|---|---|---|---|",
+        ]
+        for c in judged:
+            s = c[axis]
+            if s["n"] == 0:
+                continue
+            lines.append(
+                f"| {c['track']} ({c['split']}) | {c['query_type']} | {s['n']} "
+                f"| {_m5_fmt(s['confirmed_positive_rate'])} | {_m5_fmt(s['agreement_rate'])} "
+                f"| {_m5_fmt(s['disagreement_rate'])} | {s['n_invalid']} | {_m5_fmt(s['kappa']['value'])} |"
+            )
+    lines += [
+        "",
+        f"### 답 없음 처리와 판정 제외: k={jm['k']}, 기계 판정 ({link_eval})",
+        "",
+        "| 트랙 (분할) | 유형 | 행 수 | 판정 | 기권 제외 | 파싱 실패 제외 | 문맥 초과 제외 | 올바른 기권률 | 잘못된 기권률 | 인용 적중률 |",
+        "|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    for c in judged:
+        m = c["machine"] or {}
+        lines.append(
+            f"| {c['track']} ({c['split']}) | {c['query_type']} | {c['n_rows']} | {c['n_judged']} "
+            f"| {c['n_skipped_abstain']} | {c['n_skipped_parse_failed']} | {c['n_skipped_context_overflow']} "
+            f"| {_m5_fmt(m.get('correct_abstain_rate'))} | {_m5_fmt(m.get('false_abstain_rate'))} "
+            f"| {_m5_fmt(m.get('citation_hit_rate'))} |"
+        )
+    lines += [
+        "",
+        "### 판정자 불일치 (확정되지 않은 질문-축 수)",
+        "",
+        "| 트랙 | 축 | 불일치 (`disagree`) | 무효 (`invalid`) |",
+        "|---|---|---|---|",
+    ]
+    for track, track_rows in rows.items():
+        for axis in judge_gen.AXES:
+            decided = [r[axis] for r in track_rows if r["status"] == judge_gen.STATUS_JUDGED]
+            lines.append(
+                f"| {track} | {axis} | {decided.count(judge_gen.DISAGREE)} "
+                f"| {decided.count(judge_gen.INVALID)} |"
+            )
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def m5_documents(
+    root: Path, readme: Path, note: Path | None = None
+) -> list[tuple[Path, tuple[str, str], str]]:
+    return [
+        (readme, README_M5, "readme"),
+        (note or root / NOTE_V10_PATH, NOTE_M5_RANGE, "note"),
+    ]
+
+
+def _render_m5_range(kind: str, m5: Mapping) -> str:
+    return render_m5(m5, "docs/" if kind == "readme" else "")
+
+
+def verify_m5(root: Path, readme: Path, *, note: Path | None = None) -> tuple[list[str], Mapping]:
+    """(불일치 목록, M5 입력). 저장본 검사와 README·v1.0 노트의 M5 구간을 본다.
+
+    `root`는 M5 저장본과 질의셋을 읽는 곳(릴리스 asset 사본이면 그 사본)이다."""
+    documents = []
+    for path, markers, kind in m5_documents(
+        root, readme, note
+    ):  # 마커 오류는 입력을 읽기 전에 멈춘다
+        text = _read_readme(path)
+        documents.append((path, text, _split_readme(text, path.name, markers), kind))
+    m5 = load_m5(root)
+    problems = list(m5["problems"])
+    if problems:
+        return problems, m5
+    for path, text, (start, stop), kind in documents:
+        expected = _render_m5_range(kind, m5).strip()
+        if text[start:stop].strip() != expected:
+            shown = text[start:stop].strip().splitlines()
+            problems.append(
+                f"{path.name}: M5 generated range differs from recomputed tables "
+                f"({len(shown)} lines in file, {len(expected.splitlines())} expected)"
+            )
+            for number, (have, want) in enumerate(
+                zip(shown, expected.splitlines(), strict=False), 1
+            ):
+                if have != want:
+                    problems.append(f"  first difference at {path.name} range line {number}")
+                    break
+    return problems, m5
+
+
+def write_m5(root: Path, readme: Path, m5: Mapping, note: Path | None = None) -> None:
+    for path, markers, kind in m5_documents(root, readme, note):
+        text = _read_readme(path)
+        start, stop = _split_readme(text, path.name, markers)
+        path.write_text(
+            text[:start] + "\n\n" + _render_m5_range(kind, m5) + "\n" + text[stop:],
+            encoding="utf-8",
+        )
+
+
+def m5_active(root: Path, readme: Path) -> bool:
+    """`results/m5/`가 있거나 README가 M5 구간 마커를 갖고 있으면 M5를 검증한다(데이터가 사라져도 통과하지 않는다)."""
+    if (root / M5_DIR).is_dir():
+        return True
+    try:
+        return README_M5[0] in readme.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return False
 
@@ -1129,6 +1496,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="v0.3 노트 경로(기본: <root>/docs/release-v0.3.md). M4가 켜졌을 때만 쓴다",
     )
+    parser.add_argument(
+        "--note-v10",
+        type=Path,
+        help="v1.0 노트 경로(기본: <root>/docs/release-v1.0.md). M5가 켜졌을 때만 쓴다",
+    )
     return parser
 
 
@@ -1139,17 +1511,27 @@ def main(argv: list[str] | None = None) -> int:
     summary = args.summary.resolve() if args.summary else None
     note = args.note.resolve() if args.note else None
     note_v03 = args.note_v03.resolve() if args.note_v03 else root / NOTE_V03_PATH
+    note_v10 = args.note_v10.resolve() if args.note_v10 else root / NOTE_V10_PATH
     try:
         problems, recomputed = verify(root, readme)
-        m3 = m4 = None
+        m3 = m4 = m5 = None
         m4_on = m4_active(root, readme)
-        notes = [note or root / NOTE_V02_PATH, *([note_v03] if m4_on else [])]
+        m5_on = m5_active(root, readme)
+        notes = [
+            note or root / NOTE_V02_PATH,
+            *([note_v03] if m4_on else []),
+            *([note_v10] if m5_on else []),
+        ]
         if m3_active(root, readme):
             m3_problems, m3 = verify_m3(root, readme, summary=summary, notes=notes)
             problems += m3_problems
         if m4_on:
-            m4_problems, m4 = verify_m4(root, readme, note=note_v03)
+            m4_notes = [note_v03, *([note_v10] if m5_on else [])]
+            m4_problems, m4 = verify_m4(root, readme, notes=m4_notes)
             problems += m4_problems
+        if m5_on:
+            m5_problems, m5 = verify_m5(root, readme, note=note_v10)
+            problems += m5_problems
         if args.check:
             if problems:
                 for problem in problems:
@@ -1164,10 +1546,21 @@ def main(argv: list[str] | None = None) -> int:
                 print(
                     f"OK: M4 {facts['target']} target ids, {facts['ok']} ok, "
                     f"{len(m4['idempotency']['steps'])} idempotency steps; "
-                    "reports, manifest, README and release-v0.3 ranges match"
+                    f"reports, manifest, README and {', '.join(n.stem for n in m4_notes)} ranges match"
+                )
+            if m5 is not None:
+                steps = m5["topk"]["cells"]
+                print(
+                    f"OK: M5 {len(m5['generation']['tracks'])} tracks x {len(pipeline.KS)} k "
+                    f"({len(steps)} top-k cells), "
+                    f"{sum(t['n_judged'] for t in m5['summary']['tracks'].values())} judged rows; "
+                    "generation, judgments, README and release-v1.0 ranges match"
                 )
             return 0
-        if any(p.startswith(("metrics.json", "results/experiments", M4_PROBLEM)) for p in problems):
+        if any(
+            p.startswith(("metrics.json", "results/experiments", M4_PROBLEM, M5_PROBLEM))
+            for p in problems
+        ):
             for problem in problems:
                 print(f"MISMATCH {problem}", file=sys.stderr)
             print(
@@ -1179,7 +1572,9 @@ def main(argv: list[str] | None = None) -> int:
         if m3 is not None:
             write_m3(root, readme, m3, summary, notes=notes)
         if m4 is not None:
-            write_m4(root, readme, m4, note_v03)
+            write_m4(root, readme, m4, notes=m4_notes)
+        if m5 is not None:
+            write_m5(root, readme, m5, note_v10)
         print(f"README tables updated ({len(recomputed['runs'])} runs)")
         return 0
     except CheckError as error:

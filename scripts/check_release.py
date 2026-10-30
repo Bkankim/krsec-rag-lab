@@ -1,10 +1,11 @@
-"""릴리스(v0.1, v0.2, v0.3) asset 목록 검사와 재현 결과 비교.
+"""릴리스(v0.1, v0.2, v0.3, v1.0) asset 목록 검사와 재현 결과 비교.
 
     uv run python scripts/check_release.py                        # docs/release-v0.1.md의 asset 목록 검사
     uv run python scripts/check_release.py --note docs/release-v0.2.md   # v0.2 노트의 asset 목록 검사
     uv run python scripts/check_release.py --print-assets         # 리포 파일에서 asset 목록 표를 만들어 출력
     uv run python scripts/check_release.py --print-assets --note docs/release-v0.2.md   # v0.2 목록
     uv run python scripts/check_release.py --note docs/release-v0.3.md   # v0.3 노트의 asset 목록 검사
+    uv run python scripts/check_release.py --note docs/release-v1.0.md   # v1.0 노트의 asset 목록 검사
     uv run python scripts/check_release.py --assets-dir DIR       # 내려받은 asset 파일(asset 이름)을 검사
     uv run python scripts/check_release.py --compare-results DIR  # run_baselines.py --out-dir DIR 결과와 비교
 
@@ -38,6 +39,18 @@ v0.3 노트(`release-v0.3.md`)는 v0.2의 검사를 모두 물려받고(M3 asset
 - asset 사본만으로 보고서·manifest·메타데이터끼리의 대조와 README, 노트의 M4 구간(`make_readme_tables.verify_m4`),
   README·summary·노트의 M3 구간을 다시 만들어 대조한다. 본문 유출 점검(KISA 캐시 필요)은 이 검사의 일이 아니다.
 
+v1.0 노트(`release-v1.0.md`)는 v0.3의 필수 asset·검사를 모두 물려받고(M3·M4 asset 누락·변조도 실패) 아래를 더한다.
+
+- 허용·필수 asset에 고정 목록 M5 파일 12개가 더해진다: `results/m5/generation/{manifest.json,topk.json,public_k1.jsonl,
+  public_k3.jsonl,public_k5.jsonl,kisa_k1.jsonl,kisa_k3.jsonl,kisa_k5.jsonl}`,
+  `results/m5/judgments/{manifest.json,summary.json,public.jsonl,kisa.jsonl}`. 파일과 노트 행을 함께 지워도 실패한다.
+- M5 JSON(manifest, topk, summary)은 500자를 넘는 문자열과 `/`로 시작하는 모든 문자열(키 포함)을 거부한다. 생성 행의 키
+  집합은 정확히 `pipeline.ROW_KEYS`(KISA)와 거기에 `answer`를 더한 것(공개만)이고, 판정 행의 키 집합은 정확히 판정 행 고정
+  키 14개다. 알 수 없는 키, KISA 생성 행의 `answer`, 500자를 넘는 문자열(공개 `answer` 필드만 길이 예외), `/`로 시작하는 문자열은
+  거부한다. 값 형식은 `pipeline.validate_row`, `judge_gen.validate_row`로 다시 본다.
+- asset 사본만으로 M5 저장본 검사(`make_readme_tables.verify_m5`: 행 키·집합·해시, `topk.json`·`summary.json` 재계산 대조)와
+  README, 노트의 M5 구간, README·노트의 M3·M4 구간을 다시 만들어 대조한다. 모델·Ollama·외부 API·KISA 캐시는 쓰지 않는다.
+
 `--assets-dir DIR`을 주면 1, 3~5를 리포 파일이 아니라 DIR의 파일(노트 표의 asset 이름)에 대해 검사한다. 릴리스를
 발행한 뒤 내려받은 파일을 검증하는 용도다. 목록에 없는 파일이 DIR에 있으면 실패하고, 리포 원본이 있으면 sha256도 대조한다.
 
@@ -58,6 +71,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from krsec_rag_lab.baselines import scoring
+from krsec_rag_lab.generation import judge_gen, pipeline
 
 ROOT = Path(__file__).resolve().parents[1]
 NOTE_PATH = Path("docs/release-v0.1.md")
@@ -66,8 +80,10 @@ END = "<!-- END ASSETS -->"
 RESULTS_DIR = Path("results/baselines")
 EXPERIMENTS_DIR = Path("results/experiments")
 RELEASE_NOTE = re.compile(r"release-(v\d+\.\d+)\.md")
-PROFILES = ("v0.1", "v0.2", "v0.3")
-M3_PROFILES = ("v0.2", "v0.3")  # M3 실험 asset과 재계산 검사를 갖는 범위
+PROFILES = ("v0.1", "v0.2", "v0.3", "v1.0")
+M3_PROFILES = ("v0.2", "v0.3", "v1.0")  # M3 실험 asset과 재계산 검사를 갖는 범위
+M4_PROFILES = ("v0.3", "v1.0")  # M4 asset과 재계산 검사를 갖는 범위
+M5_PROFILES = ("v1.0",)  # M5 asset과 저장본 검사를 갖는 범위
 ATOL = 1e-9
 MAX_STRING_CHARS = 500  # JSON asset의 문자열 한 개 상한. 공지 본문 조각이 들어오면 넘는다
 
@@ -110,6 +126,72 @@ M4_JSON_PATHS = (
     "results/m4/idempotency/report.json",
 )
 M4_ASSETS = (M4_METADATA_PATH, *M4_JSON_PATHS)
+# v1.0 필수 M5 asset: 고정 목록이다(manifest에서 유도하지 않는다). docs/m5-generation.md, docs/m5-generation-eval.md
+M5_JSON_PATHS = (
+    "results/m5/generation/manifest.json",
+    "results/m5/generation/topk.json",
+    "results/m5/judgments/manifest.json",
+    "results/m5/judgments/summary.json",
+)
+M5_GENERATION_ROWS = {
+    track: tuple(f"results/m5/generation/{track}_k{k}.jsonl" for k in (1, 3, 5))
+    for track in ("public", "kisa")
+}
+M5_JUDGMENT_ROWS = ("results/m5/judgments/public.jsonl", "results/m5/judgments/kisa.jsonl")
+M5_ASSETS = (
+    *M5_JSON_PATHS[:2],
+    *M5_GENERATION_ROWS["public"],
+    *M5_GENERATION_ROWS["kisa"],
+    *M5_JSON_PATHS[2:],
+    *M5_JUDGMENT_ROWS,
+)
+# 행 허용 키: #65(생성 행), #66(판정 행) 본문의 고정 키 집합. 공개 생성 행만 `answer`를 더 갖는다.
+M5_GENERATION_KEYS = frozenset(
+    {
+        "question_id",
+        "split",
+        "query_type",
+        "k",
+        "status",
+        "abstain",
+        "citations",
+        "n_invalid_citations",
+        "retrieved",
+        "truncated",
+        "n_retrieved",
+        "prompt_tokens",
+        "completion_tokens",
+        "latency_ms",
+        "context_sha256",
+        "n_attempts",
+        "context_chars",
+    }
+)
+M5_JUDGMENT_KEYS = frozenset(
+    {
+        "question_id",
+        "split",
+        "query_type",
+        "status",
+        "faithfulness_A",
+        "faithfulness_B",
+        "faithfulness",
+        "correctness_A",
+        "correctness_B",
+        "correctness",
+        "faithfulness_reason_A",
+        "faithfulness_reason_B",
+        "correctness_reason_A",
+        "correctness_reason_B",
+    }
+)
+M5_ROW_KINDS = ("m5_gen_public", "m5_gen_kisa", "m5_judge")
+# 생성 행의 값 형식(유출 경로 차단): 해시는 소문자 hex 64자, 문서 ID는 트랙의 ID 형식뿐이다
+M5_SHA256 = re.compile(r"[0-9a-f]{64}")
+M5_DOC_ID = {"m5_gen_public": re.compile(r"CVE-\d{4}-\d{4,}"), "m5_gen_kisa": re.compile(r"\d+")}
+M5_DOC_ID_KEYS = ("retrieved", "truncated", "citations")
+M5_SPLITS = ("dev", "test")
+M5_QUERY_TYPES = ("cve_explicit", "product_symptom", "explanation_comparison", "no_answer")
 
 # asset으로 낼 수 있는 파일과 그 허용 필드 검사 종류. 이 밖의 경로는 목록에 있으면 실패다.
 JSON_ASSETS = (
@@ -166,11 +248,20 @@ def asset_kind(path: str, profile: str = "v0.1") -> str | None:
         return "json"
     if kind := OTHER_ASSETS.get(path):
         return kind
-    if profile == "v0.3":
+    if profile in M4_PROFILES:
         if path == M4_METADATA_PATH:
             return "metadata"
         if path in M4_JSON_PATHS:
             return "m4_json"
+    if profile in M5_PROFILES:
+        if path in M5_JSON_PATHS:
+            return "m5_json"
+        if path in M5_GENERATION_ROWS["public"]:
+            return "m5_gen_public"
+        if path in M5_GENERATION_ROWS["kisa"]:
+            return "m5_gen_kisa"
+        if path in M5_JUDGMENT_ROWS:
+            return "m5_judge"
     if profile not in M3_PROFILES:
         return None
     if (match := EXP_RESULT_PATH.fullmatch(path)) and match["exp"] in experiments():
@@ -192,7 +283,7 @@ def required_paths(root: Path, profile: str = "v0.1") -> list[str]:
     """manifest가 요구하는 원시 결과 파일과 질의셋. 이 파일들은 asset 목록에 반드시 있어야 한다.
 
     v0.2는 각 실험 manifest의 저장 결과 경로, 재현 입력(`reproduction_inputs`), 입력 파일 중 asset인 것과
-    실험 JSON 3종을 더한다. v0.3은 v0.2의 것에 M4 파일 넷(`M4_ASSETS`)을 더한다."""
+    실험 JSON 3종을 더한다. v0.3은 v0.2의 것에 M4 파일 넷(`M4_ASSETS`)을, v1.0은 거기에 M5 파일 12개(`M5_ASSETS`)를 더한다."""
     manifest = json.loads((root / RESULTS_DIR / "manifest.json").read_text(encoding="utf-8"))
     paths = {(RESULTS_DIR / "manifest.json").as_posix(), (RESULTS_DIR / "metrics.json").as_posix()}
     for entry in manifest["runs"].values():
@@ -210,8 +301,10 @@ def required_paths(root: Path, profile: str = "v0.1") -> list[str]:
                     for item in entry["inputs"].values()
                     if asset_kind(item["path"], profile)
                 )
-    if profile == "v0.3":
+    if profile in M4_PROFILES:
         paths.update(M4_ASSETS)
+    if profile in M5_PROFILES:
+        paths.update(M5_ASSETS)
     return sorted(paths)
 
 
@@ -258,8 +351,21 @@ def _long_strings(value: object, limit: int = MAX_STRING_CHARS) -> int:
     return 0
 
 
-def _jsonl(path: Path) -> list[dict]:
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+def _no_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    """json.loads의 object_pairs_hook: 같은 키가 두 번 나오면 거부한다(뒤 값만 남아 앞 값이 검사를 피하는 것을 막는다)."""
+    keys = [key for key, _ in pairs]
+    if len(set(keys)) != len(keys):
+        raise ValueError("duplicate object key")
+    return dict(pairs)
+
+
+def _jsonl(path: Path, strict: bool = False) -> list[dict]:
+    hook = _no_duplicate_keys if strict else None
+    return [
+        json.loads(line, object_pairs_hook=hook)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line
+    ]
 
 
 def _absolute_paths(value: object) -> int:
@@ -295,12 +401,86 @@ def _slash_strings(value: object) -> int:
     return 0
 
 
+def _m5_value_problems(kind: str, row: dict, where: str) -> list[str]:
+    """M5 행의 값 형식. 생성 행: `context_sha256`은 hex 64자, 문서 ID 목록은 트랙의 ID 형식만(공개 = CVE ID, KISA = nttId).
+    판정 행: 라벨·reason code는 #66 manifest의 고정 목록(`judge_gen.REASON_CODES`) 안, 분할·유형은 고정 값."""
+    problems: list[str] = []
+    if row.get("split") not in M5_SPLITS:
+        problems.append(f"{where}: split is not one of {list(M5_SPLITS)}")
+    if row.get("query_type") not in M5_QUERY_TYPES:
+        problems.append(f"{where}: query_type is not a fixed value")
+    if kind == "m5_judge":
+        for axis in judge_gen.AXES:
+            confirmed = {*judge_gen.LABELS[axis], judge_gen.DISAGREE, judge_gen.INVALID}
+            if row.get(axis) is not None and row[axis] not in confirmed:
+                problems.append(f"{where}: {axis} is not a fixed label")
+            for name in ("A", "B"):
+                label, code = row.get(f"{axis}_{name}"), row.get(f"{axis}_reason_{name}")
+                if label is not None and label not in judge_gen.LABELS[axis]:
+                    problems.append(f"{where}: {axis}_{name} is not a fixed label")
+                if code is not None and code not in judge_gen.ALL_CODES[axis]:
+                    problems.append(f"{where}: {axis}_reason_{name} is not a fixed reason code")
+        return problems
+    sha = row.get("context_sha256")
+    if not (isinstance(sha, str) and M5_SHA256.fullmatch(sha)):
+        problems.append(f"{where}: context_sha256 is not a lowercase hex sha256")
+    for key in M5_DOC_ID_KEYS:
+        values = row.get(key)
+        if isinstance(values, list) and not all(
+            isinstance(v, str) and M5_DOC_ID[kind].fullmatch(v) for v in values
+        ):
+            problems.append(f"{where}: {key} has an element that is not a document id")
+    return problems
+
+
+def m5_row_problems(kind: str, row: object, where: str = "row") -> list[str]:
+    """M5 행 한 줄의 허용 필드 위반 목록. 키 집합은 정확히 같아야 하고(알 수 없는 키·KISA 생성 행의 `answer` 거부),
+    `/`로 시작하는 문자열(공개 `answer` 포함)을 거부하며, 값 형식은 생성·판정 모듈의 `validate_row`로 다시 본다."""
+    if not isinstance(row, dict):
+        return [f"{where}: not a json object"]
+    track = "public" if kind == "m5_gen_public" else "kisa"
+    expected = (
+        M5_JUDGMENT_KEYS
+        if kind == "m5_judge"
+        else M5_GENERATION_KEYS | ({"answer"} if kind == "m5_gen_public" else frozenset())
+    )
+    problems: list[str] = []
+    if set(row) != expected:
+        problems.append(f"{where}: keys {sorted(set(row) ^ expected)}")
+    elif kind == "m5_judge":
+        try:
+            judge_gen.validate_row(row)
+        except (ValueError, KeyError, TypeError) as error:
+            problems.append(f"{where}: {error}")
+    else:
+        try:
+            pipeline.validate_row(row, track)
+        except (ValueError, KeyError, TypeError) as error:
+            problems.append(f"{where}: {error}")
+    if set(row) == expected:
+        problems += _m5_value_problems(kind, row, where)
+    # 공개 생성 행의 `answer`만 길이 예외다. 다른 필드에 본문이 실려도 걸린다
+    measured = (
+        {key: value for key, value in row.items() if key != "answer"}
+        if kind == "m5_gen_public"
+        else row
+    )
+    if n := _long_strings(measured):
+        problems.append(f"{where}: {n} string(s) longer than {MAX_STRING_CHARS} chars")
+    if n := _slash_strings(row):
+        problems.append(f"{where}: {n} string(s) or key(s) starting with '/' (absolute path)")
+    return problems
+
+
 def check_fields(kind: str, path: Path) -> list[str]:
     """한 asset의 허용 필드 위반 목록(비면 통과)."""
     problems: list[str] = []
     try:
-        if kind in ("json", "exp_json", "m4_json"):
-            payload = json.loads(path.read_text(encoding="utf-8"))
+        if kind in ("json", "exp_json", "m4_json", "m5_json"):
+            payload = json.loads(
+                path.read_text(encoding="utf-8"),
+                object_pairs_hook=_no_duplicate_keys if kind == "m5_json" else None,
+            )
             if not isinstance(payload, dict):
                 problems.append("not a json object")
             if n := _long_strings(payload):
@@ -311,7 +491,7 @@ def check_fields(kind: str, path: Path) -> list[str]:
                 problems.append(
                     f"{n} key(s) longer than {MAX_STRING_CHARS} chars or shaped like an absolute path"
                 )
-            if kind == "m4_json":
+            if kind in ("m4_json", "m5_json"):
                 if n := _slash_strings(payload):
                     problems.append(f"{n} string(s) or key(s) starting with '/' (absolute path)")
                 if n := _bad_keys(payload):
@@ -319,8 +499,8 @@ def check_fields(kind: str, path: Path) -> list[str]:
                         f"{n} key(s) longer than {MAX_STRING_CHARS} chars or shaped like an absolute path"
                     )
             return problems
-        rows = _jsonl(path)
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        rows = _jsonl(path, strict=kind in M5_ROW_KINDS)
+    except (OSError, ValueError) as error:  # UnicodeDecodeError, JSONDecodeError, 중복 키
         return [f"unreadable ({type(error).__name__})"]
     if not rows:
         return ["empty file"]
@@ -340,6 +520,8 @@ def check_fields(kind: str, path: Path) -> list[str]:
         elif kind == "metadata":
             if set(row) != METADATA_KEYS:
                 problems.append(f"{where}: keys {sorted(set(row) ^ METADATA_KEYS)}")
+        elif kind in M5_ROW_KINDS:
+            problems += m5_row_problems(kind, row, where)
         elif kind == "golden":
             if not GOLDEN_KEYS - GOLDEN_OPTIONAL <= set(row) <= GOLDEN_KEYS:
                 problems.append(f"{where}: keys {sorted(set(row) ^ GOLDEN_KEYS)}")
@@ -356,6 +538,8 @@ def check_fields(kind: str, path: Path) -> list[str]:
                         problems.append(
                             f"{where}: evidence keys {sorted(set(item) ^ GOLDEN_EVIDENCE_KEYS)}"
                         )
+        if kind in M5_ROW_KINDS:  # M5 행은 m5_row_problems가 길이까지 본다(공개 `answer`만 예외)
+            continue
         if n := _long_strings(row):  # 결과 파일의 문서 ID·질문 ID에 본문이 실려도 걸린다
             problems.append(f"{where}: {n} string(s) longer than {MAX_STRING_CHARS} chars")
     return problems
@@ -522,13 +706,23 @@ def check_release(
                 "M3 metrics, comparison and tables rebuilt from the asset copies match", problems
             )
 
-        if profile == "v0.3":
+        if profile in M4_PROFILES:
             try:
                 found, _ = tables.verify_m4(tree, root / "README.md", note=note_path)
                 problems = [f"M4 vs asset copy: {item}" for item in found]
             except tables.CheckError as error:
                 problems = [f"M4 vs asset copy: {error}"]
             record("M4 reports, manifest and tables rebuilt from the asset copies match", problems)
+
+        if profile in M5_PROFILES:
+            try:
+                found, _ = tables.verify_m5(tree, root / "README.md", note=note_path)
+                problems = [f"M5 vs asset copy: {item}" for item in found]
+            except tables.CheckError as error:
+                problems = [f"M5 vs asset copy: {error}"]
+            record(
+                "M5 generation, judgments and tables rebuilt from the asset copies match", problems
+            )
     return results
 
 
@@ -594,7 +788,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--note",
         type=Path,
-        help="릴리스 노트(기본: <root>/docs/release-v0.1.md). 파일 이름 release-v0.2.md, release-v0.3.md는 그 버전의 검사 범위다",
+        help="릴리스 노트(기본: <root>/docs/release-v0.1.md). 파일 이름 release-v0.2.md, release-v0.3.md, release-v1.0.md는 그 버전의 검사 범위다",
     )
     parser.add_argument(
         "--assets-dir",
