@@ -345,8 +345,21 @@ def _long_strings(value: object, limit: int = MAX_STRING_CHARS) -> int:
     return 0
 
 
-def _jsonl(path: Path) -> list[dict]:
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+def _no_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    """json.loads의 object_pairs_hook: 같은 키가 두 번 나오면 거부한다(뒤 값만 남아 앞 값이 검사를 피하는 것을 막는다)."""
+    keys = [key for key, _ in pairs]
+    if len(set(keys)) != len(keys):
+        raise ValueError("duplicate object key")
+    return dict(pairs)
+
+
+def _jsonl(path: Path, strict: bool = False) -> list[dict]:
+    hook = _no_duplicate_keys if strict else None
+    return [
+        json.loads(line, object_pairs_hook=hook)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line
+    ]
 
 
 def _absolute_paths(value: object) -> int:
@@ -424,7 +437,10 @@ def check_fields(kind: str, path: Path) -> list[str]:
     problems: list[str] = []
     try:
         if kind in ("json", "exp_json", "m4_json", "m5_json"):
-            payload = json.loads(path.read_text(encoding="utf-8"))
+            payload = json.loads(
+                path.read_text(encoding="utf-8"),
+                object_pairs_hook=_no_duplicate_keys if kind == "m5_json" else None,
+            )
             if not isinstance(payload, dict):
                 problems.append("not a json object")
             if n := _long_strings(payload):
@@ -443,8 +459,8 @@ def check_fields(kind: str, path: Path) -> list[str]:
                         f"{n} key(s) longer than {MAX_STRING_CHARS} chars or shaped like an absolute path"
                     )
             return problems
-        rows = _jsonl(path)
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        rows = _jsonl(path, strict=kind in M5_ROW_KINDS)
+    except (OSError, ValueError) as error:  # UnicodeDecodeError, JSONDecodeError, 중복 키
         return [f"unreadable ({type(error).__name__})"]
     if not rows:
         return ["empty file"]

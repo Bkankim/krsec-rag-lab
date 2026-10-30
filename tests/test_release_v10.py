@@ -1441,3 +1441,75 @@ def test_downloaded_asset_is_checked_even_when_the_repo_file_is_fine(
     append_byte(path)(downloaded)
     assert run_release(capsys, repo)[0] == 0
     assert run_assets(capsys, repo, downloaded)[0] == 1
+
+
+# ------------------------------------------------------------ final-review 반영: 고정 구성, 중복 키
+
+
+def drop_output(track, key):
+    def change(payload):
+        del payload["tracks"][track]["outputs"][key]
+
+    return change
+
+
+@pytest.mark.parametrize("track", ["public", "kisa"])
+@pytest.mark.parametrize("key", ["k1", "k3", "k5"])
+def test_a_generation_manifest_without_one_fixed_output_is_exit_1(repo, capsys, track, key):
+    """manifest에서 (트랙, k) 하나를 빼면 그 파일이 남아 있어도 저장본 검사 밖으로 빠지므로 고정 구성 검사가 막는다."""
+    edit_json(repo / GEN_MANIFEST, drop_output(track, key))
+    code, _, err = run_tables(capsys, repo, "--check")
+    assert code == 1 and f"generation manifest {track} outputs" in err
+    assert (repo / f"{GEN}/{track}_{key}.jsonl").is_file()
+
+
+def test_a_generation_manifest_with_a_missing_track_is_exit_1(repo, capsys):
+    edit_json(repo / GEN_MANIFEST, lambda p: p["tracks"].pop("kisa"))
+    code, _, err = run_tables(capsys, repo, "--check")
+    assert code == 1 and err.startswith(("error: ", "MISMATCH"))
+    assert "Traceback" not in err
+
+
+def test_a_judgments_manifest_with_a_missing_track_is_exit_1(repo, capsys):
+    edit_json(repo / JUD_MANIFEST, lambda p: p["tracks"].pop("public"))
+    code, _, err = run_tables(capsys, repo, "--check")
+    assert code == 1 and err.startswith(("error: ", "MISMATCH"))
+    assert "Traceback" not in err
+
+
+DUPLICATE_KEY_CASES = {
+    "kisa generation row": ("m5_gen_kisa", KISA_K3),
+    "public generation row": ("m5_gen_public", PUBLIC_K3),
+    "judgment row": ("m5_judge", KISA_JUDGE),
+}
+
+
+@pytest.mark.parametrize(
+    ("kind", "relative"), DUPLICATE_KEY_CASES.values(), ids=DUPLICATE_KEY_CASES.keys()
+)
+def test_a_duplicate_key_in_an_m5_row_is_rejected(tmp_path, kind, relative):
+    """파서가 뒤 값만 남기는 중복 키로 앞 값(본문 조각)이 검사를 피하지 못한다."""
+    lines = (ROOT / relative).read_text(encoding="utf-8").splitlines()
+    lines[0] = lines[0].replace(
+        '"question_id"', '"question_id": "' + "가" * 400 + '", "question_id"', 1
+    )
+    path = tmp_path / "rows.jsonl"
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    assert json.loads(lines[0])["question_id"] != "가" * 400  # 파싱 결과만 보면 깨끗한 행이다
+    assert release.check_fields(kind, path) == ["unreadable (ValueError)"]
+
+
+def test_a_duplicate_key_in_an_m5_json_is_rejected(tmp_path):
+    path = tmp_path / "x.json"
+    path.write_text('{"a": "' + "x" * 600 + '", "a": "y"}', encoding="utf-8")
+    assert release.check_fields("m5_json", path) == ["unreadable (ValueError)"]
+
+
+def test_a_duplicate_key_in_a_downloaded_m5_asset_fails_the_release_check(repo, capsys):
+    path = repo / KISA_K3
+    lines = path.read_text(encoding="utf-8").splitlines()
+    lines[0] = lines[0].replace('"question_id"', '"question_id": "본문 조각", "question_id"', 1)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    rewrite_assets(repo)
+    code, out, _ = run_release(capsys, repo)
+    assert code == 1 and CHECK_FIELDS in failed_checks(out)

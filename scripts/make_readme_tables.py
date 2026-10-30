@@ -1195,6 +1195,22 @@ def load_m5(root: Path) -> dict:
     )
     problems: list[str] = []
     try:
+        # 고정 구성: 트랙 2개 x k 3개. manifest에서 빠진 (트랙, k)의 파일은 저장본 검사 대상에서 빠지므로 여기서 먼저 본다
+        wanted_outputs = {f"k{k}" for k in pipeline.KS}
+        if set(generation["tracks"]) != set(data.TRACKS):
+            problems.append(
+                f"{M5_PROBLEM} generation manifest tracks differ from {list(data.TRACKS)}"
+            )
+        for track, block in generation["tracks"].items():
+            if set(block["outputs"]) != wanted_outputs:
+                problems.append(
+                    f"{M5_PROBLEM} generation manifest {track} outputs "
+                    f"{sorted(block['outputs'])} differ from {sorted(wanted_outputs)}"
+                )
+        if set(judgments["tracks"]) != set(data.TRACKS):
+            problems.append(
+                f"{M5_PROBLEM} judgments manifest tracks differ from {list(data.TRACKS)}"
+            )
         for track, block in generation["tracks"].items():
             try:
                 _check_inputs(root, f"m5 generation {track}", block)

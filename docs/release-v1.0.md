@@ -223,7 +223,7 @@ uv run python scripts/run_generation.py --metrics-only                 # M5 생�
 uv run python scripts/judge_generation.py --summary-only               # M5 판정 저장본 검사 + summary.json 재계산 대조
 ```
 
-M5의 대조는 `results/m5/`의 12개 파일과 질의셋 라벨만 읽는다. 행 키 집합(공개 생성 행만 `answer`를 가진다), 질문 집합(예상 집합과 정확히
+M5의 대조는 `results/m5/`의 12개 파일과 질의셋 라벨을 읽고, 생성 manifest가 적은 입력 파일(질의셋, KISA 메타데이터, 있으면 NVD 코퍼스)의 해시가 같은지도 본다. 트랙 2개 x k(1, 3, 5)의 고정 구성, 행 키 집합(공개 생성 행만 `answer`를 가진다), 질문 집합(예상 집합과 정확히
 같고 중복 없음), 파일 해시, 계약 파싱 성공률 80% 하한, 판정 행과 생성 행의 대응을 본 뒤 `topk.json`과 `summary.json`을 저장된 행에서 다시
 계산해 커밋된 파일과 대조하고(abs 1e-9), 그 값으로 README와 이 노트의 M5 구간을 만든다. 이 대조는 생성이나 판정을 다시 돌려 같은 값이 나오는지를
 보는 것이 아니다.
@@ -256,7 +256,7 @@ uv sync --locked --dev
 
 로컬 Ollama와 모델 `qwen3:8b`(digest는 아래 "데이터와 모델" 표와 `results/m5/generation/manifest.json`의 `model`)가 필요하다. 생성은 외부 모델
 API를 쓰지 않는다. KISA 트랙은 `<KISA-ROOT>`의 고정 50건 캐시(`data/kisa/`)를 `load_cached_body`로 읽고, 답변 원문은
-`<KISA-ROOT>/data/m5/generation/`(gitignore)에만 쓴다. 전체 실행은 공개 트랙 약 11분, KISA 트랙 약 12분이 걸렸다(`manifest.json`의 `wall_seconds_this_invocation`).
+`<KISA-ROOT>/data/m5/generation/`(gitignore)에만 쓴다. 실행 시간은 `results/m5/generation/manifest.json`의 `wall_seconds_this_invocation`에 있다.
 
 ```bash
 ollama serve                                   # 별도 프로세스. 이미 떠 있으면 그것을 쓰고, 띄웠다면 그 프로세스만 끈다
