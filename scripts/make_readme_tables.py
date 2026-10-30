@@ -1211,6 +1211,15 @@ def load_m5(root: Path) -> dict:
             problems.append(
                 f"{M5_PROBLEM} judgments manifest tracks differ from {list(data.TRACKS)}"
             )
+        if problems:  # 구성이 틀리면 아래 저장본 검사가 KeyError로 멈추기 전에 이 사유를 보고한다
+            return {
+                "generation": generation,
+                "judgments": judgments,
+                "topk": None,
+                "summary": None,
+                "rows": None,
+                "problems": problems,
+            }
         for track, block in generation["tracks"].items():
             try:
                 _check_inputs(root, f"m5 generation {track}", block)

@@ -1464,16 +1464,16 @@ def test_a_generation_manifest_without_one_fixed_output_is_exit_1(repo, capsys, 
 
 
 def test_a_generation_manifest_with_a_missing_track_is_exit_1(repo, capsys):
-    edit_json(repo / GEN_MANIFEST, lambda p: p["tracks"].pop("kisa"))
+    edit_json(repo / GEN_MANIFEST, lambda p: p["tracks"].pop("kisa") and None)
     code, _, err = run_tables(capsys, repo, "--check")
-    assert code == 1 and err.startswith(("error: ", "MISMATCH"))
+    assert code == 1 and "generation manifest tracks differ" in err
     assert "Traceback" not in err
 
 
 def test_a_judgments_manifest_with_a_missing_track_is_exit_1(repo, capsys):
-    edit_json(repo / JUD_MANIFEST, lambda p: p["tracks"].pop("public"))
+    edit_json(repo / JUD_MANIFEST, lambda p: p["tracks"].pop("public") and None)
     code, _, err = run_tables(capsys, repo, "--check")
-    assert code == 1 and err.startswith(("error: ", "MISMATCH"))
+    assert code == 1 and "judgments manifest tracks differ" in err
     assert "Traceback" not in err
 
 
@@ -1513,3 +1513,90 @@ def test_a_duplicate_key_in_a_downloaded_m5_asset_fails_the_release_check(repo, 
     rewrite_assets(repo)
     code, out, _ = run_release(capsys, repo)
     assert code == 1 and CHECK_FIELDS in failed_checks(out)
+
+
+# ------------------------------------------------------------ final-review 판정: 행 값 형식 (유출 경로 강화)
+
+KOREAN_64 = "가" * 64
+FORMAT_CASES = {
+    "kisa context_sha256 is 64 korean chars": ("m5_gen_kisa", "context_sha256", KOREAN_64, "hex sha256"),
+    "kisa context_sha256 is uppercase hex": ("m5_gen_kisa", "context_sha256", "A" * 64, "hex sha256"),
+    "kisa context_sha256 has a non-hex letter": ("m5_gen_kisa", "context_sha256", "g" * 64, "hex sha256"),
+    "public context_sha256 is 64 chars of text": ("m5_gen_public", "context_sha256", "x" * 64, "hex sha256"),
+    "kisa retrieved holds a text fragment": ("m5_gen_kisa", "retrieved", ["공지 본문 일부"], "retrieved has an element"),
+    "kisa retrieved holds a CVE id": ("m5_gen_kisa", "retrieved", ["CVE-2026-1234"], "retrieved has an element"),
+    "kisa retrieved holds a nttId with a suffix": ("m5_gen_kisa", "retrieved", ["12345x"], "retrieved has an element"),
+    "kisa truncated holds a text fragment": ("m5_gen_kisa", "truncated", ["본문 조각"], "truncated has an element"),
+    "kisa citations holds a text fragment": ("m5_gen_kisa", "citations", ["본문 조각"], "citations has an element"),
+    "public retrieved holds a nttId": ("m5_gen_public", "retrieved", ["12345"], "retrieved has an element"),
+    "public retrieved holds a short cve id": ("m5_gen_public", "retrieved", ["CVE-2026-1"], "retrieved has an element"),
+    "public truncated holds a text fragment": ("m5_gen_public", "truncated", ["description text"], "truncated has an element"),
+    "public citations holds a lowercase cve id": ("m5_gen_public", "citations", ["cve-2026-1234"], "citations has an element"),
+    "kisa split is free text": ("m5_gen_kisa", "split", "train", "split is not one of"),
+    "public query_type is free text": ("m5_gen_public", "query_type", "공지 본문", "query_type is not a fixed value"),
+    "judgment split is free text": ("m5_judge", "split", "train", "split is not one of"),
+    "judgment query_type is free text": ("m5_judge", "query_type", "공지 본문", "query_type is not a fixed value"),
+    "judgment confirmed label is free text": ("m5_judge", "faithfulness", "대체로 맞음", "faithfulness is not a fixed label"),
+    "judgment A label is free text": ("m5_judge", "correctness_A", "대체로 맞음", "correctness_A is not a fixed label"),
+    "judgment B reason is free text": ("m5_judge", "faithfulness_reason_B", "공지에 이런 말이 있다", "faithfulness_reason_B is not a fixed reason code"),
+    "judgment reason from the other axis": ("m5_judge", "faithfulness_reason_A", "matches_reference", "faithfulness_reason_A is not a fixed reason code"),
+}  # fmt: skip
+BASE_ROWS = {"m5_gen_kisa": KISA_ROW, "m5_gen_public": PUBLIC_ROW, "m5_judge": JUDGE_ROW}
+
+
+@pytest.mark.parametrize(
+    ("kind", "key", "value", "needle"), FORMAT_CASES.values(), ids=FORMAT_CASES.keys()
+)
+def test_a_malformed_m5_row_value_is_rejected(tmp_path, kind, key, value, needle):
+    row = with_key(BASE_ROWS[kind], key, value)
+    for problems in (release.m5_row_problems(kind, row), check_rows(tmp_path, kind, [row])):
+        assert any(needle in p for p in problems), problems
+
+
+def test_the_committed_rows_all_pass_the_value_format_check():
+    for relative in M5_JSONL:
+        kind = (
+            "m5_judge"
+            if "/judgments/" in relative
+            else ("m5_gen_public" if "/public_" in relative else "m5_gen_kisa")
+        )
+        for number, row in enumerate(read_jsonl(ROOT / relative), start=1):
+            assert release.m5_row_problems(kind, row) == [], (relative, number)
+
+
+def set_row_value(relative, key, value):
+    return mutate_rows(relative, lambda rows: rows[0].__setitem__(key, value))
+
+
+FORMAT_RELEASE_TAMPER = {
+    "kisa k1 context_sha256 is text": set_row_value(KISA_K1, "context_sha256", KOREAN_64),
+    "kisa k3 retrieved holds a text fragment": mutate_rows(
+        KISA_K3,
+        lambda rows: rows[0].update(retrieved=["공지 본문 일부"], n_retrieved=1, citations=[]),
+    ),
+    "public k3 truncated holds a text fragment": set_row_value(
+        PUBLIC_K3, "truncated", ["본문 조각"]
+    ),
+    "kisa judgment reason is free text": mutate_rows(
+        KISA_JUDGE,
+        lambda rows: next(r for r in rows if r["status"] == "judged").update(
+            correctness_reason_A="공지에 이런 말이 있다"
+        ),
+    ),
+}
+
+
+@pytest.mark.parametrize("tamper", FORMAT_RELEASE_TAMPER.values(), ids=FORMAT_RELEASE_TAMPER.keys())
+def test_a_malformed_m5_row_value_fails_the_release_check(repo, capsys, tamper):
+    tamper(repo)
+    rewrite_assets(repo)
+    code, out, _ = run_release(capsys, repo)
+    assert code == 1 and CHECK_FIELDS in failed_checks(out)
+    assert out.rstrip().endswith("check_release: FAILED")
+
+
+def test_the_note_names_six_reproduction_groups_and_has_six_subsections():
+    note = (ROOT / NOTE).read_text(encoding="utf-8")
+    section = note[note.index("\n## 재현\n") : note.index("\n## 데이터와 모델\n")]
+    assert "여섯 갈래" in section and "다섯 갈래" not in section
+    assert len(re.findall(r"^### ", section, re.MULTILINE)) == 6

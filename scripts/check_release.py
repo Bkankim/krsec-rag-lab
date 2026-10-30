@@ -186,6 +186,12 @@ M5_JUDGMENT_KEYS = frozenset(
     }
 )
 M5_ROW_KINDS = ("m5_gen_public", "m5_gen_kisa", "m5_judge")
+# 생성 행의 값 형식(유출 경로 차단): 해시는 소문자 hex 64자, 문서 ID는 트랙의 ID 형식뿐이다
+M5_SHA256 = re.compile(r"[0-9a-f]{64}")
+M5_DOC_ID = {"m5_gen_public": re.compile(r"CVE-\d{4}-\d{4,}"), "m5_gen_kisa": re.compile(r"\d+")}
+M5_DOC_ID_KEYS = ("retrieved", "truncated", "citations")
+M5_SPLITS = ("dev", "test")
+M5_QUERY_TYPES = ("cve_explicit", "product_symptom", "explanation_comparison", "no_answer")
 
 # asset으로 낼 수 있는 파일과 그 허용 필드 검사 종류. 이 밖의 경로는 목록에 있으면 실패다.
 JSON_ASSETS = (
@@ -395,6 +401,38 @@ def _slash_strings(value: object) -> int:
     return 0
 
 
+def _m5_value_problems(kind: str, row: dict, where: str) -> list[str]:
+    """M5 행의 값 형식. 생성 행: `context_sha256`은 hex 64자, 문서 ID 목록은 트랙의 ID 형식만(공개 = CVE ID, KISA = nttId).
+    판정 행: 라벨·reason code는 #66 manifest의 고정 목록(`judge_gen.REASON_CODES`) 안, 분할·유형은 고정 값."""
+    problems: list[str] = []
+    if row.get("split") not in M5_SPLITS:
+        problems.append(f"{where}: split is not one of {list(M5_SPLITS)}")
+    if row.get("query_type") not in M5_QUERY_TYPES:
+        problems.append(f"{where}: query_type is not a fixed value")
+    if kind == "m5_judge":
+        for axis in judge_gen.AXES:
+            confirmed = {*judge_gen.LABELS[axis], judge_gen.DISAGREE, judge_gen.INVALID}
+            if row.get(axis) is not None and row[axis] not in confirmed:
+                problems.append(f"{where}: {axis} is not a fixed label")
+            for name in ("A", "B"):
+                label, code = row.get(f"{axis}_{name}"), row.get(f"{axis}_reason_{name}")
+                if label is not None and label not in judge_gen.LABELS[axis]:
+                    problems.append(f"{where}: {axis}_{name} is not a fixed label")
+                if code is not None and code not in judge_gen.ALL_CODES[axis]:
+                    problems.append(f"{where}: {axis}_reason_{name} is not a fixed reason code")
+        return problems
+    sha = row.get("context_sha256")
+    if not (isinstance(sha, str) and M5_SHA256.fullmatch(sha)):
+        problems.append(f"{where}: context_sha256 is not a lowercase hex sha256")
+    for key in M5_DOC_ID_KEYS:
+        values = row.get(key)
+        if isinstance(values, list) and not all(
+            isinstance(v, str) and M5_DOC_ID[kind].fullmatch(v) for v in values
+        ):
+            problems.append(f"{where}: {key} has an element that is not a document id")
+    return problems
+
+
 def m5_row_problems(kind: str, row: object, where: str = "row") -> list[str]:
     """M5 행 한 줄의 허용 필드 위반 목록. 키 집합은 정확히 같아야 하고(알 수 없는 키·KISA 생성 행의 `answer` 거부),
     `/`로 시작하는 문자열(공개 `answer` 포함)을 거부하며, 값 형식은 생성·판정 모듈의 `validate_row`로 다시 본다."""
@@ -419,6 +457,8 @@ def m5_row_problems(kind: str, row: object, where: str = "row") -> list[str]:
             pipeline.validate_row(row, track)
         except (ValueError, KeyError, TypeError) as error:
             problems.append(f"{where}: {error}")
+    if set(row) == expected:
+        problems += _m5_value_problems(kind, row, where)
     # 공개 생성 행의 `answer`만 길이 예외다. 다른 필드에 본문이 실려도 걸린다
     measured = (
         {key: value for key, value in row.items() if key != "answer"}
